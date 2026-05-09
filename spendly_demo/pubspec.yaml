@@ -1,0 +1,44 @@
+name: spendly_demo
+description: "A professional Flutter budget and group expense tracking app."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  
+  # --- SPENDLY MVP PAKETLERİ ---
+  
+  # Backend, Auth ve Veritabanı
+  supabase_flutter: ^2.4.0
+  
+  # State Management (Durum Yönetimi)
+  flutter_riverpod: ^2.5.0
+  
+  # Güvenlik ve Token Saklama
+  flutter_secure_storage: ^9.0.0
+  
+  # Gelir Modeli (App Store / Play Store Abonelikleri)
+  purchases_flutter: ^9.15.1
+  
+  # Hata Takibi ve Loglama
+  sentry_flutter: ^8.0.0
+  
+  # Sayfa Yönlendirmeleri (Modern Navigation)
+  go_router: ^13.2.0
+  
+  # Dashboard Grafikleri (Pasta ve Çizgi Grafikler)
+  fl_chart: ^0.67.0
+  flutter_heatmap_calendar: ^1.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
