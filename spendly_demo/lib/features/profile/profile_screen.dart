@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../auth/auth_provider.dart';
 import '../social/social_provider.dart';
+import 'currency_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -11,6 +12,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(currentUserProfileProvider);
     final user = ref.watch(authClientProvider).currentUser;
+    final currency = ref.watch(currencyProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profil')),
@@ -59,6 +61,26 @@ class ProfileScreen extends ConsumerWidget {
                       avatarUrl ?? '',
                     );
                   },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.attach_money),
+                  title: const Text('Para Birimi'),
+                  trailing: DropdownButton<String>(
+                    value: currency,
+                    underline: const SizedBox(),
+                    items: const [
+                      DropdownMenuItem(value: '₺', child: Text('₺ (TRY)')),
+                      DropdownMenuItem(value: '\$', child: Text('\$ (USD)')),
+                      DropdownMenuItem(value: '€', child: Text('€ (EUR)')),
+                    ],
+                    onChanged: (newCurrency) {
+                      if (newCurrency != null) {
+                        ref
+                            .read(currencyProvider.notifier)
+                            .setCurrency(newCurrency);
+                      }
+                    },
+                  ),
                 ),
                 ListTile(
                   leading: const Icon(Icons.lock),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'group_provider.dart';
 import 'group_transaction_model.dart';
 import 'group_model.dart';
+import '../profile/currency_provider.dart';
 
 class AddExpenseSheet extends ConsumerStatefulWidget {
   final String groupId;
@@ -51,6 +52,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
   @override
   Widget build(BuildContext context) {
     final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
+    final currency = ref.watch(currencyProvider);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -84,8 +86,8 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
-              labelText: 'Toplam Tutar (₺)',
-              prefixIcon: const Icon(Icons.attach_money),
+              labelText: 'Toplam Tutar ($currency)',
+              prefixText: '$currency ',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -95,10 +97,13 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
 
           // Segmented Control for Split Type
           SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'equal', label: Text('Eşit (=)')),
-              ButtonSegment(value: 'percentage', label: Text('Yüzde (%)')),
-              ButtonSegment(value: 'exact', label: Text('Tutar (₺)')),
+            segments: [
+              const ButtonSegment(value: 'equal', label: Text('Eşit (=)')),
+              const ButtonSegment(
+                value: 'percentage',
+                label: Text('Yüzde (%)'),
+              ),
+              ButtonSegment(value: 'exact', label: Text('Tutar ($currency)')),
             ],
             selected: {_splitType},
             onSelectionChanged: (Set<String> newSelection) {
@@ -133,7 +138,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
                     final isSelected = _selectedUsers.contains(member.userId);
                     final isMe = member.userId == widget.currentUserId;
 
-                    return _buildMemberTile(member, isSelected, isMe);
+                    return _buildMemberTile(member, isSelected, isMe, currency);
                   },
                 );
               },
@@ -164,7 +169,12 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     );
   }
 
-  Widget _buildMemberTile(GroupMemberModel member, bool isSelected, bool isMe) {
+  Widget _buildMemberTile(
+    GroupMemberModel member,
+    bool isSelected,
+    bool isMe,
+    String currency,
+  ) {
     // Determine the calculated or inputted value to show
     Widget trailingWidget;
 
@@ -175,7 +185,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
           ? _totalAmount / _selectedUsers.length
           : 0.0;
       trailingWidget = Text(
-        '₺${share.toStringAsFixed(2)}',
+        '$currency${share.toStringAsFixed(2)}',
         style: const TextStyle(fontWeight: FontWeight.bold),
       );
     } else {
@@ -187,7 +197,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
           textAlign: TextAlign.right,
           decoration: InputDecoration(
             isDense: true,
-            suffixText: _splitType == 'percentage' ? '%' : '₺',
+            suffixText: _splitType == 'percentage' ? '%' : currency,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 8,
               vertical: 8,
@@ -203,34 +213,60 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       );
     }
 
-    return CheckboxListTile(
-      value: isSelected,
-      onChanged: (val) {
-        setState(() {
-          if (val == true) {
-            _selectedUsers.add(member.userId);
-          } else {
-            _selectedUsers.remove(member.userId);
-            _customValues.remove(member.userId);
-          }
-        });
-      },
-      title: Text(
-        isMe ? 'Sen' : '@${member.username ?? member.userId.substring(0, 4)}',
-      ),
-      secondary: CircleAvatar(
-        backgroundColor: isMe
-            ? Colors.deepPurple.shade100
-            : Colors.grey.shade200,
-        child: Icon(
-          Icons.person,
-          color: isMe ? Colors.deepPurple : Colors.grey,
+    return Column(
+      children: [
+        CheckboxListTile(
+          value: isSelected,
+          onChanged: (val) {
+            setState(() {
+              if (val == true) {
+                _selectedUsers.add(member.userId);
+              } else {
+                _selectedUsers.remove(member.userId);
+                _customValues.remove(member.userId);
+              }
+            });
+          },
+          title: Text(
+            isMe
+                ? 'Sen'
+                : '@${member.username ?? member.userId.substring(0, 4)}',
+          ),
+          secondary: CircleAvatar(
+            backgroundColor: isMe
+                ? Colors.deepPurple.shade100
+                : Colors.grey.shade200,
+            child: Icon(
+              Icons.person,
+              color: isMe ? Colors.deepPurple : Colors.grey,
+            ),
+          ),
+          controlAffinity: ListTileControlAffinity.leading,
+          contentPadding: EdgeInsets.zero,
+          subtitle: Align(
+            alignment: Alignment.centerRight,
+            child: trailingWidget,
+          ),
         ),
-      ),
-      controlAffinity: ListTileControlAffinity.leading,
-      contentPadding: EdgeInsets.zero,
-      // Workaround to put input to the right
-      subtitle: Align(alignment: Alignment.centerRight, child: trailingWidget),
+        if (isSelected && (_splitType == 'percentage' || _splitType == 'exact'))
+          Slider(
+            value: (_customValues[member.userId] ?? 0).clamp(
+              0.0,
+              _splitType == 'percentage' ? 100.0 : _totalAmount,
+            ),
+            min: 0,
+            max: _splitType == 'percentage'
+                ? 100.0
+                : (_totalAmount > 0 ? _totalAmount : 1.0),
+            divisions: 100,
+            label: _customValues[member.userId]?.toStringAsFixed(0),
+            onChanged: (val) {
+              setState(() {
+                _customValues[member.userId] = val;
+              });
+            },
+          ),
+      ],
     );
   }
 

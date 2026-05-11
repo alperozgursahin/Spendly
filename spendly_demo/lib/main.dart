@@ -187,7 +187,68 @@ class _MyAppState extends ConsumerState<MyApp> {
     return MaterialApp.router(
       title: 'Spendly',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+        fontFamily: 'Inter', // Assuming standard clean font
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF6200EA),
+          primary: const Color(0xFF6200EA),
+          secondary: const Color(0xFF03DAC6),
+        ),
+        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFF8F9FA),
+          elevation: 0.0,
+          centerTitle: true,
+          iconTheme: IconThemeData(color: Colors.black87),
+          titleTextStyle: TextStyle(
+            color: Colors.black87,
+            fontSize: 20.0,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        cardTheme: const CardThemeData(
+          elevation: 0.0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(16.0)),
+          ),
+          color: Colors.white,
+          margin: EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.grey.shade100,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFF6200EA), width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            backgroundColor: const Color(0xFF6200EA),
+            foregroundColor: Colors.white,
+            textStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
       ),
       routerConfig: router,
     );

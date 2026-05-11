@@ -128,6 +128,22 @@ class SocialService {
     if (currentUserId == targetUserId)
       throw Exception('Kendinize istek gönderemezsiniz.');
 
+    final existingQuery = await db
+        .from('friendships')
+        .select('id, status')
+        .or(
+          'and(user_id1.eq.$currentUserId,user_id2.eq.$targetUserId),and(user_id1.eq.$targetUserId,user_id2.eq.$currentUserId)',
+        );
+
+    if (existingQuery.isNotEmpty) {
+      final status = existingQuery.first['status'];
+      if (status == 'pending') {
+        throw Exception('Zaten bekleyen bir arkadaşlık isteği var.');
+      } else if (status == 'accepted') {
+        throw Exception('Bu kullanıcıyla zaten arkadaşsınız.');
+      }
+    }
+
     await db.from('friendships').insert({
       'user_id1': currentUserId,
       'user_id2': targetUserId,
