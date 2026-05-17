@@ -36,3 +36,17 @@ Spendly; bireysel gelir-gider takibi ve grup harcamalar�n� y�neten, App St
   - Pie Chart veri hazırlığında case sensitivity (büyük/küçük harf eşitsizlikleri) sorunu fixlendi (`.trim().toLowerCase()` kullanıldı).
   - Aktivite akışı ve statik tarihler ile son işlemler listesi modernize edilerek tutarlar `currencyProvider`'dan çekildi.
 - **Grup Harcamaları:** `AddExpenseSheet` içerisine Slider entegre edilerek, tutarın yüzdelik (`%`) veya tam tutar (`₺`) olarak Slider ile dinamik hesaplanması sağlandı. `CurrencyProvider` buraya da entegre edildi.
+
+## 6. Son Güncelleme (Modules 1-5 yeniden uygulandı)
+
+- **Module 1 (Core & UI Overhaul):** Material 3 teması güçlendirildi, `scaffoldBackgroundColor` temiz Off-White `#F8F9FA` olarak sabitlendi ve `surfaceTintColor` transparent yapıldı. `CardTheme` yumuşak kenar ve hafif gölge ile güncellendi. Global `currencyProvider` (Riverpod) mevcut ve uygulatıldı.
+
+- **Module 2 (Dashboard):** Tarihler sol tarafta sabitlendi; pasta grafik `fl_chart` ile eklendi ve kategori stringleri `sanitizeCategory` ile normalize edilerek büyük/küçük harf farklılıkları giderildi. Sosyal aktivite akışı Supabase'den çekiliyor.
+
+- **Module 3 (Activation Heatmap):** Özelleştirilmiş ısı haritası kartı eklendi (pinned Y-axis Türkçe etiketleri: Pzt..Paz), üstünde aralık `SegmentedButton` (1A/3A/6A/1Y). `heatmapRangeProvider` ve `heatmapDataProvider` eklendi; 1A modu için dinamik blok boyutlaması uygulanıyor.
+
+- **Module 4 (Quick Add):** Hızlı ekle widget'ı yeniden inşa edildi; `SegmentedButton` ile Gelir/Gider seçimi, kategori `Dropdown` ve `Diğer` seçildiğinde özel giriş alanı gösteriliyor. Miktar prefix'i `currencyProvider`'ı izliyor.
+
+- **Module 5 (Group Expenses & Bug Fixes):** Grup split UI'sinde Slider mevcut; `sendFriendRequest` fonksiyonu Supabase'de mevcut ilişkileri (pending/accepted) kontrol ederek tekrar istekleri engelliyor.
+
+Not: Kod değişiklikleri `lib/main.dart`, `lib/features/dashboard/dashboard_screen.dart`, `lib/features/dashboard/heatmap_provider.dart` ve birkaç yardımcı sağlayıcı üzerinde yapıldı. Derleme sırasında paket bağımlılıkları (`fl_chart`, `flutter_heatmap_calendar`) zaten `pubspec.yaml` içinde yer alıyor.

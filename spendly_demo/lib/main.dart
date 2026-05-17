@@ -195,6 +195,7 @@ class _MyAppState extends ConsumerState<MyApp> {
           secondary: const Color(0xFF03DAC6),
         ),
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+        // Prevent Material3 surface tint from overpowering the UI (removed unsupported param for compatibility)
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFFF8F9FA),
           elevation: 0.0,
@@ -206,13 +207,15 @@ class _MyAppState extends ConsumerState<MyApp> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        cardTheme: const CardThemeData(
-          elevation: 0.0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(16.0)),
-          ),
+        cardTheme: CardThemeData(
+          elevation: 2,
+          shadowColor: Colors.black12,
           color: Colors.white,
-          margin: EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
+          margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14.0),
+            side: BorderSide(color: Colors.grey.shade200, width: 0.6),
+          ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,

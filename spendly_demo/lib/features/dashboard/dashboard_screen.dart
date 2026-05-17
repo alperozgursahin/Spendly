@@ -9,6 +9,7 @@ import '../profile/streak_provider.dart';
 import '../profile/currency_provider.dart';
 import 'activity_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'heatmap_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -75,6 +76,13 @@ class DashboardScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 _buildPieChart(transactionsAsync),
+                const SizedBox(height: 24),
+                const Text(
+                  'Aktivasyon Isı Haritası',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                _buildHeatmapCard(transactionsAsync, ref),
                 const SizedBox(height: 24),
                 const Text(
                   'Son İşlemler',
@@ -267,10 +275,9 @@ class DashboardScreen extends ConsumerWidget {
 
         final Map<String, double> categorySums = {};
         for (var t in currentMonthExpenses) {
-          final cat = t.category.trim();
-          if (cat.isEmpty) continue;
-          final sanitized =
-              cat[0].toUpperCase() + cat.substring(1).toLowerCase();
+          final cat = t.category;
+          final sanitized = sanitizeCategory(cat);
+          if (sanitized.isEmpty) continue;
           categorySums[sanitized] = (categorySums[sanitized] ?? 0) + t.amount;
         }
 
@@ -443,6 +450,172 @@ class DashboardScreen extends ConsumerWidget {
     ];
     if (month >= 1 && month <= 12) return abbrs[month - 1];
     return '';
+  }
+
+  // Sanitize category strings: trim, collapse spaces, lowercase then capitalize first
+  String sanitizeCategory(String raw) {
+    final s = raw.trim().replaceAll(RegExp(r"\s+"), ' ');
+    if (s.isEmpty) return '';
+    final lower = s.toLowerCase();
+    return lower[0].toUpperCase() + lower.substring(1);
+  }
+
+  Widget _buildHeatmapCard(
+    AsyncValue<List<TransactionModel>> transactionsAsync,
+    WidgetRef ref,
+  ) {
+    final range = ref.watch(heatmapRangeProvider);
+    final data = ref.watch(heatmapDataProvider);
+
+    return Card(
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Range selector
+            Row(
+              children: [
+                Expanded(
+                  child: SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: '1M', label: Text('1A')),
+                      ButtonSegment(value: '3M', label: Text('3A')),
+                      ButtonSegment(value: '6M', label: Text('6A')),
+                      ButtonSegment(value: '1Y', label: Text('1Y')),
+                    ],
+                    selected: {range},
+                    onSelectionChanged: (sel) {
+                      ref.read(heatmapRangeProvider.notifier).state = sel.first;
+                    },
+                    style: SegmentedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.all(6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Heatmap with pinned weekday labels on the left
+            LayoutBuilder(builder: (context, constraints) {
+              final leftLabelWidth = 36.0;
+              final availableWidth = constraints.maxWidth - leftLabelWidth - 8;
+
+              // compute start date and columns based on range
+              final now = DateTime.now();
+              DateTime start;
+              switch (range) {
+                case '3M':
+                  start = DateTime(now.year, now.month - 3, now.day);
+                  break;
+                case '6M':
+                  start = DateTime(now.year, now.month - 6, now.day);
+                  break;
+                case '1Y':
+                  start = DateTime(now.year - 1, now.month, now.day);
+                  break;
+                case '1M':
+                default:
+                  start = DateTime(now.year, now.month, 1);
+              }
+
+              final days = now.difference(start).inDays + 1;
+              final weeks = ((start.weekday - 1 + days) / 7).ceil();
+
+              // dynamic block size so grid fits for 1M
+              double blockSize = (availableWidth / weeks).floorToDouble();
+              blockSize = blockSize.clamp(10.0, 28.0);
+              if (range != '1M') {
+                // allow horizontal scrolling for larger ranges
+                blockSize = 18.0;
+              }
+
+              // build matrix of weeks x 7
+              final matrix = List.generate(7, (_) => List<int>.filled(weeks, 0));
+
+              final startIndexOffset = start.weekday - 1;
+              data.forEach((date, count) {
+                if (date.isBefore(start) || date.isAfter(now)) return;
+                final offset = date.difference(start).inDays;
+                final pos = startIndexOffset + offset;
+                final col = (pos / 7).floor();
+                final row = pos % 7;
+                if (col >= 0 && col < weeks && row >= 0 && row < 7) {
+                  matrix[row][col] += count;
+                }
+              });
+
+              final maxCount = matrix
+                  .expand((row) => row)
+                  .fold<int>(0, (p, e) => e > p ? e : p);
+
+              final weekdayLabels = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Left pinned labels
+                  SizedBox(
+                    width: leftLabelWidth,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: weekdayLabels
+                          .map((l) => SizedBox(
+                                height: blockSize,
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    l,
+                                    style: const TextStyle(
+                                        fontSize: 12, color: Colors.grey),
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Heatmap grid (scrollable horizontally when needed)
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: SizedBox(
+                        width: weeks * blockSize,
+                        child: Column(
+                          children: List.generate(7, (r) {
+                            return Row(
+                              children: List.generate(weeks, (c) {
+                                final val = matrix[r][c];
+                                final intensity = maxCount == 0
+                                    ? 0.0
+                                    : (val / maxCount).clamp(0.0, 1.0);
+                                final color = Color.lerp(
+                                    Colors.grey.shade200, Colors.deepPurple, intensity);
+                                return Container(
+                                  width: blockSize - 4,
+                                  height: blockSize - 4,
+                                  margin: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                );
+                              }),
+                            );
+                          }),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ],
+        ),
+      ),
+    );
   }
 }
 
