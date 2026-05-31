@@ -27,6 +27,12 @@ class ExchangeRateService with WidgetsBindingObserver {
     return amount * rate;
   }
 
+  double convertToTRY(double amount, String fromCurrency) {
+    final rate = rateFor(fromCurrency);
+    if (rate == 0) return amount;
+    return amount / rate;
+  }
+
   Future<bool> refresh() async {
     try {
       await _fetchLatest();
@@ -37,10 +43,8 @@ class ExchangeRateService with WidgetsBindingObserver {
   }
 
   Future<void> _fetchLatest() async {
-    const symbolMap = {'\$': 'USD', '€': 'EUR', '₺': 'TRY'};
-    final symbols = symbolMap.values.where((c) => c != 'TRY').join(',');
     final uri = Uri.parse(
-      'https://api.exchangerate.host/latest?base=TRY&symbols=$symbols',
+      'https://open.er-api.com/v6/latest/TRY',
     );
 
     try {
@@ -49,12 +53,16 @@ class ExchangeRateService with WidgetsBindingObserver {
         final jsonBody = jsonDecode(resp.body) as Map<String, dynamic>;
         final rates = (jsonBody['rates'] ?? {}) as Map<String, dynamic>;
         if (rates.isNotEmpty) {
-          if (rates.containsKey('USD')) {
-            _rates['\$'] = (rates['USD'] as num).toDouble();
+          final usd = rates['USD'];
+          final eur = rates['EUR'];
+
+          if (usd is num) {
+            _rates['\$'] = usd.toDouble();
           }
-          if (rates.containsKey('EUR')) {
-            _rates['€'] = (rates['EUR'] as num).toDouble();
+          if (eur is num) {
+            _rates['€'] = eur.toDouble();
           }
+
           _rates['₺'] = 1.0;
         }
       }

@@ -893,9 +893,13 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
     final user = ref.read(authClientProvider).currentUser;
     if (user == null) return;
 
+    final selectedCurrency = ref.read(currencyProvider);
+    final exchanger = ref.read(exchangeRateProvider);
+    final amountInTRY = exchanger.convertToTRY(amount, selectedCurrency);
+
     final transaction = TransactionModel(
       userId: user.id,
-      amount: amount,
+      amount: amountInTRY,
       category: finalCategory,
       date: DateTime.now(),
       type: transactionType,

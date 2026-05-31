@@ -468,6 +468,9 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
 
     try {
       await ref.read(groupServiceProvider).addGroupTransaction(tx);
+      ref.invalidate(groupTransactionsStreamProvider(widget.groupId));
+      ref.invalidate(balanceEngineProvider(widget.groupId));
+      ref.read(groupDataRefreshProvider.notifier).state++;
 
       if (mounted) Navigator.pop(context);
     } catch (e) {

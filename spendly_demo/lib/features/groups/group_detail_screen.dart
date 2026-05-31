@@ -28,10 +28,11 @@ class GroupDetailScreen extends ConsumerStatefulWidget {
 
 class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
   String? _activeTransactionId;
-  final Map<String, Map<String, bool>> _paidOverrides = {};
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(groupDataRefreshProvider);
+    final paidOverrides = ref.watch(groupPaidOverridesProvider);
     final currency = ref.watch(currencyProvider);
     final exchanger = ref.watch(exchangeRateProvider);
     final transactionsAsync = ref.watch(
@@ -240,8 +241,11 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                                       ? (splitValue['paid'] as bool?) ?? false
                                       : isPayer;
                                   final paid =
-                                      _paidOverrides[tx.id ??
-                                          '']?[participantId] ??
+                                      _isParticipantPaid(
+                                      tx,
+                                      participantId,
+                                      paidOverrides,
+                                      ) ||
                                       basePaid;
                                   final canToggle =
                                       tx.id != null &&
@@ -269,15 +273,15 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                                     final transactionId = tx.id!;
                                     final currentPaid = paid;
 
-                                    setState(() {
-                                      final overridesForTransaction =
-                                          _paidOverrides[transactionId] ??
-                                          <String, bool>{};
-                                      overridesForTransaction[participantId] =
-                                          !currentPaid;
-                                      _paidOverrides[transactionId] =
-                                          overridesForTransaction;
-                                    });
+                                    ref
+                                        .read(
+                                          groupPaidOverridesProvider.notifier,
+                                        )
+                                        .setPaid(
+                                          transactionId,
+                                          participantId,
+                                          !currentPaid,
+                                        );
 
                                     final currentSplitData =
                                         Map<String, dynamic>.from(tx.splitData);
@@ -311,16 +315,20 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                                           widget.groupId,
                                         ),
                                       );
+                                      ref.invalidate(
+                                        balanceEngineProvider(widget.groupId),
+                                      );
+                                      ref.read(groupDataRefreshProvider.notifier).state++;
                                     } catch (_) {
-                                      setState(() {
-                                        final overridesForTransaction =
-                                            _paidOverrides[transactionId] ??
-                                            <String, bool>{};
-                                        overridesForTransaction[participantId] =
-                                            currentPaid;
-                                        _paidOverrides[transactionId] =
-                                            overridesForTransaction;
-                                      });
+                                      ref
+                                          .read(
+                                            groupPaidOverridesProvider.notifier,
+                                          )
+                                          .setPaid(
+                                            transactionId,
+                                            participantId,
+                                            currentPaid,
+                                          );
                                     }
                                   }
 
@@ -431,6 +439,25 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         label: const Text('Harcama Ekle'),
       ),
     );
+  }
+
+  bool _isParticipantPaid(
+    GroupTransactionModel tx,
+    String participantId,
+    Map<String, Map<String, bool>> overrides,
+  ) {
+    final transactionId = tx.id;
+    if (transactionId != null) {
+      final override = overrides[transactionId]?[participantId];
+      if (override != null) return override;
+    }
+
+    final rawValue = tx.splitData[participantId];
+    if (rawValue is Map) {
+      return (rawValue['paid'] as bool?) ?? (participantId == tx.payerId);
+    }
+
+    return participantId == tx.payerId;
   }
 
   Widget _buildGroupFilterCard(

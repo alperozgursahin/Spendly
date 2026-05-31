@@ -9,6 +9,15 @@ final groupServiceProvider = Provider<GroupService>((ref) {
   return GroupService(Supabase.instance.client);
 });
 
+final groupDataRefreshProvider = StateProvider<int>((ref) => 0);
+
+final groupPaidOverridesProvider = StateNotifierProvider<
+  GroupPaidOverridesNotifier,
+  Map<String, Map<String, bool>>
+>((ref) {
+  return GroupPaidOverridesNotifier();
+});
+
 final userGroupsProvider = FutureProvider<List<GroupModel>>((ref) async {
   final service = ref.watch(groupServiceProvider);
   final userId = ref.watch(authClientProvider).currentUser?.id;
@@ -42,15 +51,18 @@ final balanceEngineProvider = Provider.family<Map<String, double>, String>((
   groupId,
 ) {
   final transactionsAsync = ref.watch(groupTransactionsStreamProvider(groupId));
+  final paidOverrides = ref.watch(groupPaidOverridesProvider);
 
   return transactionsAsync.maybeWhen(
     data: (transactions) {
       Map<String, double> balances = {};
 
       for (var tx in transactions) {
-        balances[tx.payerId] = (balances[tx.payerId] ?? 0.0) + tx.amount;
-
         tx.splitData.forEach((userId, owedAmount) {
+          if (userId == tx.payerId) {
+            return;
+          }
+
           if (owedAmount is! num && owedAmount is! Map) {
             return;
           }
@@ -59,7 +71,16 @@ final balanceEngineProvider = Provider.family<Map<String, double>, String>((
               ? (owedAmount['amount'] as num?)?.toDouble() ?? 0.0
               : (owedAmount as num).toDouble();
 
+          final paid = _isParticipantPaid(
+            tx,
+            userId,
+            paidOverrides,
+          );
+
+          if (paid) return;
+
           balances[userId] = (balances[userId] ?? 0.0) - amount;
+          balances[tx.payerId] = (balances[tx.payerId] ?? 0.0) + amount;
         });
       }
       return balances;
@@ -134,4 +155,38 @@ class GroupService {
         .update({'split_data': splitData})
         .eq('id', transactionId);
   }
+}
+
+class GroupPaidOverridesNotifier
+    extends StateNotifier<Map<String, Map<String, bool>>> {
+  GroupPaidOverridesNotifier() : super(const {});
+
+  void setPaid(String transactionId, String participantId, bool paid) {
+    final updated = Map<String, Map<String, bool>>.from(state);
+    final transactionOverrides = Map<String, bool>.from(
+      updated[transactionId] ?? const {},
+    );
+    transactionOverrides[participantId] = paid;
+    updated[transactionId] = transactionOverrides;
+    state = updated;
+  }
+}
+
+bool _isParticipantPaid(
+  GroupTransactionModel tx,
+  String participantId,
+  Map<String, Map<String, bool>> overrides,
+) {
+  final transactionId = tx.id;
+  if (transactionId != null) {
+    final override = overrides[transactionId]?[participantId];
+    if (override != null) return override;
+  }
+
+  final rawValue = tx.splitData[participantId];
+  if (rawValue is Map) {
+    return (rawValue['paid'] as bool?) ?? (participantId == tx.payerId);
+  }
+
+  return participantId == tx.payerId;
 }

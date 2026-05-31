@@ -15,6 +15,7 @@ class DebtsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(groupDataRefreshProvider);
     final groupsAsync = ref.watch(userGroupsProvider);
     final currency = ref.watch(currencyProvider);
     final exchanger = ref.watch(exchangeRateProvider);
@@ -102,6 +103,7 @@ class DebtsScreen extends ConsumerWidget {
     ExchangeRateService exchanger,
   ) {
     final filters = ref.watch(transactionFilterProvider);
+    final paidOverrides = ref.watch(groupPaidOverridesProvider);
     final sections = <Widget>[];
     double totalAmount = 0.0;
 
@@ -121,6 +123,7 @@ class DebtsScreen extends ConsumerWidget {
           currentUserId,
           membersAsync,
           filters,
+          paidOverrides,
         ),
         orElse: () => const <_DebtLine>[],
       );
@@ -212,6 +215,7 @@ class DebtsScreen extends ConsumerWidget {
     ExchangeRateService exchanger,
   ) {
     final filters = ref.watch(transactionFilterProvider);
+    final paidOverrides = ref.watch(groupPaidOverridesProvider);
     final sections = <Widget>[];
     double totalAmount = 0.0;
 
@@ -232,6 +236,7 @@ class DebtsScreen extends ConsumerWidget {
           currentUserId,
           membersAsync,
           filters,
+          paidOverrides,
         ),
         orElse: () => const <_DebtLine>[],
       );
@@ -525,6 +530,7 @@ class DebtsScreen extends ConsumerWidget {
     String currentUserId,
     AsyncValue<List<GroupMemberModel>> membersAsync,
     TransactionFilters filters,
+    Map<String, Map<String, bool>> paidOverrides,
   ) {
     final items = <_DebtLine>[];
 
@@ -540,7 +546,13 @@ class DebtsScreen extends ConsumerWidget {
           ? (rawValue['paid'] as bool?) ?? false
           : tx.payerId == currentUserId;
 
-      if (amount <= 0 || tx.payerId == currentUserId) continue;
+      final effectivePaid = _isParticipantPaid(
+        tx,
+        currentUserId,
+        paidOverrides,
+      ) || paid;
+
+      if (amount <= 0 || tx.payerId == currentUserId || effectivePaid) continue;
 
       // date filter
       if (filters.start != null && tx.createdAt != null) {
@@ -567,6 +579,7 @@ class DebtsScreen extends ConsumerWidget {
     String currentUserId,
     AsyncValue<List<GroupMemberModel>> membersAsync,
     TransactionFilters filters,
+    Map<String, Map<String, bool>> paidOverrides,
   ) {
     final items = <_DebtLine>[];
 
@@ -584,7 +597,13 @@ class DebtsScreen extends ConsumerWidget {
             ? (rawValue['paid'] as bool?) ?? false
             : false;
 
-        if (amount <= 0) return;
+        final effectivePaid = _isParticipantPaid(
+          tx,
+          userId,
+          paidOverrides,
+        ) || paid;
+
+        if (amount <= 0 || effectivePaid) return;
 
         // date filter
         if (filters.start != null && tx.createdAt != null) {
@@ -694,6 +713,25 @@ class DebtsScreen extends ConsumerWidget {
     } catch (_) {
       return 'Kullanıcı';
     }
+  }
+
+  bool _isParticipantPaid(
+    GroupTransactionModel tx,
+    String participantId,
+    Map<String, Map<String, bool>> overrides,
+  ) {
+    final transactionId = tx.id;
+    if (transactionId != null) {
+      final override = overrides[transactionId]?[participantId];
+      if (override != null) return override;
+    }
+
+    final rawValue = tx.splitData[participantId];
+    if (rawValue is Map) {
+      return (rawValue['paid'] as bool?) ?? (participantId == tx.payerId);
+    }
+
+    return participantId == tx.payerId;
   }
 }
 
