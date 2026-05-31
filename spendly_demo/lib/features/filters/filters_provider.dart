@@ -5,6 +5,7 @@ class TransactionFilters {
   final DateTime? end;
   final String groupId;
   final String category;
+  final String type;
   final String personId;
 
   const TransactionFilters({
@@ -12,6 +13,7 @@ class TransactionFilters {
     this.end,
     this.groupId = '',
     this.category = '',
+    this.type = '',
     this.personId = '',
   });
 
@@ -20,6 +22,7 @@ class TransactionFilters {
     DateTime? end,
     String? groupId,
     String? category,
+    String? type,
     String? personId,
   }) {
     return TransactionFilters(
@@ -27,6 +30,7 @@ class TransactionFilters {
       end: end ?? this.end,
       groupId: groupId ?? this.groupId,
       category: category ?? this.category,
+      type: type ?? this.type,
       personId: personId ?? this.personId,
     );
   }
@@ -45,6 +49,10 @@ class TransactionFiltersNotifier extends StateNotifier<TransactionFilters> {
 
   void setCategory(String? category) {
     state = state.copyWith(category: category ?? '');
+  }
+
+  void setType(String? type) {
+    state = state.copyWith(type: type ?? '');
   }
 
   void setPerson(String? personId) {

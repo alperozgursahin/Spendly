@@ -12,8 +12,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'heatmap_provider.dart';
 import 'heatmap_widget.dart';
 import '../filters/filters_provider.dart';
-import '../groups/group_provider.dart';
-import '../groups/group_model.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -22,7 +20,6 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final netBalance = ref.watch(netBalanceProvider);
     final transactionsAsync = ref.watch(transactionsProvider);
-    final groupsAsync = ref.watch(userGroupsProvider);
     final activityAsync = ref.watch(activityProvider);
     final currency = ref.watch(currencyProvider);
 
@@ -31,9 +28,9 @@ class DashboardScreen extends ConsumerWidget {
         title: const Text('Dashboard'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.group),
-            tooltip: 'Gruplar',
-            onPressed: () => context.push('/groups'),
+            icon: const Icon(Icons.notifications_none),
+            tooltip: 'Bildirimler',
+            onPressed: () => context.push('/notifications'),
           ),
         ],
       ),
@@ -74,17 +71,9 @@ class DashboardScreen extends ConsumerWidget {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                groupsAsync.when(
-                  data: (groups) => Column(
-                    children: [
-                      _buildDashboardFilterBar(context, ref, transactionsAsync, groups),
-                      const SizedBox(height: 8),
-                      _buildStaticDateTransactions(ref, transactionsAsync, currency),
-                    ],
-                  ),
-                  loading: () => _buildStaticDateTransactions(ref, transactionsAsync, currency),
-                  error: (_, __) => _buildStaticDateTransactions(ref, transactionsAsync, currency),
-                ),
+                _buildDashboardFilterBar(context, ref, transactionsAsync),
+                const SizedBox(height: 8),
+                _buildStaticDateTransactions(ref, transactionsAsync, currency),
               ],
             ),
           ),
@@ -93,14 +82,12 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDashboardFilterBar(BuildContext context, WidgetRef ref, AsyncValue<List<TransactionModel>> transactionsAsync, List<GroupModel> groups) {
+  Widget _buildDashboardFilterBar(BuildContext context, WidgetRef ref, AsyncValue<List<TransactionModel>> transactionsAsync) {
     final filters = ref.watch(transactionFilterProvider);
     final txs = transactionsAsync.maybeWhen(data: (txs) => txs, orElse: () => <TransactionModel>[]);
     final cats = txs.map((t) => t.category).toSet().toList()..sort();
-    final people = txs.map((t) => t.userId).toSet().toList()..sort();
-    var selectedGroupId = filters.groupId;
+    var selectedType = filters.type;
     var selectedCategory = filters.category;
-    var selectedPersonId = filters.personId;
     DateTime? selectedStart = filters.start;
     DateTime? selectedEnd = filters.end;
 
@@ -109,39 +96,17 @@ class DashboardScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(8.0),
         child: StatefulBuilder(
           builder: (context, setLocalState) {
-            final groupOptions = <String>{''};
-            for (final group in groups) {
-              if (group.id != null) groupOptions.add(group.id!);
-            }
-            if (selectedGroupId.isNotEmpty && !groupOptions.contains(selectedGroupId)) {
-              selectedGroupId = '';
-            }
             if (selectedCategory.isNotEmpty && !cats.contains(selectedCategory)) {
               selectedCategory = '';
             }
-            if (selectedPersonId.isNotEmpty && !people.contains(selectedPersonId)) {
-              selectedPersonId = '';
+            if (selectedType.isNotEmpty && !{'income', 'expense'}.contains(selectedType)) {
+              selectedType = '';
             }
 
             return Column(
               children: [
                 Row(
                   children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: selectedGroupId,
-                        isExpanded: true,
-                        decoration: const InputDecoration(labelText: 'Grup', isDense: true),
-                        items: [
-                          const DropdownMenuItem(value: '', child: Text('Hepsi')),
-                          ...groups.where((g) => g.id != null).map(
-                                (g) => DropdownMenuItem(value: g.id!, child: Text(g.name)),
-                              ),
-                        ],
-                        onChanged: (value) => setLocalState(() => selectedGroupId = value ?? ''),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         value: selectedCategory,
@@ -160,23 +125,25 @@ class DashboardScreen extends ConsumerWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: selectedPersonId,
-                        isExpanded: true,
-                        decoration: const InputDecoration(labelText: 'Kişi', isDense: true),
-                        items: [
-                          const DropdownMenuItem(value: '', child: Text('Hepsi')),
-                          ...people.map(
-                            (personId) => DropdownMenuItem(
-                              value: personId,
-                              child: Text(personId == ref.read(authClientProvider).currentUser?.id ? 'Sen' : personId.substring(0, 4)),
-                            ),
-                          ),
+                      child: SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(value: '', label: Text('Hepsi')),
+                          ButtonSegment(value: 'expense', label: Text('Gider')),
+                          ButtonSegment(value: 'income', label: Text('Gelir')),
                         ],
-                        onChanged: (value) => setLocalState(() => selectedPersonId = value ?? ''),
+                        selected: {selectedType},
+                        onSelectionChanged: (newSelection) {
+                          setLocalState(() {
+                            selectedType = newSelection.first;
+                          });
+                        },
                       ),
                     ),
-                    const SizedBox(width: 8),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () async {
@@ -207,9 +174,8 @@ class DashboardScreen extends ConsumerWidget {
                   child: ElevatedButton.icon(
                     onPressed: () {
                       final notifier = ref.read(transactionFilterProvider.notifier);
-                      notifier.setGroup(selectedGroupId);
                       notifier.setCategory(selectedCategory);
-                      notifier.setPerson(selectedPersonId);
+                      notifier.setType(selectedType);
                       notifier.setDateRange(selectedStart, selectedEnd);
                     },
                     icon: const Icon(Icons.filter_alt),
@@ -566,11 +532,11 @@ class DashboardScreen extends ConsumerWidget {
           if (filters.start != null && filters.end != null) {
             if (t.date.isBefore(filters.start!) || t.date.isAfter(filters.end!)) return false;
           }
-          if (filters.groupId.isNotEmpty && t.groupId != null) {
-            if (t.groupId != filters.groupId) return false;
-          }
           if (filters.category.isNotEmpty) {
             if (t.category != filters.category) return false;
+          }
+          if (filters.type.isNotEmpty) {
+            if (t.type != filters.type) return false;
           }
           if (filters.personId.isNotEmpty) {
             if (t.userId != filters.personId) return false;

@@ -36,18 +36,14 @@ class DebtsScreen extends ConsumerWidget {
             },
           ),
           title: const Text('Borçlar'),
-          actions: [
-            IconButton(
-              tooltip: 'Filtreleri sıfırla',
-              icon: const Icon(Icons.filter_alt_off),
-              onPressed: () => _resetFilters(ref),
-            ),
-          ],
           bottom: const TabBar(
+            isScrollable: false,
+            labelPadding: EdgeInsets.zero,
+            indicatorSize: TabBarIndicatorSize.tab,
             tabs: [
-              Tab(text: 'Bizim Borçlarımız'),
-              Tab(text: 'Bize Borçlular'),
-              Tab(text: 'Net Özet'),
+              Tab(child: Center(child: Text('Bizim Borçlarımız'))),
+              Tab(child: Center(child: Text('Bize Borçlular'))),
+              Tab(child: Center(child: Text('Net Özet'))),
             ],
           ),
         ),

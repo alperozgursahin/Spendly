@@ -66,6 +66,35 @@ CREATE INDEX idx_friendships_user1 ON friendships(user_id1);
 CREATE INDEX idx_friendships_user2 ON friendships(user_id2);
 CREATE INDEX idx_dm_participants ON direct_messages(sender_id, receiver_id);
 
+-- 4. BILDIRIMLER TABLOSU
+CREATE TABLE notifications (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  recipient_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  actor_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  group_id UUID REFERENCES groups(id) ON DELETE CASCADE NOT NULL,
+  message TEXT NOT NULL,
+  is_read BOOLEAN DEFAULT false NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their notifications"
+  ON notifications FOR SELECT
+  USING (auth.uid() = recipient_id);
+
+CREATE POLICY "Users can create notifications"
+  ON notifications FOR INSERT
+  WITH CHECK (auth.uid() = actor_id);
+
+CREATE POLICY "Users can update their notifications"
+  ON notifications FOR UPDATE
+  USING (auth.uid() = recipient_id);
+
+CREATE INDEX idx_notifications_recipient ON notifications(recipient_id, created_at DESC);
+
+alter publication supabase_realtime add table notifications;
+
 -- Tablolarda realtime yayınlamak icin
 alter publication supabase_realtime add table friendships;
 alter publication supabase_realtime add table direct_messages;

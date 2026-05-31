@@ -22,11 +22,13 @@ class AddExpenseSheet extends ConsumerStatefulWidget {
 class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
   final _descController = TextEditingController();
   final _amountController = TextEditingController();
+  final Map<String, TextEditingController> _exactControllers = {};
+  final Map<String, double> _percentageValues = {};
+  String? _percentageAutoUserId;
+  String? _exactAutoUserId;
 
   String _splitType = 'equal'; // 'equal', 'percentage', 'exact'
   Set<String> _selectedUsers = {};
-  Map<String, double> _customValues =
-      {}; // Holds percentage or exact amounts per user
 
   @override
   void initState() {
@@ -38,6 +40,9 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
   void dispose() {
     _descController.dispose();
     _amountController.dispose();
+    for (final controller in _exactControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -45,9 +50,81 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     setState(
       () {},
     ); // Trigger rebuild to show calculated values (mostly for 'equal')
+
+    if (_splitType == 'exact') {
+      _syncExactSplitValues(_totalAmount);
+    }
+
+    if (_splitType == 'percentage') {
+      _syncPercentageAutoFill();
+    }
   }
 
   double get _totalAmount => double.tryParse(_amountController.text) ?? 0.0;
+
+  TextEditingController _exactControllerFor(String userId) {
+    return _exactControllers.putIfAbsent(
+      userId,
+      () => TextEditingController(),
+    );
+  }
+
+  void _removeSelectedUserValue(String userId) {
+    _percentageValues.remove(userId);
+    if (_percentageAutoUserId == userId) {
+      _percentageAutoUserId = null;
+    }
+    final controller = _exactControllers.remove(userId);
+    if (_exactAutoUserId == userId) {
+      _exactAutoUserId = null;
+    }
+    controller?.dispose();
+  }
+
+  double? _parseValue(String text) {
+    final normalized = text.trim().replaceAll(',', '.');
+    if (normalized.isEmpty) return null;
+    return double.tryParse(normalized);
+  }
+
+  void _clearModeSpecificValues() {
+    _percentageValues.clear();
+    _percentageAutoUserId = null;
+    _exactAutoUserId = null;
+    for (final controller in _exactControllers.values) {
+      controller.dispose();
+    }
+    _exactControllers.clear();
+  }
+
+  void _syncPercentageAutoFill() {
+    if (_splitType != 'percentage' || _selectedUsers.isEmpty) return;
+
+    final selectedUserIds = _selectedUsers.toList();
+    if (_percentageAutoUserId != null && !selectedUserIds.contains(_percentageAutoUserId)) {
+      _percentageAutoUserId = null;
+    }
+
+    final missingUsers = selectedUserIds
+        .where((userId) => !_percentageValues.containsKey(userId))
+        .toList();
+
+    if (_percentageAutoUserId == null && missingUsers.length == 1) {
+      _percentageAutoUserId = missingUsers.first;
+    }
+
+    final autoUserId = _percentageAutoUserId;
+    if (autoUserId == null || !selectedUserIds.contains(autoUserId)) return;
+
+    final manualTotal = selectedUserIds
+        .where((userId) => userId != autoUserId)
+        .fold<double>(0.0, (sum, userId) => sum + (_percentageValues[userId] ?? 0.0));
+
+    final remainder = double.parse((100.0 - manualTotal).toStringAsFixed(2));
+    if (remainder < 0) return;
+
+    _percentageValues[autoUserId] = remainder;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +187,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
               setState(() {
                 _splitType = newSelection.first;
                 // Reset custom values when switching mode
-                _customValues.clear();
+                _clearModeSpecificValues();
               });
             },
           ),
@@ -175,7 +252,6 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     bool isMe,
     String currency,
   ) {
-    // Determine the calculated or inputted value to show
     Widget trailingWidget;
 
     if (!isSelected) {
@@ -188,25 +264,60 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         '$currency${share.toStringAsFixed(2)}',
         style: const TextStyle(fontWeight: FontWeight.bold),
       );
+    } else if (_splitType == 'percentage') {
+      final currentValue = _percentageValues[member.userId] ?? 0.0;
+      trailingWidget = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Slider(
+              value: currentValue.clamp(0.0, 100.0),
+              min: 0,
+              max: 100,
+              divisions: 100,
+              label: '${currentValue.toStringAsFixed(0)}%',
+              onChanged: (val) {
+                setState(() {
+                  _percentageValues[member.userId] = double.parse(
+                    val.toStringAsFixed(2),
+                  );
+                  _syncPercentageAutoFill();
+                });
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 48,
+            child: Text(
+              '${currentValue.toStringAsFixed(0)}%',
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      );
     } else {
-      // Inputs for percentage or exact
+      final controller = _exactControllerFor(member.userId);
       trailingWidget = SizedBox(
-        width: 80,
+        width: 120,
         child: TextField(
+          controller: controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           textAlign: TextAlign.right,
           decoration: InputDecoration(
             isDense: true,
-            suffixText: _splitType == 'percentage' ? '%' : currency,
+            hintText: '0.00',
+            suffixText: currency,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 8,
               vertical: 8,
             ),
           ),
           onChanged: (val) {
-            final parsed = double.tryParse(val) ?? 0.0;
             setState(() {
-              _customValues[member.userId] = parsed;
+              _syncExactSplitValues(_totalAmount);
             });
           },
         ),
@@ -223,7 +334,13 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
                 _selectedUsers.add(member.userId);
               } else {
                 _selectedUsers.remove(member.userId);
-                _customValues.remove(member.userId);
+                _removeSelectedUserValue(member.userId);
+              }
+              if (_splitType == 'percentage') {
+                _syncPercentageAutoFill();
+              }
+              if (_splitType == 'exact') {
+                _syncExactSplitValues(_totalAmount);
               }
             });
           },
@@ -244,28 +361,12 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
           controlAffinity: ListTileControlAffinity.leading,
           contentPadding: EdgeInsets.zero,
           subtitle: Align(
-            alignment: Alignment.centerRight,
+            alignment: _splitType == 'percentage'
+                ? Alignment.centerLeft
+                : Alignment.centerRight,
             child: trailingWidget,
           ),
         ),
-        if (isSelected && (_splitType == 'percentage' || _splitType == 'exact'))
-          Slider(
-            value: (_customValues[member.userId] ?? 0).clamp(
-              0.0,
-              _splitType == 'percentage' ? 100.0 : _totalAmount,
-            ),
-            min: 0,
-            max: _splitType == 'percentage'
-                ? 100.0
-                : (_totalAmount > 0 ? _totalAmount : 1.0),
-            divisions: 100,
-            label: _customValues[member.userId]?.toStringAsFixed(0),
-            onChanged: (val) {
-              setState(() {
-                _customValues[member.userId] = val;
-              });
-            },
-          ),
       ],
     );
   }
@@ -303,35 +404,46 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         };
       }
     } else if (_splitType == 'percentage') {
-      double totalPercentage = 0;
-      _customValues.forEach((uid, pct) {
-        if (_selectedUsers.contains(uid)) totalPercentage += pct;
-      });
+      _syncPercentageAutoFill();
+      final splitValues = <String, double>{};
+      for (final userId in _selectedUsers) {
+        final value = _percentageValues[userId];
+        if (value == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Yüzde alanlarında en fazla 1 kişi boş kalabilir ve toplam 100 olmalıdır.'),
+            ),
+          );
+          return;
+        }
+        splitValues[userId] = value;
+      }
 
+      final totalPercentage = splitValues.values.fold<double>(0.0, (sum, value) => sum + value);
       if ((totalPercentage - 100).abs() > 0.01) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Yüzdelerin toplamı 100 olmalıdır.')),
+          const SnackBar(
+            content: Text('Yüzdelerin toplamı 100 olmalıdır.'),
+          ),
         );
         return;
       }
 
       for (var uid in _selectedUsers) {
-        final pct = _customValues[uid] ?? 0;
+        final pct = splitValues[uid] ?? 0.0;
         splitData[uid] = {
           'amount': double.parse(((amount * pct) / 100).toStringAsFixed(2)),
           'paid': uid == widget.currentUserId,
         };
       }
     } else if (_splitType == 'exact') {
-      double totalExact = 0;
-      _customValues.forEach((uid, val) {
-        if (_selectedUsers.contains(uid)) totalExact += val;
-      });
-
-      if ((totalExact - amount).abs() > 0.01) {
+      final splitValues = _syncExactSplitValues(amount);
+      if (splitValues == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Tutar dağılımı toplam harcamaya eşit olmalıdır.'),
+            content: Text(
+              'Tutar alanlarında en fazla 1 kişi boş kalabilir ve toplam harcamaya eşit olmalıdır.',
+            ),
           ),
         );
         return;
@@ -339,7 +451,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
 
       for (var uid in _selectedUsers) {
         splitData[uid] = {
-          'amount': _customValues[uid] ?? 0.0,
+          'amount': splitValues[uid] ?? 0.0,
           'paid': uid == widget.currentUserId,
         };
       }
@@ -356,6 +468,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
 
     try {
       await ref.read(groupServiceProvider).addGroupTransaction(tx);
+
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
@@ -364,5 +477,62 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         ).showSnackBar(SnackBar(content: Text('Hata: $e')));
       }
     }
+  }
+
+  Map<String, double>? _syncExactSplitValues(double targetTotal) {
+    if (_splitType != 'exact' || _selectedUsers.isEmpty) return null;
+
+    final values = <String, double>{};
+    final emptyUsers = <String>[];
+
+    for (final userId in _selectedUsers) {
+      final raw = _exactControllers[userId]?.text ?? '';
+      final parsed = _parseValue(raw);
+
+      if (parsed == null) {
+        emptyUsers.add(userId);
+        continue;
+      }
+
+      values[userId] = parsed;
+    }
+
+    final selectedUserIds = _selectedUsers.toList();
+    if (_exactAutoUserId != null && !selectedUserIds.contains(_exactAutoUserId)) {
+      _exactAutoUserId = null;
+    }
+
+    if (_exactAutoUserId == null && emptyUsers.length == 1) {
+      _exactAutoUserId = emptyUsers.first;
+    }
+
+    final autoUserId = _exactAutoUserId;
+    if (autoUserId == null || !selectedUserIds.contains(autoUserId)) {
+      return null;
+    }
+
+    final manualTotal = selectedUserIds
+        .where((userId) => userId != autoUserId)
+        .fold<double>(0.0, (sum, userId) => sum + (values[userId] ?? 0.0));
+
+    final remainder = double.parse((targetTotal - manualTotal).toStringAsFixed(2));
+    if (remainder < -0.01) {
+      return null;
+    }
+
+    values[autoUserId] = remainder;
+    final controller = _exactControllers[autoUserId];
+    if (controller != null) {
+      final formatted = remainder.toStringAsFixed(2);
+      if (controller.text != formatted) {
+        controller.value = controller.value.copyWith(
+          text: formatted,
+          selection: TextSelection.collapsed(offset: formatted.length),
+          composing: TextRange.empty,
+        );
+      }
+    }
+
+    return values;
   }
 }
