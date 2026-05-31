@@ -27,7 +27,7 @@ class GroupTransactionModel {
       amount: (json['amount'] as num).toDouble(),
       description: json['description'] as String,
       splitType: json['split_type'] as String,
-      splitData: json['split_data'] as Map<String, dynamic>,
+      splitData: Map<String, dynamic>.from(json['split_data'] as Map),
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,

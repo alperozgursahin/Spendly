@@ -34,6 +34,8 @@ dependencies:
   # Dashboard Grafikleri (Pasta ve Çizgi Grafikler)
   fl_chart: ^0.67.0
   flutter_heatmap_calendar: ^1.0.5
+  http: ^0.13.6
+  intl: ^0.18.1
 
 dev_dependencies:
   flutter_test:

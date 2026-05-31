@@ -288,16 +288,19 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         (amount / _selectedUsers.length).toStringAsFixed(2),
       );
       for (var uid in _selectedUsers) {
-        splitData[uid] = share;
+        splitData[uid] = {'amount': share, 'paid': uid == widget.currentUserId};
       }
 
       // Fix rounding errors (add remainder to current user if they are in the split, or first user)
       double totalCalculated = share * _selectedUsers.length;
       if ((amount - totalCalculated).abs() > 0.001) {
         String firstUser = _selectedUsers.first;
-        splitData[firstUser] = double.parse(
-          (share + (amount - totalCalculated)).toStringAsFixed(2),
-        );
+        splitData[firstUser] = {
+          'amount': double.parse(
+            (share + (amount - totalCalculated)).toStringAsFixed(2),
+          ),
+          'paid': firstUser == widget.currentUserId,
+        };
       }
     } else if (_splitType == 'percentage') {
       double totalPercentage = 0;
@@ -314,9 +317,10 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
 
       for (var uid in _selectedUsers) {
         final pct = _customValues[uid] ?? 0;
-        splitData[uid] = double.parse(
-          ((amount * pct) / 100).toStringAsFixed(2),
-        );
+        splitData[uid] = {
+          'amount': double.parse(((amount * pct) / 100).toStringAsFixed(2)),
+          'paid': uid == widget.currentUserId,
+        };
       }
     } else if (_splitType == 'exact') {
       double totalExact = 0;
@@ -334,7 +338,10 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       }
 
       for (var uid in _selectedUsers) {
-        splitData[uid] = _customValues[uid] ?? 0.0;
+        splitData[uid] = {
+          'amount': _customValues[uid] ?? 0.0,
+          'paid': uid == widget.currentUserId,
+        };
       }
     }
 

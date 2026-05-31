@@ -44,11 +44,13 @@ class GroupInfoScreen extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     final m = members[index];
                     final isMe = m.userId == curUserId;
+                    final memberLabel = isMe
+                        ? 'Sen'
+                        : '@${m.username ?? m.userId.substring(0, 6)}';
+
                     return ListTile(
                       leading: const CircleAvatar(child: Icon(Icons.person)),
-                      title: Text(
-                        isMe ? 'Sen' : 'Üye: ${m.userId.substring(0, 6)}',
-                      ),
+                      title: Text(memberLabel),
                     );
                   },
                 );

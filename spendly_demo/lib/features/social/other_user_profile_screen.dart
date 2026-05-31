@@ -4,11 +4,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 final otherUserProfileProvider =
     FutureProvider.family<Map<String, dynamic>, String>((ref, userId) async {
-      final res = await Supabase.instance.client
-          .from('profiles')
-          .select('id, username, streak_count, last_active_date')
-          .eq('id', userId)
-          .maybeSingle();
+          final res = await Supabase.instance.client
+            .from('profiles')
+            .select('id, username')
+            .eq('id', userId)
+            .maybeSingle();
       if (res == null) throw Exception('Kullanıcı bulunamadı');
       return res;
     });
@@ -41,18 +41,7 @@ class OtherUserProfileScreen extends ConsumerWidget {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 8),
-                if (profile['streak_count'] != null &&
-                    profile['streak_count'] > 0)
-                  Chip(
-                    label: Text(
-                      '🔥 ${profile['streak_count']} Günlük Seri',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.deepOrange,
-                      ),
-                    ),
-                    backgroundColor: Colors.orange.shade50,
-                  ),
+                const SizedBox(height: 8),
                 const SizedBox(height: 32),
                 const Text(
                   'Bu kullanıcıyla olan ortak özellikleriniz veya gruplarınız burada görünecek.',

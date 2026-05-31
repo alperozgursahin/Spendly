@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
+import 'features/debts/debts_screen.dart';
 import 'features/groups/groups_screen.dart';
 import 'features/groups/group_detail_screen.dart';
 import 'features/groups/group_info_screen.dart';
@@ -90,6 +91,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/dashboard',
             builder: (context, state) => const DashboardScreen(),
+          ),
+          GoRoute(
+            path: '/debts',
+            builder: (context, state) => const DebtsScreen(),
           ),
           GoRoute(
             path: '/groups',

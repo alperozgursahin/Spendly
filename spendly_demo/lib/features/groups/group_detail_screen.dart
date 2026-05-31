@@ -8,8 +8,11 @@ import 'group_model.dart';
 import 'add_expense_sheet.dart';
 import 'group_info_screen.dart';
 import 'invite_friend_modal.dart';
+import '../profile/currency_provider.dart';
+import '../profile/exchange_rate_provider.dart';
+import '../filters/filters_provider.dart';
 
-class GroupDetailScreen extends ConsumerWidget {
+class GroupDetailScreen extends ConsumerStatefulWidget {
   final String groupId;
   final String groupName;
 
@@ -20,12 +23,22 @@ class GroupDetailScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GroupDetailScreen> createState() => _GroupDetailScreenState();
+}
+
+class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
+  String? _activeTransactionId;
+  final Map<String, Map<String, bool>> _paidOverrides = {};
+
+  @override
+  Widget build(BuildContext context) {
+    final currency = ref.watch(currencyProvider);
+    final exchanger = ref.watch(exchangeRateProvider);
     final transactionsAsync = ref.watch(
-      groupTransactionsStreamProvider(groupId),
+      groupTransactionsStreamProvider(widget.groupId),
     );
     final currentUserId = ref.watch(authClientProvider).currentUser?.id ?? '';
-    final membersAsync = ref.watch(groupMembersProvider(groupId));
+    final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
@@ -33,7 +46,10 @@ class GroupDetailScreen extends ConsumerWidget {
         titleSpacing: 0,
         title: InkWell(
           onTap: () {
-            context.push('/groups/$groupId/info', extra: groupName);
+            context.push(
+              '/groups/${widget.groupId}/info',
+              extra: widget.groupName,
+            );
           },
           child: Row(
             children: [
@@ -52,7 +68,7 @@ class GroupDetailScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      groupName,
+                      widget.groupName,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -88,7 +104,7 @@ class GroupDetailScreen extends ConsumerWidget {
             onPressed: () {
               showModalBottomSheet(
                 context: context,
-                builder: (_) => InviteFriendModal(groupId: groupId),
+                builder: (_) => InviteFriendModal(groupId: widget.groupId),
               );
             },
           ),
@@ -96,7 +112,7 @@ class GroupDetailScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          _buildBalanceHeader(ref, groupId, currentUserId),
+          _buildBalanceHeader(ref, widget.groupId, currentUserId),
           Expanded(
             child: transactionsAsync.when(
               data: (transactions) {
@@ -105,9 +121,12 @@ class GroupDetailScreen extends ConsumerWidget {
                     child: Text('Henüz işlem yok. İlk harcamayı ekleyin!'),
                   );
                 }
-                final membersAsync = ref.watch(groupMembersProvider(groupId));
+                final membersListAsync = ref.watch(
+                  groupMembersProvider(widget.groupId),
+                );
+
                 String getUsername(String userId) {
-                  return membersAsync.maybeWhen(
+                  return membersListAsync.maybeWhen(
                     data: (members) {
                       try {
                         final found = members.firstWhere(
@@ -124,74 +143,272 @@ class GroupDetailScreen extends ConsumerWidget {
                   );
                 }
 
-                return ListView.builder(
-                  reverse: false, // Akış en yeniden eskiye
-                  padding: const EdgeInsets.all(16),
-                  itemCount: transactions.length,
-                  itemBuilder: (context, index) {
-                    final tx = transactions[index];
+                final filters = ref.watch(transactionFilterProvider);
+
+                final filtered = transactions.where((tx) {
+                  if (filters.start != null && filters.end != null) {
+                    if (tx.createdAt != null && (tx.createdAt!.isBefore(filters.start!) || tx.createdAt!.isAfter(filters.end!))) {
+                      return false;
+                    }
+                  }
+                  if (filters.personId.isNotEmpty && tx.payerId != filters.personId) {
+                    return false;
+                  }
+                  return true;
+                }).toList();
+
+                return Column(
+                  children: [
+                    _buildGroupFilterCard(context, ref, membersAsync, currentUserId),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final tx = filtered[index];
                     final isMe = tx.payerId == currentUserId;
                     final payerName = isMe ? 'Sen' : getUsername(tx.payerId);
+                    final isActive = _activeTransactionId == tx.id;
 
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  '$payerName ödedi',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: isMe
-                                        ? Colors.deepPurple
-                                        : Colors.black87,
+                    return InkWell(
+                      onTap: () {
+                        setState(() {
+                          _activeTransactionId = isActive ? null : tx.id;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                            color: isActive
+                                ? Colors.deepPurple.shade200
+                                : Colors.transparent,
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '$payerName ödedi',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: isMe
+                                          ? Colors.green.shade700
+                                          : Colors.black87,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  '₺${tx.amount.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                  Text(
+                                    '$currency${exchanger.convertFromTRY(tx.amount, currency).toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              tx.description,
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                            const Divider(height: 24),
-                            // Kime nasıl bölündüğü (Özet detay)
-                            Wrap(
-                              spacing: 8,
-                              children: tx.splitData.entries.map((e) {
-                                final owedIsMe = e.key == currentUserId;
-                                final subName = owedIsMe
-                                    ? 'Sen'
-                                    : getUsername(e.key);
-                                return Chip(
-                                  label: Text('$subName: ₺${e.value}'),
-                                  backgroundColor: owedIsMe
-                                      ? Colors.red.shade50
-                                      : Colors.grey.shade200,
-                                );
-                              }).toList(),
-                            ),
-                          ],
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                tx.description,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                              const Divider(height: 24),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: tx.splitData.entries.map((e) {
+                                  final participantId = e.key;
+                                  final splitValue = e.value;
+                                  final isCurrentUser =
+                                      participantId == currentUserId;
+                                  final isPayer = participantId == tx.payerId;
+
+                                  final amount = splitValue is Map
+                                      ? (splitValue['amount'] as num?)
+                                                ?.toDouble() ??
+                                            0.0
+                                      : (splitValue as num).toDouble();
+                                  final basePaid = splitValue is Map
+                                      ? (splitValue['paid'] as bool?) ?? false
+                                      : isPayer;
+                                  final paid =
+                                      _paidOverrides[tx.id ??
+                                          '']?[participantId] ??
+                                      basePaid;
+                                  final canToggle =
+                                      tx.id != null &&
+                                      isActive &&
+                                      isCurrentUser;
+
+                                  final subName = isCurrentUser
+                                      ? 'Sen'
+                                      : getUsername(participantId);
+                                  final chipColor = paid
+                                      ? Colors.green.shade50
+                                      : Colors.red.shade50;
+                                  final borderColor = paid
+                                      ? Colors.green.shade200
+                                      : Colors.red.shade200;
+                                  final textColor = paid
+                                      ? Colors.green.shade700
+                                      : Colors.red.shade700;
+                                  final showActionButton =
+                                      isCurrentUser && isActive;
+
+                                  Future<void> togglePaidState() async {
+                                    if (tx.id == null) return;
+
+                                    final transactionId = tx.id!;
+                                    final currentPaid = paid;
+
+                                    setState(() {
+                                      final overridesForTransaction =
+                                          _paidOverrides[transactionId] ??
+                                          <String, bool>{};
+                                      overridesForTransaction[participantId] =
+                                          !currentPaid;
+                                      _paidOverrides[transactionId] =
+                                          overridesForTransaction;
+                                    });
+
+                                    final currentSplitData =
+                                        Map<String, dynamic>.from(tx.splitData);
+                                    final existingValue =
+                                        currentSplitData[participantId];
+                                    final existingAmount = existingValue is Map
+                                        ? (existingValue['amount'] as num?)
+                                                  ?.toDouble() ??
+                                              0.0
+                                        : (existingValue as num).toDouble();
+                                    final existingPaid = existingValue is Map
+                                        ? (existingValue['paid'] as bool?) ??
+                                              false
+                                        : isPayer;
+
+                                    currentSplitData[participantId] = {
+                                      'amount': existingAmount,
+                                      'paid': !existingPaid,
+                                    };
+
+                                    try {
+                                      await ref
+                                          .read(groupServiceProvider)
+                                          .updateGroupTransactionSplitData(
+                                            transactionId,
+                                            currentSplitData,
+                                          );
+
+                                      ref.invalidate(
+                                        groupTransactionsStreamProvider(
+                                          widget.groupId,
+                                        ),
+                                      );
+                                    } catch (_) {
+                                      setState(() {
+                                        final overridesForTransaction =
+                                            _paidOverrides[transactionId] ??
+                                            <String, bool>{};
+                                        overridesForTransaction[participantId] =
+                                            currentPaid;
+                                        _paidOverrides[transactionId] =
+                                            overridesForTransaction;
+                                      });
+                                    }
+                                  }
+
+                                  final chipBody = AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: chipColor,
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(color: borderColor),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                            child: Text(
+                                            '$subName: $currency${exchanger.convertFromTRY(amount, currency).toStringAsFixed(2)}',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: textColor,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                        if (showActionButton) ...[
+                                          const SizedBox(width: 10),
+                                          Container(
+                                            width: 34,
+                                            height: 34,
+                                            decoration: BoxDecoration(
+                                              color: paid
+                                                  ? Colors.green.shade600
+                                                  : Colors.red.shade600,
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color:
+                                                      (paid
+                                                              ? Colors.green
+                                                              : Colors.red)
+                                                          .withValues(
+                                                            alpha: 0.22,
+                                                          ),
+                                                  blurRadius: 7,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Icon(
+                                              paid
+                                                  ? Icons.close_rounded
+                                                  : Icons.check_rounded,
+                                              size: 20,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  );
+
+                                  if (!showActionButton) {
+                                    return chipBody;
+                                  }
+
+                                  return Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: togglePaidState,
+                                      borderRadius: BorderRadius.circular(18),
+                                      child: chipBody,
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
                   },
-                );
+                ),
+              ),
+            ],
+          );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, st) => Center(child: Text('Hata: $e')),
@@ -204,12 +421,111 @@ class GroupDetailScreen extends ConsumerWidget {
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
-            builder: (_) =>
-                AddExpenseSheet(groupId: groupId, currentUserId: currentUserId),
+            builder: (_) => AddExpenseSheet(
+              groupId: widget.groupId,
+              currentUserId: currentUserId,
+            ),
           );
         },
         icon: const Icon(Icons.receipt_long),
         label: const Text('Harcama Ekle'),
+      ),
+    );
+  }
+
+  Widget _buildGroupFilterCard(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<GroupMemberModel>> membersAsync,
+    String currentUserId,
+  ) {
+    final filters = ref.watch(transactionFilterProvider);
+    var selectedPersonId = filters.personId;
+    DateTime? selectedStart = filters.start;
+    DateTime? selectedEnd = filters.end;
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: StatefulBuilder(
+          builder: (context, setLocalState) {
+            final people = membersAsync.maybeWhen(
+              data: (members) => members.map((m) => m.userId).toSet().toList()..sort(),
+              orElse: () => <String>[],
+            );
+
+            if (selectedPersonId.isNotEmpty && !people.contains(selectedPersonId)) {
+              selectedPersonId = '';
+            }
+
+            return Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: selectedPersonId,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Kişi', isDense: true),
+                        items: [
+                          const DropdownMenuItem(value: '', child: Text('Hepsi')),
+                          ...membersAsync.maybeWhen(
+                            data: (members) => members.map((m) {
+                              final label = m.userId == currentUserId
+                                  ? 'Sen'
+                                  : (m.username != null ? '@${m.username}' : m.userId.substring(0, 4));
+                              return DropdownMenuItem(value: m.userId, child: Text(label));
+                            }).toList(),
+                            orElse: () => const <DropdownMenuItem<String>>[],
+                          ),
+                        ],
+                        onChanged: (value) => setLocalState(() => selectedPersonId = value ?? ''),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          final r = await showDateRangePicker(
+                            context: context,
+                            firstDate: DateTime.now().subtract(const Duration(days: 3650)),
+                            lastDate: DateTime.now().add(const Duration(days: 3650)),
+                          );
+                          if (r != null) {
+                            setLocalState(() {
+                              selectedStart = r.start;
+                              selectedEnd = r.end;
+                            });
+                          }
+                        },
+                        child: Text(
+                          selectedStart != null && selectedEnd != null
+                              ? '${selectedStart!.day}.${selectedStart!.month}.${selectedStart!.year} - ${selectedEnd!.day}.${selectedEnd!.month}.${selectedEnd!.year}'
+                              : 'Tarih seç',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      final notifier = ref.read(transactionFilterProvider.notifier);
+                      notifier.setPerson(selectedPersonId);
+                      notifier.setDateRange(selectedStart, selectedEnd);
+                      notifier.setGroup('');
+                      notifier.setCategory('');
+                    },
+                    icon: const Icon(Icons.filter_alt),
+                    label: const Text('Filtrele'),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -221,6 +537,8 @@ class GroupDetailScreen extends ConsumerWidget {
   ) {
     final balanceAsync = ref.watch(balanceEngineProvider(groupId));
     final membersAsync = ref.watch(groupMembersProvider(groupId));
+    final currency = ref.watch(currencyProvider);
+    final exchanger = ref.watch(exchangeRateProvider);
 
     return Container(
       color: Colors.white,
@@ -280,14 +598,14 @@ class GroupDetailScreen extends ConsumerWidget {
                     ),
                   ),
                   child: Text(
-                    '$displayName ${isPositive ? "Alacaklı:" : "Borçlu:"} ₺${balance.abs().toStringAsFixed(2)}',
-                    style: TextStyle(
-                      color: isPositive
-                          ? Colors.green.shade700
-                          : Colors.red.shade700,
-                      fontWeight: FontWeight.bold,
+                      '$displayName ${isPositive ? "Alacaklı:" : "Borçlu:"} $currency${exchanger.convertFromTRY(balance.abs(), currency).toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: isPositive
+                            ? Colors.green.shade700
+                            : Colors.red.shade700,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
                 );
               }).toList()..removeWhere((e) => e is SizedBox),
             ),

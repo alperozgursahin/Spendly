@@ -5,11 +5,15 @@ import 'package:fl_chart/fl_chart.dart';
 import '../auth/auth_provider.dart';
 import '../transactions/transaction_provider.dart';
 import '../transactions/transaction_model.dart';
-import '../profile/streak_provider.dart';
 import '../profile/currency_provider.dart';
+import '../profile/exchange_rate_provider.dart';
 import 'activity_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'heatmap_provider.dart';
+import 'heatmap_widget.dart';
+import '../filters/filters_provider.dart';
+import '../groups/group_provider.dart';
+import '../groups/group_model.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -18,7 +22,7 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final netBalance = ref.watch(netBalanceProvider);
     final transactionsAsync = ref.watch(transactionsProvider);
-    final streakAsync = ref.watch(streakProvider);
+    final groupsAsync = ref.watch(userGroupsProvider);
     final activityAsync = ref.watch(activityProvider);
     final currency = ref.watch(currencyProvider);
 
@@ -26,20 +30,6 @@ class DashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
-          streakAsync.when(
-            data: (streak) => streak > 0
-                ? Chip(
-                    label: Text(
-                      '🔥 $streak',
-                      style: const TextStyle(color: Colors.deepOrange),
-                    ),
-                    backgroundColor: Colors.orange.shade50,
-                  )
-                : const SizedBox.shrink(),
-            loading: () => const SizedBox.shrink(),
-            error: (e, st) => const SizedBox.shrink(),
-          ),
-          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.group),
             tooltip: 'Gruplar',
@@ -61,7 +51,7 @@ class DashboardScreen extends ConsumerWidget {
               children: [
                 const QuickAddWidget(),
                 const SizedBox(height: 16),
-                _buildNetBalanceCard(netBalance, currency),
+                _buildNetBalanceCard(ref, netBalance, currency),
                 const SizedBox(height: 24),
                 const Text(
                   'Aktivite Akışı',
@@ -75,24 +65,160 @@ class DashboardScreen extends ConsumerWidget {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                _buildPieChart(transactionsAsync),
+                _buildPieChart(ref, transactionsAsync, currency),
                 const SizedBox(height: 24),
-                const Text(
-                  'Aktivasyon Isı Haritası',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                _buildHeatmapCard(transactionsAsync, ref),
+                const HeatmapCard(),
                 const SizedBox(height: 24),
                 const Text(
                   'Son İşlemler',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                _buildStaticDateTransactions(transactionsAsync, currency),
+                groupsAsync.when(
+                  data: (groups) => Column(
+                    children: [
+                      _buildDashboardFilterBar(context, ref, transactionsAsync, groups),
+                      const SizedBox(height: 8),
+                      _buildStaticDateTransactions(ref, transactionsAsync, currency),
+                    ],
+                  ),
+                  loading: () => _buildStaticDateTransactions(ref, transactionsAsync, currency),
+                  error: (_, __) => _buildStaticDateTransactions(ref, transactionsAsync, currency),
+                ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardFilterBar(BuildContext context, WidgetRef ref, AsyncValue<List<TransactionModel>> transactionsAsync, List<GroupModel> groups) {
+    final filters = ref.watch(transactionFilterProvider);
+    final txs = transactionsAsync.maybeWhen(data: (txs) => txs, orElse: () => <TransactionModel>[]);
+    final cats = txs.map((t) => t.category).toSet().toList()..sort();
+    final people = txs.map((t) => t.userId).toSet().toList()..sort();
+    var selectedGroupId = filters.groupId;
+    var selectedCategory = filters.category;
+    var selectedPersonId = filters.personId;
+    DateTime? selectedStart = filters.start;
+    DateTime? selectedEnd = filters.end;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: StatefulBuilder(
+          builder: (context, setLocalState) {
+            final groupOptions = <String>{''};
+            for (final group in groups) {
+              if (group.id != null) groupOptions.add(group.id!);
+            }
+            if (selectedGroupId.isNotEmpty && !groupOptions.contains(selectedGroupId)) {
+              selectedGroupId = '';
+            }
+            if (selectedCategory.isNotEmpty && !cats.contains(selectedCategory)) {
+              selectedCategory = '';
+            }
+            if (selectedPersonId.isNotEmpty && !people.contains(selectedPersonId)) {
+              selectedPersonId = '';
+            }
+
+            return Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: selectedGroupId,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Grup', isDense: true),
+                        items: [
+                          const DropdownMenuItem(value: '', child: Text('Hepsi')),
+                          ...groups.where((g) => g.id != null).map(
+                                (g) => DropdownMenuItem(value: g.id!, child: Text(g.name)),
+                              ),
+                        ],
+                        onChanged: (value) => setLocalState(() => selectedGroupId = value ?? ''),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: selectedCategory,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Kategori', isDense: true),
+                        items: [
+                          const DropdownMenuItem(value: '', child: Text('Hepsi')),
+                          ...cats.map((c) => DropdownMenuItem(value: c, child: Text(c))),
+                        ],
+                        onChanged: (value) => setLocalState(() => selectedCategory = value ?? ''),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: selectedPersonId,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Kişi', isDense: true),
+                        items: [
+                          const DropdownMenuItem(value: '', child: Text('Hepsi')),
+                          ...people.map(
+                            (personId) => DropdownMenuItem(
+                              value: personId,
+                              child: Text(personId == ref.read(authClientProvider).currentUser?.id ? 'Sen' : personId.substring(0, 4)),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) => setLocalState(() => selectedPersonId = value ?? ''),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          final r = await showDateRangePicker(
+                            context: context,
+                            firstDate: DateTime.now().subtract(const Duration(days: 3650)),
+                            lastDate: DateTime.now().add(const Duration(days: 3650)),
+                          );
+                          if (r != null) {
+                            setLocalState(() {
+                              selectedStart = r.start;
+                              selectedEnd = r.end;
+                            });
+                          }
+                        },
+                        child: Text(
+                          selectedStart != null && selectedEnd != null
+                              ? '${selectedStart!.day}.${selectedStart!.month}.${selectedStart!.year} - ${selectedEnd!.day}.${selectedEnd!.month}.${selectedEnd!.year}'
+                              : 'Tarih seç',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      final notifier = ref.read(transactionFilterProvider.notifier);
+                      notifier.setGroup(selectedGroupId);
+                      notifier.setCategory(selectedCategory);
+                      notifier.setPerson(selectedPersonId);
+                      notifier.setDateRange(selectedStart, selectedEnd);
+                    },
+                    icon: const Icon(Icons.filter_alt),
+                    label: const Text('Filtrele'),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -171,7 +297,8 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildNetBalanceCard(double balance, String currency) {
+  Widget _buildNetBalanceCard(WidgetRef ref, double balance, String currency) {
+    final exchanger = ref.watch(exchangeRateProvider);
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -190,7 +317,7 @@ class DashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '$currency${balance.toStringAsFixed(2)}',
+              '$currency${exchanger.convertFromTRY(balance, currency).toStringAsFixed(2)}',
               style: const TextStyle(
                 fontSize: 36,
                 fontWeight: FontWeight.w800,
@@ -248,7 +375,11 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   // TASK 4: Category-Based Visual Summary (Pie Chart)
-  Widget _buildPieChart(AsyncValue<List<TransactionModel>> transactionsAsync) {
+  Widget _buildPieChart(
+    WidgetRef ref,
+    AsyncValue<List<TransactionModel>> transactionsAsync,
+    String currency,
+  ) {
     return transactionsAsync.when(
       data: (transactions) {
         final now = DateTime.now();
@@ -273,12 +404,16 @@ class DashboardScreen extends ConsumerWidget {
           );
         }
 
+        final exchanger = ref.watch(exchangeRateProvider);
+
         final Map<String, double> categorySums = {};
         for (var t in currentMonthExpenses) {
           final cat = t.category;
           final sanitized = sanitizeCategory(cat);
           if (sanitized.isEmpty) continue;
-          categorySums[sanitized] = (categorySums[sanitized] ?? 0) + t.amount;
+          categorySums[sanitized] =
+              (categorySums[sanitized] ?? 0) +
+              exchanger.convertFromTRY(t.amount, currency);
         }
 
         final List<Color> colors = [
@@ -291,15 +426,19 @@ class DashboardScreen extends ConsumerWidget {
         ];
         int colorIdx = 0;
 
-        final List<PieChartSectionData> sections = categorySums.entries.map((
-          e,
-        ) {
-          final color = colors[colorIdx % colors.length];
-          colorIdx++;
+        final entries = categorySums.entries.toList();
+
+        final total = categorySums.values.fold<double>(0.0, (p, e) => p + e);
+
+        final List<PieChartSectionData> sections = entries.asMap().entries.map((me) {
+          final idx = me.key;
+          final e = me.value;
+          final color = colors[idx % colors.length];
+          final percent = total > 0 ? (e.value / total * 100) : 0.0;
           return PieChartSectionData(
             color: color,
             value: e.value,
-            title: '${e.key}\n${e.value.toStringAsFixed(0)}',
+            title: '${percent.toStringAsFixed(0)}%',
             radius: 50,
             titleStyle: const TextStyle(
               fontSize: 12,
@@ -308,16 +447,100 @@ class DashboardScreen extends ConsumerWidget {
             ),
           );
         }).toList();
+        // Legacy category list (simple vertical list)
+        final legacyList = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: entries.asMap().entries.map((me) {
+            final idx = me.key;
+            final e = me.value;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: colors[idx % colors.length],
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      e.key,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        );
 
-        return SizedBox(
-          height: 200,
-          child: PieChart(
-            PieChartData(
-              sections: sections,
-              centerSpaceRadius: 40,
-              sectionsSpace: 2,
+        
+
+        final chartRow = SizedBox(
+          height: 220,
+          child: Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: PieChart(
+                  PieChartData(
+                    sections: sections,
+                    centerSpaceRadius: 40,
+                    sectionsSpace: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 1,
+                child: Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: SingleChildScrollView(child: legacyList),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+        // simple amounts table to display under the chart
+        final amountsCard = Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 0,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: entries.map((e) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Text('${e.key}: ${currency}${e.value.toStringAsFixed(0)}', style: const TextStyle(fontSize: 14)),
+                );
+              }).toList(),
             ),
           ),
+        );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            chartRow,
+            const SizedBox(height: 12),
+            amountsCard,
+          ],
         );
       },
       loading: () => const SizedBox(
@@ -330,12 +553,32 @@ class DashboardScreen extends ConsumerWidget {
 
   // TASK 3: UI/UX IMPROVEMENT - Static Dashboard Dates (Pinned Left)
   Widget _buildStaticDateTransactions(
+    WidgetRef ref,
     AsyncValue<List<TransactionModel>> transactionsAsync,
     String currency,
   ) {
+    final filters = ref.watch(transactionFilterProvider);
+
     return transactionsAsync.when(
       data: (transactions) {
-        if (transactions.isEmpty) {
+        // apply client-side filters
+        final filtered = transactions.where((t) {
+          if (filters.start != null && filters.end != null) {
+            if (t.date.isBefore(filters.start!) || t.date.isAfter(filters.end!)) return false;
+          }
+          if (filters.groupId.isNotEmpty && t.groupId != null) {
+            if (t.groupId != filters.groupId) return false;
+          }
+          if (filters.category.isNotEmpty) {
+            if (t.category != filters.category) return false;
+          }
+          if (filters.personId.isNotEmpty) {
+            if (t.userId != filters.personId) return false;
+          }
+          return true;
+        }).toList();
+
+        if (filtered.isEmpty) {
           return const Padding(
             padding: EdgeInsets.all(32.0),
             child: Center(child: Text('Henüz işlem bulunmuyor.')),
@@ -345,10 +588,11 @@ class DashboardScreen extends ConsumerWidget {
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: transactions.take(10).length,
+          itemCount: filtered.take(10).length,
           itemBuilder: (context, index) {
-            final t = transactions[index];
+            final t = filtered[index];
             final isIncome = t.type == 'income';
+            final exchanger = ref.watch(exchangeRateProvider);
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 12.0),
@@ -412,7 +656,7 @@ class DashboardScreen extends ConsumerWidget {
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         trailing: Text(
-                          '${isIncome ? '+' : '-'}$currency${t.amount.toStringAsFixed(2)}',
+                          '${isIncome ? '+' : '-'}$currency${exchanger.convertFromTRY(t.amount, currency).toStringAsFixed(2)}',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -458,164 +702,6 @@ class DashboardScreen extends ConsumerWidget {
     if (s.isEmpty) return '';
     final lower = s.toLowerCase();
     return lower[0].toUpperCase() + lower.substring(1);
-  }
-
-  Widget _buildHeatmapCard(
-    AsyncValue<List<TransactionModel>> transactionsAsync,
-    WidgetRef ref,
-  ) {
-    final range = ref.watch(heatmapRangeProvider);
-    final data = ref.watch(heatmapDataProvider);
-
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Range selector
-            Row(
-              children: [
-                Expanded(
-                  child: SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(value: '1M', label: Text('1A')),
-                      ButtonSegment(value: '3M', label: Text('3A')),
-                      ButtonSegment(value: '6M', label: Text('6A')),
-                      ButtonSegment(value: '1Y', label: Text('1Y')),
-                    ],
-                    selected: {range},
-                    onSelectionChanged: (sel) {
-                      ref.read(heatmapRangeProvider.notifier).state = sel.first;
-                    },
-                    style: SegmentedButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.all(6),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Heatmap with pinned weekday labels on the left
-            LayoutBuilder(builder: (context, constraints) {
-              final leftLabelWidth = 36.0;
-              final availableWidth = constraints.maxWidth - leftLabelWidth - 8;
-
-              // compute start date and columns based on range
-              final now = DateTime.now();
-              DateTime start;
-              switch (range) {
-                case '3M':
-                  start = DateTime(now.year, now.month - 3, now.day);
-                  break;
-                case '6M':
-                  start = DateTime(now.year, now.month - 6, now.day);
-                  break;
-                case '1Y':
-                  start = DateTime(now.year - 1, now.month, now.day);
-                  break;
-                case '1M':
-                default:
-                  start = DateTime(now.year, now.month, 1);
-              }
-
-              final days = now.difference(start).inDays + 1;
-              final weeks = ((start.weekday - 1 + days) / 7).ceil();
-
-              // dynamic block size so grid fits for 1M
-              double blockSize = (availableWidth / weeks).floorToDouble();
-              blockSize = blockSize.clamp(10.0, 28.0);
-              if (range != '1M') {
-                // allow horizontal scrolling for larger ranges
-                blockSize = 18.0;
-              }
-
-              // build matrix of weeks x 7
-              final matrix = List.generate(7, (_) => List<int>.filled(weeks, 0));
-
-              final startIndexOffset = start.weekday - 1;
-              data.forEach((date, count) {
-                if (date.isBefore(start) || date.isAfter(now)) return;
-                final offset = date.difference(start).inDays;
-                final pos = startIndexOffset + offset;
-                final col = (pos / 7).floor();
-                final row = pos % 7;
-                if (col >= 0 && col < weeks && row >= 0 && row < 7) {
-                  matrix[row][col] += count;
-                }
-              });
-
-              final maxCount = matrix
-                  .expand((row) => row)
-                  .fold<int>(0, (p, e) => e > p ? e : p);
-
-              final weekdayLabels = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Left pinned labels
-                  SizedBox(
-                    width: leftLabelWidth,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: weekdayLabels
-                          .map((l) => SizedBox(
-                                height: blockSize,
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    l,
-                                    style: const TextStyle(
-                                        fontSize: 12, color: Colors.grey),
-                                  ),
-                                ),
-                              ))
-                          .toList(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Heatmap grid (scrollable horizontally when needed)
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: SizedBox(
-                        width: weeks * blockSize,
-                        child: Column(
-                          children: List.generate(7, (r) {
-                            return Row(
-                              children: List.generate(weeks, (c) {
-                                final val = matrix[r][c];
-                                final intensity = maxCount == 0
-                                    ? 0.0
-                                    : (val / maxCount).clamp(0.0, 1.0);
-                                final color = Color.lerp(
-                                    Colors.grey.shade200, Colors.deepPurple, intensity);
-                                return Container(
-                                  width: blockSize - 4,
-                                  height: blockSize - 4,
-                                  margin: const EdgeInsets.all(2),
-                                  decoration: BoxDecoration(
-                                    color: color,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                );
-                              }),
-                            );
-                          }),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }),
-          ],
-        ),
-      ),
-    );
   }
 }
 

@@ -22,12 +22,15 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         context.go('/dashboard');
         break;
       case 1:
-        context.go('/groups');
+        context.go('/debts');
         break;
       case 2:
-        context.go('/social');
+        context.go('/groups');
         break;
       case 3:
+        context.go('/social');
+        break;
+      case 4:
         context.go('/profile');
         break;
     }
@@ -38,9 +41,10 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
     // Determine the current index based on the route
     final String location = GoRouterState.of(context).uri.toString();
     if (location.startsWith('/dashboard')) _currentIndex = 0;
-    if (location.startsWith('/groups')) _currentIndex = 1;
-    if (location.startsWith('/social')) _currentIndex = 2;
-    if (location.startsWith('/profile')) _currentIndex = 3;
+    if (location.startsWith('/debts')) _currentIndex = 1;
+    if (location.startsWith('/groups')) _currentIndex = 2;
+    if (location.startsWith('/social')) _currentIndex = 3;
+    if (location.startsWith('/profile')) _currentIndex = 4;
 
     return Scaffold(
       body: widget.child,
@@ -52,6 +56,10 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
             label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            label: 'Borçlar',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Gruplar'),
           BottomNavigationBarItem(

@@ -58,8 +58,15 @@ final balanceEngineProvider = Provider.family<Map<String, double>, String>((
 
         // Split users get debited (-)
         tx.splitData.forEach((userId, owedAmount) {
-          balances[userId] =
-              (balances[userId] ?? 0.0) - (owedAmount as num).toDouble();
+          if (owedAmount is! num && owedAmount is! Map) {
+            return;
+          }
+
+          final amount = owedAmount is Map
+              ? (owedAmount['amount'] as num?)?.toDouble() ?? 0.0
+              : (owedAmount as num).toDouble();
+
+          balances[userId] = (balances[userId] ?? 0.0) - amount;
         });
       }
       return balances;
@@ -124,5 +131,15 @@ class GroupService {
 
   Future<void> addGroupTransaction(GroupTransactionModel tx) async {
     await _supabase.from('group_transactions').insert(tx.toJson());
+  }
+
+  Future<void> updateGroupTransactionSplitData(
+    String transactionId,
+    Map<String, dynamic> splitData,
+  ) async {
+    await _supabase
+        .from('group_transactions')
+        .update({'split_data': splitData})
+        .eq('id', transactionId);
   }
 }
