@@ -9,7 +9,6 @@ final groupServiceProvider = Provider<GroupService>((ref) {
   return GroupService(Supabase.instance.client);
 });
 
-// Fetch groups current user belongs to
 final userGroupsProvider = FutureProvider<List<GroupModel>>((ref) async {
   final service = ref.watch(groupServiceProvider);
   final userId = ref.watch(authClientProvider).currentUser?.id;
@@ -17,14 +16,12 @@ final userGroupsProvider = FutureProvider<List<GroupModel>>((ref) async {
   return service.getUserGroups(userId);
 });
 
-// Fetch group members
 final groupMembersProvider =
     FutureProvider.family<List<GroupMemberModel>, String>((ref, groupId) async {
       final service = ref.watch(groupServiceProvider);
       return service.getGroupMembers(groupId);
     });
 
-// REALTIME Feed: Supabase Stream Provider!
 final groupTransactionsStreamProvider =
     StreamProvider.family<List<GroupTransactionModel>, String>((ref, groupId) {
       final supabase = Supabase.instance.client;
@@ -40,8 +37,6 @@ final groupTransactionsStreamProvider =
           );
     });
 
-// BALANCE ENGINE: Who owes whom (Net Calculation)
-// Positive value = User is owed money, Negative value = User owes money
 final balanceEngineProvider = Provider.family<Map<String, double>, String>((
   ref,
   groupId,
@@ -53,10 +48,8 @@ final balanceEngineProvider = Provider.family<Map<String, double>, String>((
       Map<String, double> balances = {};
 
       for (var tx in transactions) {
-        // Payer gets credited (+)
         balances[tx.payerId] = (balances[tx.payerId] ?? 0.0) + tx.amount;
 
-        // Split users get debited (-)
         tx.splitData.forEach((userId, owedAmount) {
           if (owedAmount is! num && owedAmount is! Map) {
             return;
@@ -81,7 +74,6 @@ class GroupService {
   GroupService(this._supabase);
 
   Future<List<GroupModel>> getUserGroups(String userId) async {
-    // Queries groups where the user is a member through the joined table group_members
     final response = await _supabase
         .from('group_members')
         .select('groups (*)')

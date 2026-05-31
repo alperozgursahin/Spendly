@@ -82,9 +82,16 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDashboardFilterBar(BuildContext context, WidgetRef ref, AsyncValue<List<TransactionModel>> transactionsAsync) {
+  Widget _buildDashboardFilterBar(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<TransactionModel>> transactionsAsync,
+  ) {
     final filters = ref.watch(transactionFilterProvider);
-    final txs = transactionsAsync.maybeWhen(data: (txs) => txs, orElse: () => <TransactionModel>[]);
+    final txs = transactionsAsync.maybeWhen(
+      data: (txs) => txs,
+      orElse: () => <TransactionModel>[],
+    );
     final cats = txs.map((t) => t.category).toSet().toList()..sort();
     var selectedType = filters.type;
     var selectedCategory = filters.category;
@@ -96,10 +103,12 @@ class DashboardScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(8.0),
         child: StatefulBuilder(
           builder: (context, setLocalState) {
-            if (selectedCategory.isNotEmpty && !cats.contains(selectedCategory)) {
+            if (selectedCategory.isNotEmpty &&
+                !cats.contains(selectedCategory)) {
               selectedCategory = '';
             }
-            if (selectedType.isNotEmpty && !{'income', 'expense'}.contains(selectedType)) {
+            if (selectedType.isNotEmpty &&
+                !{'income', 'expense'}.contains(selectedType)) {
               selectedType = '';
             }
 
@@ -111,12 +120,21 @@ class DashboardScreen extends ConsumerWidget {
                       child: DropdownButtonFormField<String>(
                         value: selectedCategory,
                         isExpanded: true,
-                        decoration: const InputDecoration(labelText: 'Kategori', isDense: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Kategori',
+                          isDense: true,
+                        ),
                         items: [
-                          const DropdownMenuItem(value: '', child: Text('Hepsi')),
-                          ...cats.map((c) => DropdownMenuItem(value: c, child: Text(c))),
+                          const DropdownMenuItem(
+                            value: '',
+                            child: Text('Hepsi'),
+                          ),
+                          ...cats.map(
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
+                          ),
                         ],
-                        onChanged: (value) => setLocalState(() => selectedCategory = value ?? ''),
+                        onChanged: (value) =>
+                            setLocalState(() => selectedCategory = value ?? ''),
                       ),
                     ),
                   ],
@@ -149,8 +167,12 @@ class DashboardScreen extends ConsumerWidget {
                         onPressed: () async {
                           final r = await showDateRangePicker(
                             context: context,
-                            firstDate: DateTime.now().subtract(const Duration(days: 3650)),
-                            lastDate: DateTime.now().add(const Duration(days: 3650)),
+                            firstDate: DateTime.now().subtract(
+                              const Duration(days: 3650),
+                            ),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 3650),
+                            ),
                           );
                           if (r != null) {
                             setLocalState(() {
@@ -173,7 +195,9 @@ class DashboardScreen extends ConsumerWidget {
                   alignment: Alignment.centerRight,
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      final notifier = ref.read(transactionFilterProvider.notifier);
+                      final notifier = ref.read(
+                        transactionFilterProvider.notifier,
+                      );
                       notifier.setCategory(selectedCategory);
                       notifier.setType(selectedType);
                       notifier.setDateRange(selectedStart, selectedEnd);
@@ -190,7 +214,6 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // TASK 6: Quick Add Expense Widget
   Widget _buildQuickAddWidget(BuildContext context, WidgetRef ref) {
     final amountController = TextEditingController();
     final categoryController = TextEditingController();
@@ -296,7 +319,6 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // TASK 5: Social Activity Feed
   Widget _buildActivityFeed(AsyncValue<List<ActivityItem>> activityAsync) {
     return activityAsync.when(
       data: (activities) {
@@ -340,7 +362,6 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // TASK 4: Category-Based Visual Summary (Pie Chart)
   Widget _buildPieChart(
     WidgetRef ref,
     AsyncValue<List<TransactionModel>> transactionsAsync,
@@ -396,7 +417,9 @@ class DashboardScreen extends ConsumerWidget {
 
         final total = categorySums.values.fold<double>(0.0, (p, e) => p + e);
 
-        final List<PieChartSectionData> sections = entries.asMap().entries.map((me) {
+        final List<PieChartSectionData> sections = entries.asMap().entries.map((
+          me,
+        ) {
           final idx = me.key;
           final e = me.value;
           final color = colors[idx % colors.length];
@@ -447,8 +470,6 @@ class DashboardScreen extends ConsumerWidget {
           }).toList(),
         );
 
-        
-
         final chartRow = SizedBox(
           height: 220,
           child: Row(
@@ -484,7 +505,9 @@ class DashboardScreen extends ConsumerWidget {
 
         // simple amounts table to display under the chart
         final amountsCard = Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           elevation: 0,
           child: Padding(
             padding: const EdgeInsets.all(12.0),
@@ -493,7 +516,10 @@ class DashboardScreen extends ConsumerWidget {
               children: entries.map((e) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: Text('${e.key}: ${currency}${e.value.toStringAsFixed(0)}', style: const TextStyle(fontSize: 14)),
+                  child: Text(
+                    '${e.key}: ${currency}${e.value.toStringAsFixed(0)}',
+                    style: const TextStyle(fontSize: 14),
+                  ),
                 );
               }).toList(),
             ),
@@ -502,11 +528,7 @@ class DashboardScreen extends ConsumerWidget {
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            chartRow,
-            const SizedBox(height: 12),
-            amountsCard,
-          ],
+          children: [chartRow, const SizedBox(height: 12), amountsCard],
         );
       },
       loading: () => const SizedBox(
@@ -517,7 +539,6 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // TASK 3: UI/UX IMPROVEMENT - Static Dashboard Dates (Pinned Left)
   Widget _buildStaticDateTransactions(
     WidgetRef ref,
     AsyncValue<List<TransactionModel>> transactionsAsync,
@@ -530,7 +551,8 @@ class DashboardScreen extends ConsumerWidget {
         // apply client-side filters
         final filtered = transactions.where((t) {
           if (filters.start != null && filters.end != null) {
-            if (t.date.isBefore(filters.start!) || t.date.isAfter(filters.end!)) return false;
+            if (t.date.isBefore(filters.start!) || t.date.isAfter(filters.end!))
+              return false;
           }
           if (filters.category.isNotEmpty) {
             if (t.category != filters.category) return false;
@@ -565,7 +587,6 @@ class DashboardScreen extends ConsumerWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Static Pinned Date on the Left
                   Container(
                     width: 50,
                     padding: const EdgeInsets.all(8),
@@ -662,7 +683,6 @@ class DashboardScreen extends ConsumerWidget {
     return '';
   }
 
-  // Sanitize category strings: trim, collapse spaces, lowercase then capitalize first
   String sanitizeCategory(String raw) {
     final s = raw.trim().replaceAll(RegExp(r"\s+"), ' ');
     if (s.isEmpty) return '';
@@ -671,7 +691,6 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-// TASK 1 & 4: Quick Add Expense/Income Widget with Type Toggle & Category Dropdown
 class QuickAddWidget extends ConsumerStatefulWidget {
   const QuickAddWidget({super.key});
 
@@ -721,7 +740,6 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Row 1: Type Segment and Amount Field
             Row(
               children: [
                 Expanded(
@@ -789,7 +807,6 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
               ],
             ),
             const SizedBox(height: 12),
-            // Row 2: Category Select and Save Button
             Row(
               children: [
                 Expanded(

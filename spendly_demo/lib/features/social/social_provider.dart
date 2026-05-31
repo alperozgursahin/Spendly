@@ -6,7 +6,6 @@ final socialServiceProvider = Provider((ref) {
   return SocialService(Supabase.instance.client);
 });
 
-// Provides current user profile (with username)
 final currentUserProfileProvider = FutureProvider<Map<String, dynamic>>((
   ref,
 ) async {
@@ -23,7 +22,6 @@ final currentUserProfileProvider = FutureProvider<Map<String, dynamic>>((
   return res;
 });
 
-// Provides friends stream with profiles mapping
 final friendsStreamProvider = StreamProvider<List<Map<String, dynamic>>>((
   ref,
 ) async* {
@@ -40,7 +38,6 @@ final friendsStreamProvider = StreamProvider<List<Map<String, dynamic>>>((
         .where((e) => e['user_id1'] == user.id || e['user_id2'] == user.id)
         .toList();
 
-    // UUID'leri username ve avatar_url ile eşleştir
     List<Map<String, dynamic>> enrichedFriendships = [];
     for (var f in friendships) {
       final isSender = f['user_id1'] == user.id;
@@ -63,7 +60,6 @@ class SocialService {
   SocialService(this.db);
 
   Future<void> setUsername(String userId, String username) async {
-    // Check if username exists
     final existing = await db
         .from('profiles')
         .select('id')
@@ -85,7 +81,6 @@ class SocialService {
     final user = db.auth.currentUser;
     if (user == null) throw Exception('Yetkisiz işlem');
 
-    // Username DB check
     if (newUsername != currentUsername) {
       final existing = await db
           .from('profiles')
@@ -97,12 +92,10 @@ class SocialService {
       }
     }
 
-    // Email update in Auth (sends confirmation email if enabled, otherwise instant)
     if (newEmail != user.email) {
       await db.auth.updateUser(UserAttributes(email: newEmail));
     }
 
-    // Finally update profiles
     await db
         .from('profiles')
         .update({
@@ -172,7 +165,6 @@ class SocialService {
         .eq('user_id2', currentUserId)
         .eq('status', 'accepted');
 
-    // Combine result
     List<Map<String, dynamic>> friends = [];
     for (var row in fetch1) {
       friends.add({

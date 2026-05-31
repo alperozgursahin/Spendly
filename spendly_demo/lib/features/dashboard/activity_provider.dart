@@ -24,7 +24,6 @@ final activityProvider = FutureProvider<List<ActivityItem>>((ref) async {
   List<ActivityItem> activities = [];
 
   try {
-    // 1. Fetch recent friendships (accepted ones)
     final friendships = await supabase
         .from('friendships')
         .select(
@@ -46,7 +45,6 @@ final activityProvider = FutureProvider<List<ActivityItem>>((ref) async {
       );
     }
 
-    // 2. Fetch recent group transactions
     final gTrans = await supabase
         .from('group_transactions')
         .select('created_at, description, amount, groups(name)')
@@ -66,7 +64,6 @@ final activityProvider = FutureProvider<List<ActivityItem>>((ref) async {
       );
     }
 
-    // Sort combined activities by date descending
     activities.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return activities.take(5).toList();
   } catch (e) {

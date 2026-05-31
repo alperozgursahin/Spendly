@@ -24,7 +24,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             username: _usernameController.text.trim(),
             password: _passwordController.text.trim(),
           );
-      // Navigation is handled by GoRouter's redirect based on auth state
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(

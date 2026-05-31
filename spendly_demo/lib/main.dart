@@ -22,7 +22,6 @@ import 'features/profile/profile_screen.dart';
 import 'features/auth/update_password_screen.dart';
 import 'main_scaffold.dart';
 
-// Create a provider for auth state router refresh
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
     notifyListeners();
@@ -198,14 +197,13 @@ class _MyAppState extends ConsumerState<MyApp> {
       title: 'Spendly',
       theme: ThemeData(
         useMaterial3: true,
-        fontFamily: 'Inter', // Assuming standard clean font
+        fontFamily: 'Inter',
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF6200EA),
           primary: const Color(0xFF6200EA),
           secondary: const Color(0xFF03DAC6),
         ),
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        // Prevent Material3 surface tint from overpowering the UI (removed unsupported param for compatibility)
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFFF8F9FA),
           elevation: 0.0,

@@ -38,7 +38,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    // Determine the current index based on the route
     final String location = GoRouterState.of(context).uri.toString();
     if (location.startsWith('/dashboard')) _currentIndex = 0;
     if (location.startsWith('/debts')) _currentIndex = 1;

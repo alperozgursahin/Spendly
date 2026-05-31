@@ -22,8 +22,6 @@ class AuthController {
     required String username,
     required String password,
   }) async {
-    // RLS sebebiyle anonim kullanıcılar profiles tablosundan veri okuyamaz.
-    // Bu nedenle RPC kullanarak email adresini çekiyoruz.
     final response = await _client.rpc(
       'get_email_by_username',
       params: {'p_username': username},
@@ -41,7 +39,6 @@ class AuthController {
     required String email,
     required String password,
   }) async {
-    // Kullanıcı adı check
     final checkResponse = await _client.rpc(
       'check_username_exists',
       params: {'p_username': username},
@@ -56,13 +53,11 @@ class AuthController {
     );
     final user = response.user;
     if (user != null) {
-      // Upsert into profiles to make sure username and email are absolutely set
       await _client.from('profiles').upsert({
         'id': user.id,
         'username': username,
         'email': email,
       });
-      // Çıkış yap ki Kayıt Ol butonu direkt ana sayfaya atmasın.
       await _client.auth.signOut();
     }
   }
