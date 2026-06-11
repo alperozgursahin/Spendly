@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../auth/auth_provider.dart';
 import '../social/social_provider.dart';
 import 'currency_provider.dart';
+import '../transactions/transaction_provider.dart';
+import 'services/pdf_export_service.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -87,6 +89,36 @@ class ProfileScreen extends ConsumerWidget {
                   title: const Text('Şifre Değiştir'),
                   onTap: () {
                     context.push('/update-password');
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.picture_as_pdf),
+                  title: const Text('Aylık Raporu İndir (PDF)'),
+                  onTap: () async {
+                    try {
+                      // Import transactions provider
+                      final transactionsAsync = ref.read(
+                        transactionsProvider.future,
+                      );
+                      final transactions = await transactionsAsync;
+
+                      // Filter by current month
+                      final now = DateTime.now();
+                      final currentMonthTransactions = transactions.where((t) {
+                        return t.date.year == now.year &&
+                            t.date.month == now.month;
+                      }).toList();
+
+                      // Call service
+                      await PdfExportService.generateAndShareMonthlyReport(
+                        currentMonthTransactions,
+                        '${now.month}/${now.year}',
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('PDF Oluşturulamadı: $e')),
+                      );
+                    }
                   },
                 ),
                 const Spacer(),

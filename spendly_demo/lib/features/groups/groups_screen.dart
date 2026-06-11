@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../auth/auth_provider.dart';
-import '../subscriptions/subscription_provider.dart';
+import '../subscriptions/premium_provider.dart';
 import 'group_provider.dart';
 
 class GroupsScreen extends ConsumerWidget {
@@ -46,7 +46,7 @@ class GroupsScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          final isPremium = ref.read(isPremiumProvider);
+          final isPremium = ref.read(premiumProvider);
           final groupsCount = groupsAsync.value?.length ?? 0;
 
           if (!isPremium && groupsCount >= 2) {

@@ -70,3 +70,4 @@ final activityProvider = FutureProvider<List<ActivityItem>>((ref) async {
     return [];
   }
 });
+

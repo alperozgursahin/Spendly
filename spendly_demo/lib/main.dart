@@ -22,6 +22,8 @@ import 'features/profile/profile_screen.dart';
 import 'features/auth/update_password_screen.dart';
 import 'main_scaffold.dart';
 
+import 'features/subscriptions/revenuecat_config.dart';
+
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
     notifyListeners();
@@ -39,18 +41,20 @@ class GoRouterRefreshStream extends ChangeNotifier {
 
 const String supabaseUrl = 'https://lbalfjhpfslvqigdmbdg.supabase.co';
 const String supabaseAnonKey = 'sb_publishable_xMfTp_r3Owmzzt9733g-mw_4Q7lCb_A';
-const String revenueCatApiKeyApple = 'appl_dummy_production_key_123456';
-const String revenueCatApiKeyGoogle = 'goog_dummy_production_key_123456';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
 
-  if (Platform.isAndroid && revenueCatApiKeyGoogle.isNotEmpty) {
-    await Purchases.configure(PurchasesConfiguration(revenueCatApiKeyGoogle));
-  } else if (Platform.isIOS && revenueCatApiKeyApple.isNotEmpty) {
-    await Purchases.configure(PurchasesConfiguration(revenueCatApiKeyApple));
+  if (Platform.isAndroid && RevenueCatConfig.apiKeyAndroid.isNotEmpty) {
+    await Purchases.configure(
+      PurchasesConfiguration(RevenueCatConfig.apiKeyAndroid),
+    );
+  } else if (Platform.isIOS && RevenueCatConfig.apiKeyIOS.isNotEmpty) {
+    await Purchases.configure(
+      PurchasesConfiguration(RevenueCatConfig.apiKeyIOS),
+    );
   }
 
   runApp(const ProviderScope(child: MyApp()));

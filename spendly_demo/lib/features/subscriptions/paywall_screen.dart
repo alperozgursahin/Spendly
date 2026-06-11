@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import 'subscription_provider.dart';
+import 'premium_provider.dart';
 
 class PaywallScreen extends ConsumerWidget {
   const PaywallScreen({super.key});
@@ -53,7 +53,8 @@ class PaywallScreen extends ConsumerWidget {
               Expanded(
                 child: offeringsAsync.when(
                   data: (offerings) {
-                    if (offerings.current == null ||
+                    if (offerings == null ||
+                        offerings.current == null ||
                         offerings.current!.availablePackages.isEmpty) {
                       return const Center(
                         child: Text('Şu an paket bulunmuyor.'),
@@ -78,7 +79,7 @@ class PaywallScreen extends ConsumerWidget {
               TextButton(
                 onPressed: () async {
                   final success = await ref
-                      .read(isPremiumProvider.notifier)
+                      .read(premiumProvider.notifier)
                       .restorePurchases();
                   if (success && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -124,7 +125,7 @@ class PaywallScreen extends ConsumerWidget {
           );
 
           final success = await ref
-              .read(isPremiumProvider.notifier)
+              .read(premiumProvider.notifier)
               .purchasePackage(package);
 
           if (context.mounted) {
