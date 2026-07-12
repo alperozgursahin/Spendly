@@ -24,4 +24,8 @@ class CurrencyNotifier extends StateNotifier<String> {
     state = newCurrency;
     await _storage.write(key: _key, value: newCurrency);
   }
+
+  static Future<void> clearPersistedCurrency() async {
+    await _storage.delete(key: _key);
+  }
 }

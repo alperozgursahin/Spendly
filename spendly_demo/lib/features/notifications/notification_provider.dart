@@ -32,6 +32,13 @@ Future<DateTime> _loadInitialCursor(String userId) async {
   return now;
 }
 
+class NotificationCursorStorage {
+  static Future<void> clearCursor() async {
+    const storage = FlutterSecureStorage();
+    await storage.delete(key: _cursorKey);
+  }
+}
+
 Future<List<AppNotificationModel>> _buildNotifications(
   List<Map<String, dynamic>> rows,
   String userId,

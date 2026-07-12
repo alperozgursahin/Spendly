@@ -1,5 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../dashboard/activity_provider.dart';
+import '../filters/filters_provider.dart';
+import '../groups/group_provider.dart';
+import '../notifications/notification_provider.dart';
+import '../profile/currency_provider.dart';
+import '../social/chat_screen.dart';
+import '../social/other_user_profile_screen.dart';
+import '../social/social_provider.dart' show currentUserProfileProvider, friendsStreamProvider;
+import '../subscriptions/premium_provider.dart' show offeringsProvider, premiumProvider;
 
 final authClientProvider = Provider<GoTrueClient>((ref) {
   return Supabase.instance.client.auth;
@@ -69,7 +80,34 @@ class AuthController {
     );
   }
 
-  Future<void> signOut() async {
+  Future<void> signOut(Ref ref) async {
+    ref.invalidate(authStateProvider);
+    ref.invalidate(authClientProvider);
+    ref.invalidate(currencyProvider);
+    ref.invalidate(transactionFilterProvider);
+    ref.invalidate(groupPaidOverridesProvider);
+    ref.invalidate(groupDataRefreshProvider);
+    ref.invalidate(userGroupsProvider);
+    ref.invalidate(groupMembersProvider);
+    ref.invalidate(groupTransactionsStreamProvider);
+    ref.invalidate(transactionsProvider);
+    ref.invalidate(activityProvider);
+    ref.invalidate(currentUserProfileProvider);
+    ref.invalidate(friendsStreamProvider);
+    ref.invalidate(messagesStreamProvider);
+    ref.invalidate(otherUserProfileProvider);
+    ref.invalidate(userNotificationsProvider);
+    ref.invalidate(premiumProvider);
+    ref.invalidate(offeringsProvider);
+    ref.read(premiumProvider.notifier).reset();
+
+    await CurrencyNotifier.clearPersistedCurrency();
+    await NotificationCursorStorage.clearCursor();
+
+    try {
+      await Purchases.logOut();
+    } catch (_) {}
+
     await _client.auth.signOut();
   }
 }
