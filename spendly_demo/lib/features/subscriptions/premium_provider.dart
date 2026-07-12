@@ -15,7 +15,7 @@ class PremiumNotifier extends StateNotifier<bool> {
 
   Future<void> _init() async {
     try {
-      if (kIsWeb) return; // RevenueCat web desteklemiyor
+      if (kIsWeb) return;
 
       Purchases.addCustomerInfoUpdateListener((customerInfo) {
         _updatePremiumStatus(customerInfo);
@@ -63,6 +63,10 @@ class PremiumNotifier extends StateNotifier<bool> {
       debugPrint("Restore failed: $e");
       return false;
     }
+  }
+
+  void reset() {
+    state = false;
   }
 }
 

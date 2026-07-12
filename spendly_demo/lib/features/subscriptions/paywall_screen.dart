@@ -129,12 +129,12 @@ class PaywallScreen extends ConsumerWidget {
               .purchasePackage(package);
 
           if (context.mounted) {
-            Navigator.pop(context); // loading dialog'u kapat
+            Navigator.pop(context);
             if (success) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Spendly Pro\'ya hoş geldiniz!')),
               );
-              context.pop(); // Paywall'u kapat
+              context.pop(); 
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(

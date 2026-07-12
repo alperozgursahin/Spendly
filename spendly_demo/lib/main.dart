@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:go_router/go_router.dart';
-
+import 'package:flutter/foundation.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
@@ -39,22 +40,23 @@ class GoRouterRefreshStream extends ChangeNotifier {
   }
 }
 
-const String supabaseUrl = 'https://lbalfjhpfslvqigdmbdg.supabase.co';
-const String supabaseAnonKey = 'sb_publishable_xMfTp_r3Owmzzt9733g-mw_4Q7lCb_A';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+  await dotenv.load(fileName: '.env');
 
-  if (Platform.isAndroid && RevenueCatConfig.apiKeyAndroid.isNotEmpty) {
-    await Purchases.configure(
-      PurchasesConfiguration(RevenueCatConfig.apiKeyAndroid),
-    );
-  } else if (Platform.isIOS && RevenueCatConfig.apiKeyIOS.isNotEmpty) {
-    await Purchases.configure(
-      PurchasesConfiguration(RevenueCatConfig.apiKeyIOS),
-    );
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL'] ?? '',
+    anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
+  );
+
+  final revenueCatKey = Platform.isAndroid
+      ? RevenueCatConfig.apiKeyAndroid
+      : RevenueCatConfig.apiKeyIOS;
+
+  if (revenueCatKey.isNotEmpty) {
+    await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.warn);
+    await Purchases.configure(PurchasesConfiguration(revenueCatKey));
   }
 
   runApp(const ProviderScope(child: MyApp()));
