@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import { Analytics } from "@vercel/analytics/react"
+import React, { useState, useEffect, useRef } from "react";
 import {
   Wallet,
   Menu,
@@ -15,7 +14,22 @@ import {
   Shield,
   ChevronDown,
   Send,
+  Loader2,
 } from "lucide-react";
+
+/* ---------------------------------------------------------
+   NOTE ON ANIMATION LIBRARY
+   ---------------------------------------------------------
+   This sandbox does not have framer-motion available to import,
+   so all of the requested effects (scroll reveals, staggered
+   entrances, floating mockups, pulsing orbs, hover/tap micro
+   interactions) are built with native React (IntersectionObserver)
+   plus plain CSS keyframes/transitions instead. The visual result
+   is the same. If you paste this into a project that does have
+   framer-motion installed, this still works as-is, you can swap
+   the Reveal/float/pulse helpers below for <motion.div> later if
+   you prefer.
+--------------------------------------------------------- */
 
 /* ---------------------------------------------------------
    Translations
@@ -155,7 +169,9 @@ const translations = {
       messageLabel: "Message",
       messagePlaceholder: "How can we help?",
       send: "Send message",
+      sending: "Sending...",
       sentMessage: "Thanks for reaching out! We will get back to you shortly.",
+      errorMessage: "Something went wrong. Please try again in a moment.",
     },
     finalCta: {
       title: "Ready to split smarter?",
@@ -301,7 +317,9 @@ const translations = {
       messageLabel: "Mesaj",
       messagePlaceholder: "Nasıl yardımcı olabiliriz?",
       send: "Mesaj gönder",
+      sending: "Gönderiliyor...",
       sentMessage: "Mesajın için teşekkürler! En kısa sürede dönüş yapacağız.",
+      errorMessage: "Bir şeyler ters gitti. Lütfen birazdan tekrar dene.",
     },
     finalCta: {
       title: "Daha akıllı bölüşmeye hazır mısın?",
@@ -323,9 +341,86 @@ const FEATURE_META = [
   { image: "/heatmap-ss.png", imageAlt: "Spendly spending heatmap screen", reverse: false },
 ];
 
+const FORMSPREE_ENDPOINT = "https://formspree.io/f/maqryybk";
+
+/* ---------------------------------------------------------
+   Animation helpers (no external library required)
+--------------------------------------------------------- */
+
+function useInView(options) {
+  const ref = useRef(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          observer.unobserve(el);
+        }
+      },
+      { threshold: 0.15, rootMargin: "-80px 0px -80px 0px", ...options }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return [ref, inView];
+}
+
+/**
+ * Scroll reveal, equivalent to:
+ * initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
+ * transition={{ duration: 0.6 }} viewport={{ once: true, margin: "-100px" }}
+ * Supports a `delay` (ms) so sibling instances create a staggered entrance.
+ */
+function Reveal({ children, delay = 0, className = "", as: Tag = "div" }) {
+  const [ref, inView] = useInView();
+  return (
+    <Tag
+      ref={ref}
+      className={`transition-all duration-700 ease-out ${inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"} ${className}`}
+      style={{ transitionDelay: inView ? `${delay}ms` : "0ms" }}
+    >
+      {children}
+    </Tag>
+  );
+}
+
+/** Fades in the very first time it mounts, used for above-the-fold hero content. */
+function MountReveal({ children, delay = 0, className = "" }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setShown(true), 60 + delay);
+    return () => clearTimeout(id);
+  }, [delay]);
+  return (
+    <div className={`transition-all duration-700 ease-out ${shown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"} ${className}`}>
+      {children}
+    </div>
+  );
+}
+
 /* ---------------------------------------------------------
    Small building blocks
 --------------------------------------------------------- */
+
+function AmbientOrbs() {
+  return (
+    <>
+      <div
+        className="spendly-pulse pointer-events-none absolute -left-24 top-10 -z-10 h-72 w-72 rounded-full bg-purple-600/25 blur-3xl"
+        style={{ animationDelay: "0s" }}
+      />
+      <div
+        className="spendly-pulse pointer-events-none absolute -right-24 bottom-0 -z-10 h-72 w-72 rounded-full bg-blue-600/20 blur-3xl"
+        style={{ animationDelay: "1.5s" }}
+      />
+    </>
+  );
+}
 
 function GhostGrid() {
   return (
@@ -356,7 +451,7 @@ function PlayBadge({ className = "" }) {
   return (
     <button
       className={
-        "group inline-flex items-center gap-3 rounded-xl bg-white px-6 py-3.5 text-slate-900 shadow-lg shadow-purple-500/10 transition-transform hover:-translate-y-0.5 active:translate-y-0 " +
+        "group inline-flex items-center gap-3 rounded-xl bg-white px-6 py-3.5 text-slate-900 shadow-lg shadow-purple-500/10 transition-transform duration-200 hover:-translate-y-0.5 active:scale-95 " +
         className
       }
     >
@@ -376,7 +471,7 @@ function LanguageToggle({ lang, setLang, className = "" }) {
         <button
           key={code}
           onClick={() => setLang(code)}
-          className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+          className={`rounded-full px-3 py-1 text-xs font-semibold transition-all duration-200 active:scale-90 ${
             lang === code ? "bg-white text-slate-900" : "text-slate-400 hover:text-white"
           }`}
         >
@@ -391,16 +486,17 @@ function LanguageToggle({ lang, setLang, className = "" }) {
  * Realistic, premium phone mockup for real app screenshots.
  * Uses object-contain so the full screenshot is always visible,
  * never stretched or cropped. Swap the src for your own screenshot.
+ * Floats gently and lifts slightly further on hover.
  */
-function PhoneMockup({ src, alt, size = "w-[250px] sm:w-[290px]" }) {
+function PhoneMockup({ src, alt, size = "w-[250px] sm:w-[290px]", floatDelay = "0s" }) {
   return (
-    <div className={`relative ${size}`}>
+    <div className={`spendly-float relative ${size}`} style={{ animationDelay: floatDelay }}>
       <div
-        className="absolute inset-0 -z-10 rounded-full bg-purple-600/30 blur-3xl"
-        style={{ transform: "scale(1.15)" }}
+        className="spendly-pulse absolute inset-0 -z-10 rounded-full bg-purple-600/30 blur-3xl"
+        style={{ animationDelay: floatDelay }}
       />
       <div
-        className="relative border border-slate-700/60 bg-gradient-to-b from-slate-800 to-slate-950 shadow-2xl shadow-purple-500/20"
+        className="group relative border border-slate-700/60 bg-gradient-to-b from-slate-800 to-slate-950 shadow-2xl shadow-purple-500/20 transition-all duration-500 hover:scale-[1.03] hover:shadow-purple-500/40"
         style={{ borderRadius: "2.75rem", padding: "10px" }}
       >
         <div className="absolute bg-slate-700" style={{ left: "-2px", top: "96px", width: "2px", height: "28px", borderRadius: "2px" }} />
@@ -464,7 +560,7 @@ function Nav({ t, lang, setLang }) {
           <a href="#pro" className="text-sm text-slate-400 hover:text-white">{t.nav.signIn}</a>
           <a
             href="#download"
-            className="rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-purple-500/20 transition-transform hover:-translate-y-0.5"
+            className="rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-purple-500/20 transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
           >
             {t.nav.getApp}
           </a>
@@ -472,7 +568,7 @@ function Nav({ t, lang, setLang }) {
 
         <div className="flex items-center gap-3 md:hidden">
           <LanguageToggle lang={lang} setLang={setLang} />
-          <button className="text-slate-300" onClick={() => setOpen((o) => !o)} aria-label="Toggle menu">
+          <button className="text-slate-300 transition-transform active:scale-90" onClick={() => setOpen((o) => !o)} aria-label="Toggle menu">
             {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
@@ -489,7 +585,7 @@ function Nav({ t, lang, setLang }) {
             <a
               href="#download"
               onClick={() => setOpen(false)}
-              className="rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 px-4 py-2 text-center text-sm font-medium text-white"
+              className="rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 px-4 py-2 text-center text-sm font-medium text-white active:scale-95"
             >
               {t.nav.getApp}
             </a>
@@ -508,40 +604,53 @@ function Hero({ t }) {
   return (
     <section className="relative overflow-hidden px-5 pb-24 pt-20 sm:pt-28">
       <GhostGrid />
+      <AmbientOrbs />
       <div className="mx-auto grid max-w-6xl items-center gap-16 lg:grid-cols-2">
         <div>
-          <SectionEyebrow>{t.hero.eyebrow}</SectionEyebrow>
-          <h1
-            className="mt-6 text-5xl font-semibold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl"
-            style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            {t.hero.titleLine1}
-            <br />
-            <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-              {t.hero.titleLine2}
-            </span>
-          </h1>
-          <p className="mt-6 max-w-md text-lg leading-relaxed text-slate-400">{t.hero.desc}</p>
+          <MountReveal delay={0}>
+            <SectionEyebrow>{t.hero.eyebrow}</SectionEyebrow>
+          </MountReveal>
 
-          <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <PlayBadge />
-            <a
-              href="#how"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 px-6 py-3.5 text-sm font-medium text-slate-200 transition-colors hover:border-slate-500 hover:text-white"
+          <MountReveal delay={100}>
+            <h1
+              className="mt-6 text-5xl font-semibold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl"
+              style={{ fontFamily: "'Space Grotesk', sans-serif" }}
             >
-              {t.hero.ctaSecondary}
-              <ArrowRight className="h-4 w-4" />
-            </a>
-          </div>
+              {t.hero.titleLine1}
+              <br />
+              <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+                {t.hero.titleLine2}
+              </span>
+            </h1>
+          </MountReveal>
 
-          <div className="mt-14 flex flex-wrap items-center gap-x-10 gap-y-4 border-t border-white/5 pt-8">
-            {t.hero.stats.map(([n, l]) => (
-              <div key={l}>
-                <p className="text-2xl font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{n}</p>
-                <p className="text-xs text-slate-500">{l}</p>
-              </div>
-            ))}
-          </div>
+          <MountReveal delay={200}>
+            <p className="mt-6 max-w-md text-lg leading-relaxed text-slate-400">{t.hero.desc}</p>
+          </MountReveal>
+
+          <MountReveal delay={300}>
+            <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <PlayBadge />
+              <a
+                href="#how"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 px-6 py-3.5 text-sm font-medium text-slate-200 transition-all duration-200 hover:border-slate-500 hover:text-white active:scale-95"
+              >
+                {t.hero.ctaSecondary}
+                <ArrowRight className="h-4 w-4" />
+              </a>
+            </div>
+          </MountReveal>
+
+          <MountReveal delay={400}>
+            <div className="mt-14 flex flex-wrap items-center gap-x-10 gap-y-4 border-t border-white/5 pt-8">
+              {t.hero.stats.map(([n, l]) => (
+                <div key={l}>
+                  <p className="text-2xl font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{n}</p>
+                  <p className="text-xs text-slate-500">{l}</p>
+                </div>
+              ))}
+            </div>
+          </MountReveal>
         </div>
 
         <div className="flex justify-center">
@@ -560,15 +669,15 @@ function HowItWorks({ t }) {
   return (
     <section id="how" className="relative border-y border-white/5 bg-slate-900/20 px-5 py-24">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-16 max-w-xl">
+        <Reveal className="mb-16 max-w-xl">
           <SectionEyebrow>{t.how.eyebrow}</SectionEyebrow>
           <h2 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             {t.how.title}
           </h2>
-        </div>
+        </Reveal>
         <div className="grid gap-10 sm:grid-cols-3">
           {t.how.steps.map((s, i) => (
-            <div key={s.title} className="relative">
+            <Reveal key={s.title} delay={i * 150} className="relative">
               <span
                 className="text-6xl font-semibold text-transparent"
                 style={{ WebkitTextStroke: "1px rgba(168,85,247,0.4)", fontFamily: "'Space Grotesk', sans-serif" }}
@@ -582,7 +691,7 @@ function HowItWorks({ t }) {
               {i < t.how.steps.length - 1 && (
                 <div className="absolute right-[-1.25rem] top-8 hidden h-px w-10 bg-gradient-to-r from-purple-500/40 to-transparent sm:block" />
               )}
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -596,9 +705,9 @@ function HowItWorks({ t }) {
 
 function ZigZagFeature({ item, meta }) {
   return (
-    <div className={`flex flex-col items-center gap-12 lg:gap-20 ${meta.reverse ? "lg:flex-row-reverse" : "lg:flex-row"}`}>
+    <Reveal className={`flex flex-col items-center gap-12 lg:gap-20 ${meta.reverse ? "lg:flex-row-reverse" : "lg:flex-row"}`}>
       <div className="flex w-full justify-center lg:w-1/2">
-        <PhoneMockup src={meta.image} alt={meta.imageAlt} />
+        <PhoneMockup src={meta.image} alt={meta.imageAlt} floatDelay={meta.reverse ? "1.2s" : "0.4s"} />
       </div>
       <div className="w-full lg:w-1/2">
         <SectionEyebrow>{item.eyebrow}</SectionEyebrow>
@@ -620,7 +729,7 @@ function ZigZagFeature({ item, meta }) {
           ))}
         </ul>
       </div>
-    </div>
+    </Reveal>
   );
 }
 
@@ -628,13 +737,13 @@ function Features({ t }) {
   return (
     <section id="features" className="relative px-5 py-24 sm:py-32">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-20 max-w-xl">
+        <Reveal className="mb-20 max-w-xl">
           <SectionEyebrow>{t.features.eyebrow}</SectionEyebrow>
           <h2 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             {t.features.title}
           </h2>
           <p className="mt-4 text-lg text-slate-400">{t.features.subtitle}</p>
-        </div>
+        </Reveal>
 
         <div className="space-y-28 sm:space-y-36">
           {t.features.items.map((item, i) => (
@@ -654,53 +763,57 @@ function Pro({ t }) {
   return (
     <section id="pro" className="relative border-y border-white/5 bg-slate-900/20 px-5 py-24 sm:py-32">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-16 max-w-xl">
+        <Reveal className="mb-16 max-w-xl">
           <SectionEyebrow>{t.pro.eyebrow}</SectionEyebrow>
           <h2 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             {t.pro.title}
           </h2>
-        </div>
+        </Reveal>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-10">
-            <p className="text-sm font-medium text-slate-400">{t.pro.free.name}</p>
-            <p className="mt-3 text-4xl font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{t.pro.free.price}</p>
-            <p className="mt-1 text-sm text-slate-500">{t.pro.free.priceNote}</p>
-            <ul className="mt-8 space-y-4">
-              {t.pro.free.features.map((f) => (
-                <li key={f} className="flex items-start gap-3 text-base text-slate-300">
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-800">
-                    <Check className="h-3.5 w-3.5 text-slate-400" />
-                  </span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="relative overflow-hidden rounded-2xl border border-purple-500/40 bg-gradient-to-b from-purple-500/10 to-slate-900/40 p-10">
-            <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-purple-500/20 blur-3xl" />
-            <div className="mb-2 flex items-center gap-2">
-              <Crown className="h-4 w-4 text-purple-400" />
-              <p className="text-sm font-medium text-purple-300">{t.pro.pro.name}</p>
+          <Reveal delay={0}>
+            <div className="h-full rounded-2xl border border-slate-800 bg-slate-900/40 p-10 transition-all duration-300 hover:-translate-y-1.5 hover:scale-[1.01] hover:border-slate-600 hover:shadow-2xl hover:shadow-slate-900/50">
+              <p className="text-sm font-medium text-slate-400">{t.pro.free.name}</p>
+              <p className="mt-3 text-4xl font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{t.pro.free.price}</p>
+              <p className="mt-1 text-sm text-slate-500">{t.pro.free.priceNote}</p>
+              <ul className="mt-8 space-y-4">
+                {t.pro.free.features.map((f) => (
+                  <li key={f} className="flex items-start gap-3 text-base text-slate-300">
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-800">
+                      <Check className="h-3.5 w-3.5 text-slate-400" />
+                    </span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <p className="text-4xl font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              {t.pro.pro.price}
-              <span className="text-lg font-normal text-slate-400">/mo</span>
-            </p>
-            <p className="mt-1 text-sm text-slate-500">{t.pro.pro.priceNote}</p>
-            <ul className="mt-8 space-y-4">
-              {t.pro.pro.features.map((f) => (
-                <li key={f} className="flex items-start gap-3 text-base text-slate-200">
-                  <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-purple-400" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <button className="mt-10 w-full rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 py-3.5 text-sm font-medium text-white shadow-lg shadow-purple-500/20 transition-transform hover:-translate-y-0.5">
-              {t.pro.pro.cta}
-            </button>
-          </div>
+          </Reveal>
+
+          <Reveal delay={150}>
+            <div className="relative h-full overflow-hidden rounded-2xl border border-purple-500/40 bg-gradient-to-b from-purple-500/10 to-slate-900/40 p-10 transition-all duration-300 hover:-translate-y-1.5 hover:scale-[1.01] hover:border-purple-400/70 hover:shadow-2xl hover:shadow-purple-500/30">
+              <div className="spendly-pulse absolute -right-10 -top-10 h-48 w-48 rounded-full bg-purple-500/20 blur-3xl" />
+              <div className="mb-2 flex items-center gap-2">
+                <Crown className="h-4 w-4 text-purple-400" />
+                <p className="text-sm font-medium text-purple-300">{t.pro.pro.name}</p>
+              </div>
+              <p className="text-4xl font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                {t.pro.pro.price}
+                <span className="text-lg font-normal text-slate-400">/mo</span>
+              </p>
+              <p className="mt-1 text-sm text-slate-500">{t.pro.pro.priceNote}</p>
+              <ul className="mt-8 space-y-4">
+                {t.pro.pro.features.map((f) => (
+                  <li key={f} className="flex items-start gap-3 text-base text-slate-200">
+                    <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-purple-400" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button className="mt-10 w-full rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 py-3.5 text-sm font-medium text-white shadow-lg shadow-purple-500/20 transition-all duration-200 hover:-translate-y-0.5 active:scale-95">
+                {t.pro.pro.cta}
+              </button>
+            </div>
+          </Reveal>
         </div>
       </div>
     </section>
@@ -738,18 +851,20 @@ function FAQ({ t }) {
   return (
     <section id="faq" className="relative px-5 py-24 sm:py-32">
       <div className="mx-auto max-w-3xl">
-        <div className="mb-14 text-center">
+        <Reveal className="mb-14 text-center">
           <div className="flex justify-center">
             <SectionEyebrow>{t.faq.eyebrow}</SectionEyebrow>
           </div>
           <h2 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             {t.faq.title}
           </h2>
-        </div>
+        </Reveal>
 
         <div>
           {t.faq.items.map((item, i) => (
-            <FaqItem key={item.q} item={item} isOpen={openIndex === i} onToggle={() => setOpenIndex(openIndex === i ? -1 : i)} />
+            <Reveal key={item.q} delay={i * 100}>
+              <FaqItem item={item} isOpen={openIndex === i} onToggle={() => setOpenIndex(openIndex === i ? -1 : i)} />
+            </Reveal>
           ))}
         </div>
       </div>
@@ -758,21 +873,35 @@ function FAQ({ t }) {
 }
 
 /* ---------------------------------------------------------
-   Contact
+   Contact (Formspree powered)
 --------------------------------------------------------- */
 
 function Contact({ t }) {
   const [form, setForm] = useState({ name: "", email: "", message: "" });
-  const [sent, setSent] = useState(false);
+  const [status, setStatus] = useState("idle"); // idle | submitting | success | error
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSent(true);
-    setForm({ name: "", email: "", message: "" });
+    setStatus("submitting");
+    try {
+      const res = await fetch(e.target.action, {
+        method: "POST",
+        body: new FormData(e.target),
+        headers: { Accept: "application/json" },
+      });
+      if (res.ok) {
+        setStatus("success");
+        setForm({ name: "", email: "", message: "" });
+      } else {
+        setStatus("error");
+      }
+    } catch (err) {
+      setStatus("error");
+    }
   };
 
   const inputClasses =
@@ -781,8 +910,9 @@ function Contact({ t }) {
   return (
     <section id="contact" className="relative border-t border-white/5 px-5 py-24 sm:py-32">
       <GhostGrid />
+      <AmbientOrbs />
       <div className="relative mx-auto max-w-2xl">
-        <div className="mb-12 text-center">
+        <Reveal className="mb-12 text-center">
           <div className="flex justify-center">
             <SectionEyebrow>{t.contact.eyebrow}</SectionEyebrow>
           </div>
@@ -790,65 +920,83 @@ function Contact({ t }) {
             {t.contact.title}
           </h2>
           <p className="mx-auto mt-4 max-w-md text-lg text-slate-400">{t.contact.desc}</p>
-        </div>
+        </Reveal>
 
-        <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 sm:p-8">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                {t.contact.nameLabel}
-              </label>
-              <input
-                type="text"
-                name="name"
-                required
-                value={form.name}
-                onChange={handleChange}
-                placeholder={t.contact.namePlaceholder}
-                className={inputClasses}
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                {t.contact.emailLabel}
-              </label>
-              <input
-                type="email"
-                name="email"
-                required
-                value={form.email}
-                onChange={handleChange}
-                placeholder={t.contact.emailPlaceholder}
-                className={inputClasses}
-              />
-            </div>
-          </div>
-
-          <div className="mt-5">
-            <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
-              {t.contact.messageLabel}
-            </label>
-            <textarea
-              name="message"
-              required
-              rows={4}
-              value={form.message}
-              onChange={handleChange}
-              placeholder={t.contact.messagePlaceholder}
-              className={`${inputClasses} resize-none`}
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 py-3.5 text-sm font-medium text-white shadow-lg shadow-purple-500/20 transition-transform hover:-translate-y-0.5 sm:w-auto sm:px-8"
+        <Reveal delay={150}>
+          <form
+            action={FORMSPREE_ENDPOINT}
+            method="POST"
+            onSubmit={handleSubmit}
+            className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 transition-all duration-300 hover:border-slate-700 sm:p-8"
           >
-            <Send className="h-4 w-4" />
-            {t.contact.send}
-          </button>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                  {t.contact.nameLabel}
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  value={form.name}
+                  onChange={handleChange}
+                  placeholder={t.contact.namePlaceholder}
+                  className={inputClasses}
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                  {t.contact.emailLabel}
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder={t.contact.emailPlaceholder}
+                  className={inputClasses}
+                />
+              </div>
+            </div>
 
-          {sent && <p className="mt-4 text-sm text-purple-300">{t.contact.sentMessage}</p>}
-        </form>
+            <div className="mt-5">
+              <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                {t.contact.messageLabel}
+              </label>
+              <textarea
+                name="message"
+                required
+                rows={4}
+                value={form.message}
+                onChange={handleChange}
+                placeholder={t.contact.messagePlaceholder}
+                className={`${inputClasses} resize-none`}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={status === "submitting"}
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 py-3.5 text-sm font-medium text-white shadow-lg shadow-purple-500/20 transition-all duration-200 hover:-translate-y-0.5 active:scale-95 disabled:opacity-70 sm:w-auto sm:px-8"
+            >
+              {status === "submitting" ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t.contact.sending}
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  {t.contact.send}
+                </>
+              )}
+            </button>
+
+            {status === "success" && <p className="mt-4 text-sm text-purple-300">{t.contact.sentMessage}</p>}
+            {status === "error" && <p className="mt-4 text-sm text-rose-400">{t.contact.errorMessage}</p>}
+          </form>
+        </Reveal>
       </div>
     </section>
   );
@@ -862,7 +1010,8 @@ function FinalCTA({ t }) {
   return (
     <section id="download" className="relative overflow-hidden border-t border-white/5 px-5 py-28">
       <GhostGrid />
-      <div className="mx-auto max-w-3xl text-center">
+      <AmbientOrbs />
+      <Reveal className="mx-auto max-w-3xl text-center">
         <div className="mx-auto mb-7 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-blue-500">
           <Wallet className="h-7 w-7 text-white" />
         </div>
@@ -879,7 +1028,7 @@ function FinalCTA({ t }) {
           ))}
           <span className="ml-2 text-sm">4.8 {t.finalCta.ratingText}</span>
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }
@@ -914,6 +1063,28 @@ export default function SpendlyLanding() {
     <div className="min-h-screen w-full bg-slate-950 text-slate-100" style={{ fontFamily: "'Inter', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        @keyframes spendly-float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+        .spendly-float {
+          animation: spendly-float 6s ease-in-out infinite;
+        }
+
+        @keyframes spendly-pulse {
+          0%, 100% { opacity: 0.22; transform: scale(1); }
+          50% { opacity: 0.45; transform: scale(1.1); }
+        }
+        .spendly-pulse {
+          animation: spendly-pulse 5s ease-in-out infinite;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .spendly-float, .spendly-pulse {
+            animation: none !important;
+          }
+        }
       `}</style>
       <Nav t={t} lang={lang} setLang={setLang} />
       <Hero t={t} />
@@ -924,7 +1095,6 @@ export default function SpendlyLanding() {
       <Contact t={t} />
       <FinalCTA t={t} />
       <Footer t={t} />
-      <Analytics />
     </div>
   );
 }
