@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Analytics } from "@vercel/analytics/react"
 import {
   Wallet,
   Menu,
@@ -923,6 +924,7 @@ export default function SpendlyLanding() {
       <Contact t={t} />
       <FinalCTA t={t} />
       <Footer t={t} />
+      <Analytics />
     </div>
   );
 }
