@@ -20,7 +20,7 @@ final groupPaidOverridesProvider = StateNotifierProvider<
 
 final userGroupsProvider = FutureProvider<List<GroupModel>>((ref) async {
   final service = ref.watch(groupServiceProvider);
-  final userId = ref.watch(authClientProvider).currentUser?.id;
+  final userId = ref.watch(currentUserIdProvider);
   if (userId == null) return [];
   return service.getUserGroups(userId);
 });

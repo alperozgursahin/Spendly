@@ -5,7 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_provider.dart';
 import 'notification_model.dart';
 
-const _cursorKey = 'notification_feature_cutoff';
+String _cursorKeyFor(String userId) => 'notification_feature_cutoff_$userId';
 
 final userNotificationsProvider =
     StreamProvider.family<List<AppNotificationModel>, String>((ref, userId) {
@@ -23,21 +23,21 @@ final userNotificationsProvider =
 
 Future<DateTime> _loadInitialCursor(String userId) async {
   const storage = FlutterSecureStorage();
-  final storedValue = await storage.read(key: _cursorKey);
+  final storedValue = await storage.read(key: _cursorKeyFor(userId));
   if (storedValue != null) {
     final parsed = DateTime.tryParse(storedValue);
     if (parsed != null) return parsed.toUtc();
   }
 
   final now = DateTime.now().toUtc();
-  await storage.write(key: _cursorKey, value: now.toIso8601String());
+  await storage.write(key: _cursorKeyFor(userId), value: now.toIso8601String());
   return now;
 }
 
 class NotificationCursorStorage {
-  static Future<void> clearCursor() async {
+  static Future<void> clearCursor(String userId) async {
     const storage = FlutterSecureStorage();
-    await storage.delete(key: _cursorKey);
+    await storage.delete(key: _cursorKeyFor(userId));
   }
 }
 

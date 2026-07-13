@@ -12,8 +12,7 @@ final transactionsProvider = FutureProvider<List<TransactionModel>>((
   ref,
 ) async {
   final service = ref.watch(transactionServiceProvider);
-  final authClient = ref.watch(authClientProvider);
-  final userId = authClient.currentUser?.id;
+  final userId = ref.watch(currentUserIdProvider);
 
   if (userId == null) return [];
 

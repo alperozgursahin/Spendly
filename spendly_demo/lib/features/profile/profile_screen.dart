@@ -136,7 +136,7 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
                   onPressed: () async {
-                    await ref.read(authControllerProvider).signOut(ref);
+                    await ref.read(authControllerProvider).signOut();
                     if (!context.mounted) return;
                     context.go('/login');
                   },
@@ -170,7 +170,7 @@ class ProfileScreen extends ConsumerWidget {
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             onPressed: () async {
               Navigator.pop(ctx);
-              await ref.read(authControllerProvider).signOut(ref);
+              await ref.read(authControllerProvider).signOut();
               if (!context.mounted) return;
               context.go('/login');
             },
