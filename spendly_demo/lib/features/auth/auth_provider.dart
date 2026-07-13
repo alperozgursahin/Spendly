@@ -3,6 +3,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../dashboard/activity_provider.dart';
+import '../dashboard/heatmap_provider.dart';
 import '../filters/filters_provider.dart';
 import '../groups/group_provider.dart';
 import '../notifications/notification_provider.dart';
@@ -23,14 +24,30 @@ final authStateProvider = StreamProvider<AuthState>((ref) {
   return ref.watch(authClientProvider).onAuthStateChange;
 });
 
+// `authClientProvider` always resolves to the same GoTrueClient instance, so
+// invalidating it doesn't notify anything watching `.currentUser` off of it —
+// Riverpod skips the rebuild because the returned value is `==` to the last
+// one. Providers that need to react to login/logout should watch this
+// instead: it derives from `authStateProvider`, whose AsyncValue genuinely
+// changes on every auth event, so dependents recompute reliably right when
+// a new session starts (not just when something remembers to invalidate them).
+final currentUserIdProvider = Provider<String?>((ref) {
+  final authState = ref.watch(authStateProvider);
+  return authState.maybeWhen(
+    data: (state) => state.session?.user.id,
+    orElse: () => ref.read(authClientProvider).currentUser?.id,
+  );
+});
+
 final authControllerProvider = Provider<AuthController>((ref) {
-  return AuthController(Supabase.instance.client);
+  return AuthController(Supabase.instance.client, ref);
 });
 
 class AuthController {
   final SupabaseClient _client;
+  final Ref _ref;
 
-  AuthController(this._client);
+  AuthController(this._client, this._ref);
 
   Future<void> signInWithUsername({
     required String username,
@@ -83,34 +100,48 @@ class AuthController {
     );
   }
 
-  Future<void> signOut(WidgetRef ref) async {
-    ref.invalidate(authStateProvider);
-    ref.invalidate(authClientProvider);
-    ref.invalidate(currencyProvider);
-    ref.invalidate(transactionFilterProvider);
-    ref.invalidate(groupPaidOverridesProvider);
-    ref.invalidate(groupDataRefreshProvider);
-    ref.invalidate(userGroupsProvider);
-    ref.invalidate(groupMembersProvider);
-    ref.invalidate(groupTransactionsStreamProvider);
-    ref.invalidate(transactionsProvider);
-    ref.invalidate(activityProvider);
-    ref.invalidate(currentUserProfileProvider);
-    ref.invalidate(friendsStreamProvider);
-    ref.invalidate(messagesStreamProvider);
-    ref.invalidate(otherUserProfileProvider);
-    ref.invalidate(userNotificationsProvider);
-    ref.invalidate(premiumProvider);
-    ref.invalidate(offeringsProvider);
-    ref.read(premiumProvider.notifier).reset();
+  // Uses the controller's own long-lived `_ref` rather than a screen's
+  // WidgetRef: signing out triggers an immediate router redirect that can
+  // unmount the calling screen mid-flight, which would throw on any
+  // invalidate() call made after that point via a widget-bound ref — silently
+  // aborting the rest of the cleanup and leaving stale data cached for the
+  // next account that logs in.
+  Future<void> signOut() async {
+    final outgoingUserId = _client.auth.currentUser?.id;
 
-    await CurrencyNotifier.clearPersistedCurrency();
-    await NotificationCursorStorage.clearCursor();
+    // Tear down the real session and third-party SDK state *before*
+    // invalidating providers, so nothing can refetch the outgoing user's
+    // data into a provider cache during the invalidation window.
+    await _client.auth.signOut();
 
     try {
       await Purchases.logOut();
     } catch (_) {}
 
-    await _client.auth.signOut();
+    if (outgoingUserId != null) {
+      await NotificationCursorStorage.clearCursor(outgoingUserId);
+    }
+    await CurrencyNotifier.clearPersistedCurrency();
+
+    _ref.invalidate(authStateProvider);
+    _ref.invalidate(authClientProvider);
+    _ref.invalidate(currencyProvider);
+    _ref.invalidate(transactionFilterProvider);
+    _ref.invalidate(groupPaidOverridesProvider);
+    _ref.invalidate(groupDataRefreshProvider);
+    _ref.invalidate(userGroupsProvider);
+    _ref.invalidate(groupMembersProvider);
+    _ref.invalidate(groupTransactionsStreamProvider);
+    _ref.invalidate(transactionsProvider);
+    _ref.invalidate(activityProvider);
+    _ref.invalidate(heatmapRangeProvider);
+    _ref.invalidate(currentUserProfileProvider);
+    _ref.invalidate(friendsStreamProvider);
+    _ref.invalidate(messagesStreamProvider);
+    _ref.invalidate(otherUserProfileProvider);
+    _ref.invalidate(userNotificationsProvider);
+    _ref.invalidate(premiumProvider);
+    _ref.invalidate(offeringsProvider);
+    _ref.read(premiumProvider.notifier).reset();
   }
 }

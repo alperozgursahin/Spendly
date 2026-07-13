@@ -9,14 +9,14 @@ final socialServiceProvider = Provider((ref) {
 final currentUserProfileProvider = FutureProvider<Map<String, dynamic>>((
   ref,
 ) async {
-  final user = ref.watch(authClientProvider).currentUser;
-  if (user == null) throw Exception('No user found');
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) throw Exception('No user found');
 
   final db = Supabase.instance.client;
-  var res = await db.from('profiles').select().eq('id', user.id).maybeSingle();
+  var res = await db.from('profiles').select().eq('id', userId).maybeSingle();
 
   if (res == null) {
-    res = await db.from('profiles').insert({'id': user.id}).select().single();
+    res = await db.from('profiles').insert({'id': userId}).select().single();
   }
 
   return res;
@@ -25,8 +25,8 @@ final currentUserProfileProvider = FutureProvider<Map<String, dynamic>>((
 final friendsStreamProvider = StreamProvider<List<Map<String, dynamic>>>((
   ref,
 ) async* {
-  final user = ref.watch(authClientProvider).currentUser;
-  if (user == null) {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) {
     yield [];
     return;
   }
@@ -35,12 +35,12 @@ final friendsStreamProvider = StreamProvider<List<Map<String, dynamic>>>((
 
   await for (var events in db.from('friendships').stream(primaryKey: ['id'])) {
     final friendships = events
-        .where((e) => e['user_id1'] == user.id || e['user_id2'] == user.id)
+        .where((e) => e['user_id1'] == userId || e['user_id2'] == userId)
         .toList();
 
     List<Map<String, dynamic>> enrichedFriendships = [];
     for (var f in friendships) {
-      final isSender = f['user_id1'] == user.id;
+      final isSender = f['user_id1'] == userId;
       final targetUserId = isSender ? f['user_id2'] : f['user_id1'];
 
       final profileFetch = await db
