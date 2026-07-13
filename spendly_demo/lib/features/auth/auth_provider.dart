@@ -7,10 +7,13 @@ import '../filters/filters_provider.dart';
 import '../groups/group_provider.dart';
 import '../notifications/notification_provider.dart';
 import '../profile/currency_provider.dart';
+import '../transactions/transaction_provider.dart';
 import '../social/chat_screen.dart';
 import '../social/other_user_profile_screen.dart';
-import '../social/social_provider.dart' show currentUserProfileProvider, friendsStreamProvider;
-import '../subscriptions/premium_provider.dart' show offeringsProvider, premiumProvider;
+import '../social/social_provider.dart'
+    show currentUserProfileProvider, friendsStreamProvider;
+import '../subscriptions/premium_provider.dart'
+    show offeringsProvider, premiumProvider;
 
 final authClientProvider = Provider<GoTrueClient>((ref) {
   return Supabase.instance.client.auth;
@@ -80,7 +83,7 @@ class AuthController {
     );
   }
 
-  Future<void> signOut(Ref ref) async {
+  Future<void> signOut(WidgetRef ref) async {
     ref.invalidate(authStateProvider);
     ref.invalidate(authClientProvider);
     ref.invalidate(currencyProvider);

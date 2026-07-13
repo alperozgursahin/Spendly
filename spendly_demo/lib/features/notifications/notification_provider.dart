@@ -10,7 +10,9 @@ const _cursorKey = 'notification_feature_cutoff';
 final userNotificationsProvider =
     StreamProvider.family<List<AppNotificationModel>, String>((ref, userId) {
       final supabase = Supabase.instance.client;
-      return Stream.fromFuture(_loadInitialCursor(userId)).asyncExpand((cursor) {
+      return Stream.fromFuture(_loadInitialCursor(userId)).asyncExpand((
+        cursor,
+      ) {
         return supabase
             .from('group_transactions')
             .stream(primaryKey: ['id'])
@@ -50,7 +52,9 @@ Future<List<AppNotificationModel>> _buildNotifications(
     final createdAt = DateTime.parse(row['created_at'] as String).toUtc();
     if (!createdAt.isAfter(cursor)) return false;
 
-    final splitData = Map<String, dynamic>.from(row['split_data'] as Map? ?? {});
+    final splitData = Map<String, dynamic>.from(
+      row['split_data'] as Map? ?? {},
+    );
     return row['payer_id'] != userId && splitData.containsKey(userId);
   }).toList();
 
@@ -86,8 +90,9 @@ Future<List<AppNotificationModel>> _buildNotifications(
         .maybeSingle();
     if (profileRow != null) {
       final username = (profileRow['username'] as String?)?.trim();
-      usernames[payerId] =
-          (username != null && username.isNotEmpty) ? username : 'Bir kullanıcı';
+      usernames[payerId] = (username != null && username.isNotEmpty)
+          ? username
+          : 'Bir kullanıcı';
     }
   }
 
