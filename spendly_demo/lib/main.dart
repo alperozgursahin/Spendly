@@ -6,15 +6,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/foundation.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
+import 'features/auth/forgot_password_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
+import 'features/dashboard/statistics_screen.dart';
 import 'features/notifications/notifications_screen.dart';
 import 'features/debts/debts_screen.dart';
 import 'features/groups/groups_screen.dart';
 import 'features/groups/group_detail_screen.dart';
 import 'features/groups/group_info_screen.dart';
+import 'features/groups/group_chat_screen.dart';
 import 'features/subscriptions/paywall_screen.dart';
 import 'features/social/social_screen.dart';
 import 'features/social/chat_screen.dart';
@@ -73,7 +77,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuth = session != null;
       final isLoggingIn =
           state.uri.toString() == '/login' ||
-          state.uri.toString() == '/register';
+          state.uri.toString() == '/register' ||
+          state.uri.toString() == '/forgot-password';
 
       if (!isAuth && !isLoggingIn) return '/login';
       if (isAuth && isLoggingIn) return '/dashboard';
@@ -84,6 +89,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(
         path: '/update-password',
@@ -97,6 +106,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/dashboard',
             builder: (context, state) => const DashboardScreen(),
+            routes: [
+              GoRoute(
+                path: 'statistics',
+                builder: (context, state) => const StatisticsScreen(),
+              ),
+            ],
           ),
           GoRoute(
             path: '/notifications',
@@ -128,6 +143,17 @@ final routerProvider = Provider<GoRouter>((ref) {
                       final groupName =
                           state.extra as String? ?? 'Grup Bilgisi';
                       return GroupInfoScreen(
+                        groupId: groupId,
+                        groupName: groupName,
+                      );
+                    },
+                  ),
+                  GoRoute(
+                    path: 'chat',
+                    builder: (context, state) {
+                      final groupId = state.pathParameters['id']!;
+                      final groupName = state.extra as String? ?? 'Grup';
+                      return GroupChatScreen(
                         groupId: groupId,
                         groupName: groupName,
                       );
@@ -195,6 +221,8 @@ class _MyAppState extends ConsumerState<MyApp> {
     });
   }
 
+  static const _brandColor = Color(0xFF0F766E);
+
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
@@ -203,19 +231,19 @@ class _MyAppState extends ConsumerState<MyApp> {
       title: 'Spendly',
       theme: ThemeData(
         useMaterial3: true,
-        fontFamily: 'Inter',
+        textTheme: GoogleFonts.interTextTheme(),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6200EA),
-          primary: const Color(0xFF6200EA),
-          secondary: const Color(0xFF03DAC6),
+          seedColor: _brandColor,
+          primary: _brandColor,
+          secondary: const Color(0xFF1F2937),
         ),
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFF8F9FA),
+        scaffoldBackgroundColor: const Color(0xFFF7F8F7),
+        appBarTheme: AppBarTheme(
+          backgroundColor: const Color(0xFFF7F8F7),
           elevation: 0.0,
           centerTitle: true,
-          iconTheme: IconThemeData(color: Colors.black87),
-          titleTextStyle: TextStyle(
+          iconTheme: const IconThemeData(color: Colors.black87),
+          titleTextStyle: GoogleFonts.inter(
             color: Colors.black87,
             fontSize: 20.0,
             fontWeight: FontWeight.w600,
@@ -244,7 +272,7 @@ class _MyAppState extends ConsumerState<MyApp> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFF6200EA), width: 1.5),
+            borderSide: const BorderSide(color: _brandColor, width: 1.5),
           ),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
@@ -255,14 +283,16 @@ class _MyAppState extends ConsumerState<MyApp> {
           style: ElevatedButton.styleFrom(
             elevation: 0,
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            minimumSize: const Size(64, 48),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            backgroundColor: const Color(0xFF6200EA),
+            backgroundColor: _brandColor,
             foregroundColor: Colors.white,
             textStyle: const TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
+              height: 1.0,
             ),
           ),
         ),

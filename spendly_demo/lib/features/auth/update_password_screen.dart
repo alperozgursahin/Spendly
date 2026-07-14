@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/friendly_error.dart';
 
 class UpdatePasswordScreen extends ConsumerStatefulWidget {
   const UpdatePasswordScreen({super.key});
@@ -14,15 +15,17 @@ class UpdatePasswordScreen extends ConsumerStatefulWidget {
 class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  String? _passwordError;
 
   Future<void> _updatePassword() async {
     final newPassword = _passwordController.text.trim();
-    if (newPassword.isEmpty || newPassword.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Şifre en az 6 karakter olmalıdır.')),
-      );
-      return;
-    }
+
+    setState(() {
+      _passwordError = newPassword.length < 6
+          ? 'Şifre en az 6 karakter olmalıdır.'
+          : null;
+    });
+    if (_passwordError != null) return;
 
     setState(() => _isLoading = true);
     try {
@@ -42,7 +45,7 @@ class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(e))));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -73,22 +76,34 @@ class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
             const SizedBox(height: 24),
             TextField(
               controller: _passwordController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Yeni Şifre',
-                border: OutlineInputBorder(),
+                errorText: _passwordError,
               ),
               obscureText: true,
+              onChanged: (_) {
+                if (_passwordError != null) {
+                  setState(() => _passwordError = null);
+                }
+              },
             ),
             const SizedBox(height: 24),
-            _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ElevatedButton(
-                    onPressed: _updatePassword,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    child: const Text('Şifreyi Güncelle'),
-                  ),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _updatePassword,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Şifreyi Güncelle'),
+            ),
           ],
         ),
       ),

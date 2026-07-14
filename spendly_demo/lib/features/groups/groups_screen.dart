@@ -1,15 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import '../subscriptions/premium_provider.dart';
 import 'group_provider.dart';
 
-class GroupsScreen extends ConsumerWidget {
+class GroupsScreen extends ConsumerStatefulWidget {
   const GroupsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GroupsScreen> createState() => _GroupsScreenState();
+}
+
+class _GroupsScreenState extends ConsumerState<GroupsScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    // Force a fresh fetch whenever this screen mounts so groups another
+    // member added you to (or a just-switched account's groups) show up
+    // without needing an unrelated action like creating a new group first.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.invalidate(userGroupsProvider);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final groupsAsync = ref.watch(userGroupsProvider);
 
     return Scaffold(
@@ -17,8 +36,32 @@ class GroupsScreen extends ConsumerWidget {
       body: groupsAsync.when(
         data: (groups) {
           if (groups.isEmpty) {
-            return const Center(
-              child: Text('Henüz bir gruba dahil değilsiniz.'),
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.group_outlined,
+                      size: 48,
+                      color: Colors.grey.shade400,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Henüz bir gruba dahil değilsiniz.',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Sağ alttaki + butonuna dokunarak ilk grubunu '
+                      'oluşturabilirsin.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ),
             );
           }
 
@@ -28,8 +71,13 @@ class GroupsScreen extends ConsumerWidget {
               final group = groups[index];
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: Colors.deepPurple.shade100,
-                  child: const Icon(Icons.group, color: Colors.deepPurple),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
+                  child: Icon(
+                    Icons.group,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
                 title: Text(group.name),
                 subtitle: const Text('Grup Detayları için tıklayın'),
@@ -42,7 +90,7 @@ class GroupsScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Hata: $e')),
+        error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -82,7 +130,7 @@ class GroupsScreen extends ConsumerWidget {
               onPressed: () async {
                 if (nameController.text.trim().isEmpty) return;
 
-                final user = ref.read(authClientProvider).currentUser;
+                final user = ref.read(currentUserProvider);
                 if (user == null) return;
 
                 try {
@@ -93,9 +141,9 @@ class GroupsScreen extends ConsumerWidget {
                   if (context.mounted) Navigator.pop(context);
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(friendlyErrorMessage(e))),
+                    );
                   }
                 }
               },

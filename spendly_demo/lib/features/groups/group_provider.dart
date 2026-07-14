@@ -28,6 +28,14 @@ final userGroupsProvider = FutureProvider<List<GroupModel>>((ref) async {
   return service.getUserGroups(userId);
 });
 
+final groupByIdProvider = FutureProvider.family<GroupModel?, String>((
+  ref,
+  groupId,
+) {
+  final service = ref.watch(groupServiceProvider);
+  return service.getGroup(groupId);
+});
+
 final groupMembersProvider =
     FutureProvider.family<List<GroupMemberModel>, String>((ref, groupId) {
       final service = ref.watch(groupServiceProvider);
@@ -51,6 +59,63 @@ final groupTransactionsStreamProvider =
                 .toList(),
           );
     });
+
+final groupMessagesStreamProvider =
+    StreamProvider.family<List<Map<String, dynamic>>, String>((ref, groupId) {
+      return Supabase.instance.client
+          .from('group_messages')
+          .stream(primaryKey: ['id'])
+          .eq('group_id', groupId)
+          .order('created_at', ascending: false)
+          .map((rows) => rows);
+    });
+
+/// Each user has at most one row per group (RLS only exposes the caller's
+/// own row), so this is null until they've opened that group's chat once.
+final groupChatReadStreamProvider =
+    StreamProvider.family<DateTime?, String>((ref, groupId) {
+      return Supabase.instance.client
+          .from('group_chat_reads')
+          .stream(primaryKey: ['group_id', 'user_id'])
+          .eq('group_id', groupId)
+          .map((rows) {
+            if (rows.isEmpty) return null;
+            final value = rows.first['last_read_at'] as String?;
+            return value == null ? null : DateTime.parse(value).toUtc();
+          });
+    });
+
+/// Messages from other members created after the caller's last-read cutoff.
+final unreadGroupMessagesCountProvider = Provider.family<int, String>((
+  ref,
+  groupId,
+) {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return 0;
+
+  final messages = ref.watch(groupMessagesStreamProvider(groupId));
+  final lastRead = ref.watch(groupChatReadStreamProvider(groupId));
+
+  return messages.maybeWhen(
+    data: (msgs) {
+      final cutoff = lastRead.maybeWhen(data: (v) => v, orElse: () => null);
+      return msgs.where((m) {
+        if (m['sender_id'] == userId) return false;
+        if (cutoff == null) return true;
+        return DateTime.parse(m['created_at'] as String).toUtc().isAfter(cutoff);
+      }).length;
+    },
+    orElse: () => 0,
+  );
+});
+
+Future<void> markGroupChatRead(String groupId, String userId) {
+  return Supabase.instance.client.from('group_chat_reads').upsert({
+    'group_id': groupId,
+    'user_id': userId,
+    'last_read_at': DateTime.now().toUtc().toIso8601String(),
+  });
+}
 
 /// Only approved and payment-pending participant shares affect balances.
 /// Pending, rejected, and settled participant shares are excluded.
@@ -103,6 +168,34 @@ class GroupService {
   final SupabaseClient _supabase;
 
   GroupService(this._supabase);
+
+  Future<GroupModel?> getGroup(String groupId) async {
+    final row = await _supabase
+        .from('groups')
+        .select()
+        .eq('id', groupId)
+        .maybeSingle();
+
+    if (row == null) return null;
+    return GroupModel.fromJson(Map<String, dynamic>.from(row));
+  }
+
+  /// Only the group creator can do this (enforced by RLS); the group's
+  /// members, transactions and notifications cascade-delete with it.
+  Future<void> deleteGroup(String groupId) {
+    return _supabase.from('groups').delete().eq('id', groupId);
+  }
+
+  /// Removes the given member's own row from the group (RLS only allows a
+  /// user to delete their own membership, or the group creator to delete
+  /// any). The creator should use [deleteGroup] instead of leaving.
+  Future<void> leaveGroup(String groupId, String userId) {
+    return _supabase
+        .from('group_members')
+        .delete()
+        .eq('group_id', groupId)
+        .eq('user_id', userId);
+  }
 
   Future<List<GroupModel>> getUserGroups(String userId) async {
     final rows = await _supabase

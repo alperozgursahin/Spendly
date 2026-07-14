@@ -141,17 +141,29 @@ Future<List<AppNotificationModel>> _buildNotifications(
         : groupNames[groupId] ?? 'Bir grup';
     final senderName = usernames[senderId] ?? 'Bir kullanıcı';
 
+    var title = 'Yeni harcama';
     var message =
         '$senderName sizi $groupName grubundaki "$description" harcamasına ekledi. '
         'Tutar: ${amount.toStringAsFixed(2)} TL. Onayınızı bekliyor.';
 
     if (type == 'payment_confirmation') {
+      title = 'Ödeme bildirildi';
       message =
           '$senderName, $groupName grubundaki "$description" için ödeme '
           'bildirimi gönderdi.';
     } else if (type == 'debt_approved') {
+      title = 'Borç onaylandı';
       message =
           '$senderName, $groupName grubundaki "$description" borcunu onayladı.';
+    } else if (type == 'debt_rejected') {
+      title = 'Borç reddedildi';
+      message =
+          '$senderName, $groupName grubundaki "$description" borcunu reddetti.';
+    } else if (type == 'debt_settled') {
+      title = 'Ödeme onaylandı';
+      message =
+          '$senderName, $groupName grubundaki "$description" için ödemenizi '
+          'onayladı. Borç kapandı.';
     }
 
     return AppNotificationModel(
@@ -162,6 +174,7 @@ Future<List<AppNotificationModel>> _buildNotifications(
       groupId: groupId,
       expenseId: expenseId,
       type: type,
+      title: title,
       message: message,
       isRead: row['is_read'] as bool? ?? false,
       createdAt: DateTime.parse(row['created_at'] as String).toUtc(),

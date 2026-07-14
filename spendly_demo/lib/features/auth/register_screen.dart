@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/friendly_error.dart';
 import 'auth_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -15,8 +16,35 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  String? _usernameError;
+  String? _emailError;
+  String? _passwordError;
+
+  bool _validate() {
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    setState(() {
+      _usernameError = username.length < 3
+          ? 'Kullanıcı adı en az 3 karakter olmalı.'
+          : null;
+      _emailError = email.contains('@') && email.contains('.')
+          ? null
+          : 'Geçerli bir e-posta adresi girin.';
+      _passwordError = password.length < 6
+          ? 'Şifre en az 6 karakter olmalı.'
+          : null;
+    });
+
+    return _usernameError == null &&
+        _emailError == null &&
+        _passwordError == null;
+  }
 
   Future<void> _register() async {
+    if (!_validate()) return;
+
     setState(() => _isLoading = true);
     try {
       await ref
@@ -36,7 +64,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Hata: ${e.toString()}')));
+        ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(e))));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -63,41 +91,63 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           children: [
             TextField(
               controller: _usernameController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Kullanıcı Adı (@username)',
-                border: OutlineInputBorder(),
                 prefixText: '@',
+                errorText: _usernameError,
               ),
               keyboardType: TextInputType.text,
+              onChanged: (_) {
+                if (_usernameError != null) {
+                  setState(() => _usernameError = null);
+                }
+              },
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Email',
-                border: OutlineInputBorder(),
+                errorText: _emailError,
               ),
               keyboardType: TextInputType.emailAddress,
+              onChanged: (_) {
+                if (_emailError != null) {
+                  setState(() => _emailError = null);
+                }
+              },
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _passwordController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Şifre',
-                border: OutlineInputBorder(),
+                errorText: _passwordError,
               ),
               obscureText: true,
+              onChanged: (_) {
+                if (_passwordError != null) {
+                  setState(() => _passwordError = null);
+                }
+              },
             ),
             const SizedBox(height: 24),
-            _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ElevatedButton(
-                    onPressed: _register,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    child: const Text('Kayıt Ol'),
-                  ),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _register,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Kayıt Ol'),
+            ),
             const SizedBox(height: 16),
             TextButton(
               onPressed: () => context.go('/login'),

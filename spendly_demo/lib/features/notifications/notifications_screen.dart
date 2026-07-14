@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import 'notification_provider.dart';
 
@@ -43,7 +44,33 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           : notificationsAsync.when(
               data: (notifications) {
                 if (notifications.isEmpty) {
-                  return const Center(child: Text('Henüz bildiriminiz yok.'));
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.notifications_none,
+                            size: 48,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Henüz bildiriminiz yok.',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Gruplarınızdaki harcama ve onay güncellemeleri '
+                            'burada görünecek.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 }
 
                 return ListView.separated(
@@ -52,23 +79,41 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final notification = notifications[index];
+                    final colorScheme = Theme.of(context).colorScheme;
                     return Card(
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundColor: notification.isRead
                               ? Colors.grey.shade300
-                              : Colors.deepPurple.shade100,
+                              : colorScheme.primaryContainer,
                           child: Icon(
                             notification.isRead
                                 ? Icons.notifications_none
                                 : Icons.notifications_active,
                             color: notification.isRead
                                 ? Colors.grey.shade700
-                                : Colors.deepPurple,
+                                : colorScheme.primary,
                           ),
                         ),
-                        title: Text(notification.message),
-                        subtitle: Text(_formatDate(notification.createdAt)),
+                        title: Text(
+                          notification.title,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(notification.message),
+                            const SizedBox(height: 2),
+                            Text(
+                              _formatDate(notification.createdAt),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        isThreeLine: true,
                         trailing: notification.isRead
                             ? null
                             : const Icon(Icons.fiber_manual_record, size: 10),
@@ -93,7 +138,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stackTrace) => Center(child: Text('Hata: $error')),
+              error: (error, stackTrace) =>
+                  Center(child: Text(friendlyErrorMessage(error))),
             ),
     );
   }

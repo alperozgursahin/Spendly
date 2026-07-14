@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import '../filters/filters_provider.dart';
 import '../groups/group_model.dart';
@@ -46,7 +47,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     ref.watch(groupDataRefreshProvider);
 
     final groupsAsync = ref.watch(userGroupsProvider);
-    final currentUserId = ref.watch(authClientProvider).currentUser?.id;
+    final currentUserId = ref.watch(currentUserProvider)?.id;
     final currency = ref.watch(currencyProvider);
     final exchanger = ref.watch(exchangeRateProvider);
 
@@ -69,16 +70,17 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
           bottom: const TabBar(
             isScrollable: true,
             tabs: [
-              Tab(text: 'Bizim Borçlarımız'),
-              Tab(text: 'Bize Borçlular'),
-              Tab(text: 'Onaylar'),
-              Tab(text: 'Net Özet'),
+              Tab(icon: Icon(Icons.arrow_upward), text: 'Borçlarım'),
+              Tab(icon: Icon(Icons.arrow_downward), text: 'Alacaklarım'),
+              Tab(icon: Icon(Icons.fact_check_outlined), text: 'Onaylar'),
+              Tab(icon: Icon(Icons.summarize_outlined), text: 'Özet'),
             ],
           ),
         ),
         body: groupsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => Center(child: Text('Hata: $error')),
+          error: (error, _) =>
+              Center(child: Text(friendlyErrorMessage(error))),
           data: (groups) {
             if (currentUserId == null) {
               return const Center(child: Text('Kullanıcı bilgisi alınamadı.'));
@@ -441,7 +443,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                 Text(
                   'Toplam: $currency${exchanger.convertFromTRY(total, currency).toStringAsFixed(2)}',
                   style: TextStyle(
-                    color: Colors.deepPurple.shade700,
+                    color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -452,7 +454,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                     subtitle: 'Netleştirilmiş borç',
                     amountText:
                         '$currency${exchanger.convertFromTRY(item.amount, currency).toStringAsFixed(2)}',
-                    accentColor: Colors.deepPurple.shade700,
+                    accentColor: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ],
@@ -888,7 +890,11 @@ class _DebtRow extends StatelessWidget {
         const SizedBox(width: 12),
         Text(
           amountText,
-          style: TextStyle(color: accentColor, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: accentColor,
+            fontWeight: FontWeight.bold,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
         ),
       ],
     );
@@ -923,6 +929,7 @@ class _SummaryCard extends StatelessWidget {
                 color: accentColor,
                 fontSize: 28,
                 fontWeight: FontWeight.w800,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ],

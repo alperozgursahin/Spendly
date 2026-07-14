@@ -5,6 +5,7 @@ class AppNotificationModel {
   final String? groupId;
   final String? expenseId;
   final String type;
+  final String title;
   final String message;
   final bool isRead;
   final DateTime createdAt;
@@ -16,6 +17,7 @@ class AppNotificationModel {
     required this.groupId,
     required this.expenseId,
     required this.type,
+    required this.title,
     required this.message,
     required this.isRead,
     required this.createdAt,
@@ -29,6 +31,7 @@ class AppNotificationModel {
       groupId: json['group_id'] as String?,
       expenseId: json['expense_id'] as String?,
       type: (json['type'] as String?) ?? 'debt_request',
+      title: (json['title'] as String?) ?? 'Bildirim',
       message: (json['message'] as String?) ?? '',
       isRead: json['is_read'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),

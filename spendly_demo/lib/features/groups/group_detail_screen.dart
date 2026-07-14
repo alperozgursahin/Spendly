@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import '../filters/filters_provider.dart';
 import '../profile/currency_provider.dart';
 import '../profile/exchange_rate_provider.dart';
 import 'add_expense_sheet.dart';
-import 'group_info_screen.dart';
 import 'group_model.dart';
 import 'group_provider.dart';
 import 'group_transaction_model.dart';
@@ -46,10 +46,13 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
   Widget build(BuildContext context) {
     ref.watch(groupDataRefreshProvider);
 
-    final currentUserId = ref.watch(authClientProvider).currentUser?.id ?? '';
+    final currentUserId = ref.watch(currentUserProvider)?.id ?? '';
     final currency = ref.watch(currencyProvider);
     final exchanger = ref.watch(exchangeRateProvider);
     final members = ref.watch(groupMembersProvider(widget.groupId));
+    final unreadChatCount = ref.watch(
+      unreadGroupMessagesCountProvider(widget.groupId),
+    );
     final transactions = ref.watch(
       groupTransactionsStreamProvider(widget.groupId),
     );
@@ -70,10 +73,10 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundColor: Colors.deepPurple.shade100,
-                child: const Icon(
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                child: Icon(
                   Icons.group,
-                  color: Colors.deepPurple,
+                  color: Theme.of(context).colorScheme.primary,
                   size: 20,
                 ),
               ),
@@ -114,6 +117,20 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         ),
         actions: [
           IconButton(
+            tooltip: 'Grup sohbeti',
+            icon: Badge(
+              isLabelVisible: unreadChatCount > 0,
+              label: Text('$unreadChatCount'),
+              child: const Icon(Icons.chat_bubble_outline),
+            ),
+            onPressed: () {
+              context.push(
+                '/groups/${widget.groupId}/chat',
+                extra: widget.groupName,
+              );
+            },
+          ),
+          IconButton(
             tooltip: 'Arkadaş davet et',
             icon: const Icon(Icons.person_add),
             onPressed: () {
@@ -136,7 +153,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           Expanded(
             child: transactions.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(child: Text('Hata: $error')),
+              error: (error, _) =>
+                  Center(child: Text(friendlyErrorMessage(error))),
               data: (items) {
                 final filtered = _filteredTransactions(items);
 
@@ -210,7 +228,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: isExpanded ? Colors.deepPurple.shade200 : Colors.transparent,
+            color: isExpanded
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.4)
+                : Colors.transparent,
             width: 1.2,
           ),
         ),
@@ -293,13 +313,14 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         '$participantName: $currency${exchanger.convertFromTRY(amount, currency).toStringAsFixed(2)}';
 
     if (isPayer) {
+      final primary = Theme.of(context).colorScheme.primary;
       return _statusChip(
         amountLabel: amountLabel,
         label: 'Ödeyen',
         icon: Icons.account_balance_wallet_rounded,
-        backgroundColor: Colors.deepPurple.shade50,
-        borderColor: Colors.deepPurple.shade200,
-        textColor: Colors.deepPurple.shade800,
+        backgroundColor: Color.lerp(Colors.white, primary, 0.10)!,
+        borderColor: Color.lerp(Colors.white, primary, 0.30)!,
+        textColor: Color.lerp(Colors.black, primary, 0.55)!,
       );
     }
 
@@ -319,7 +340,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
 
     if (transactionId != null && !isBusy) {
       if (status == DebtApprovalStatus.pending && isCurrentUser) {
-        actionLabel = 'Acknowledge';
+        actionLabel = 'Onayla';
         actionIcon = Icons.check_rounded;
         onActionPressed = () => _runLifecycleAction(
           transactionId: transactionId,
@@ -327,7 +348,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           status: status,
         );
       } else if (status == DebtApprovalStatus.approved && isCurrentUser) {
-        actionLabel = 'Mark as Paid';
+        actionLabel = 'Ödendi Olarak İşaretle';
         actionIcon = Icons.payments_rounded;
         onActionPressed = () => _runLifecycleAction(
           transactionId: transactionId,
@@ -336,7 +357,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         );
       } else if (status == DebtApprovalStatus.paymentPending &&
           transaction.payerId == currentUserId) {
-        actionLabel = 'Confirm Receipt';
+        actionLabel = 'Ödemeyi Onayla';
         actionIcon = Icons.done_all_rounded;
         onActionPressed = () => _runLifecycleAction(
           transactionId: transactionId,
@@ -352,9 +373,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           amountLabel: amountLabel,
           label: 'Onay bekliyor',
           icon: Icons.hourglass_top_rounded,
-          backgroundColor: Colors.amber.shade50,
-          borderColor: Colors.amber.shade300,
-          textColor: Colors.amber.shade900,
+          backgroundColor: _tint(_statusWarning, 0.12),
+          borderColor: _tint(_statusWarning, 0.35),
+          textColor: _shade(_statusWarning, 0.35),
           actionLabel: actionLabel,
           actionIcon: actionIcon,
           onActionPressed: onActionPressed,
@@ -366,9 +387,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           amountLabel: amountLabel,
           label: isCurrentUser ? 'Onaylandı' : 'Aktif borç',
           icon: Icons.verified_rounded,
-          backgroundColor: Colors.blue.shade50,
-          borderColor: Colors.blue.shade200,
-          textColor: Colors.blue.shade900,
+          backgroundColor: _tint(_statusActive, 0.10),
+          borderColor: _tint(_statusActive, 0.30),
+          textColor: _shade(_statusActive, 0.25),
           actionLabel: actionLabel,
           actionIcon: actionIcon,
           onActionPressed: onActionPressed,
@@ -376,15 +397,18 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         );
 
       case DebtApprovalStatus.paymentPending:
+        // Kept in the same blue family as "approved" (still an active,
+        // in-progress debt) instead of a 5th distinct hue, to reduce how
+        // many colors a user has to learn to read the debt status.
         return _statusChip(
           amountLabel: amountLabel,
           label: transaction.payerId == currentUserId
               ? 'Ödeme onayı bekleniyor'
               : 'Ödeme bildirildi',
           icon: Icons.schedule_send_rounded,
-          backgroundColor: Colors.orange.shade50,
-          borderColor: Colors.orange.shade200,
-          textColor: Colors.orange.shade900,
+          backgroundColor: _tint(_statusActive, 0.14),
+          borderColor: _tint(_statusActive, 0.38),
+          textColor: _shade(_statusActive, 0.25),
           actionLabel: actionLabel,
           actionIcon: actionIcon,
           onActionPressed: onActionPressed,
@@ -394,11 +418,11 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       case DebtApprovalStatus.settled:
         return _statusChip(
           amountLabel: amountLabel,
-          label: 'Settled',
+          label: 'Ödendi',
           icon: Icons.verified_rounded,
-          backgroundColor: Colors.green.shade50,
-          borderColor: Colors.green.shade300,
-          textColor: Colors.green.shade800,
+          backgroundColor: _tint(_statusGood, 0.12),
+          borderColor: _tint(_statusGood, 0.35),
+          textColor: _shade(_statusGood, 0.15),
         );
 
       case DebtApprovalStatus.rejected:
@@ -406,12 +430,26 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           amountLabel: amountLabel,
           label: 'Reddedildi',
           icon: Icons.block_rounded,
-          backgroundColor: Colors.grey.shade100,
-          borderColor: Colors.grey.shade300,
-          textColor: Colors.grey.shade700,
+          backgroundColor: _tint(_statusCritical, 0.10),
+          borderColor: _tint(_statusCritical, 0.30),
+          textColor: _shade(_statusCritical, 0.20),
         );
     }
   }
+
+  // Validated status palette (see dataviz skill's references/palette.md).
+  // Deliberately shares hues with statistics_screen.dart's pie chart colors
+  // so status chips and charts read as one cohesive family.
+  static const _statusWarning = Color(0xFFD97706);
+  static const _statusActive = Color(0xFF2563EB);
+  static const _statusGood = Color(0xFF059669);
+  static const _statusCritical = Color(0xFFDC2626);
+
+  Color _tint(Color base, double amount) =>
+      Color.lerp(Colors.white, base, amount)!;
+
+  Color _shade(Color base, double amount) =>
+      Color.lerp(base, Colors.black, amount)!;
 
   Widget _statusChip({
     required String amountLabel,

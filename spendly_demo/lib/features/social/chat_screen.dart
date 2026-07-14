@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 
 final messagesStreamProvider =
@@ -8,7 +9,7 @@ final messagesStreamProvider =
       ref,
       targetUserId,
     ) {
-      final curUserId = ref.watch(authClientProvider).currentUser?.id ?? '';
+      final curUserId = ref.watch(currentUserProvider)?.id ?? '';
       if (curUserId.isEmpty) return Stream.value([]);
 
       return Supabase.instance.client
@@ -48,9 +49,23 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _msgController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+
+    // Force a fresh fetch whenever this screen mounts so a just-switched
+    // account never shows the previous account's cached messages with this
+    // same target user (see GroupDetailScreen/NotificationsScreen for the
+    // same pattern).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.invalidate(messagesStreamProvider(widget.targetUserId));
+    });
+  }
+
   void _send() async {
     if (_msgController.text.trim().isEmpty) return;
-    final curUserId = ref.read(authClientProvider).currentUser?.id ?? '';
+    final curUserId = ref.read(currentUserProvider)?.id ?? '';
 
     await Supabase.instance.client.from('direct_messages').insert({
       'sender_id': curUserId,
@@ -63,7 +78,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final msgsAsync = ref.watch(messagesStreamProvider(widget.targetUserId));
-    final curUserId = ref.watch(authClientProvider).currentUser?.id ?? '';
+    final curUserId = ref.watch(currentUserProvider)?.id ?? '';
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.username)),
@@ -90,7 +105,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: isMe
-                              ? Colors.deepPurple.shade100
+                              ? Theme.of(context).colorScheme.primaryContainer
                               : Colors.grey.shade200,
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -100,7 +115,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   },
                 );
               },
-              error: (e, st) => Center(child: Text('Hata: $e')),
+              error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
               loading: () => const Center(child: CircularProgressIndicator()),
             ),
           ),

@@ -1,19 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import '../social/social_provider.dart';
 import 'currency_provider.dart';
 import '../transactions/transaction_provider.dart';
 import 'services/pdf_export_service.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    // Force a fresh fetch whenever this screen mounts so a just-switched
+    // account never shows the previous account's cached profile (see
+    // GroupDetailScreen/NotificationsScreen for the same pattern).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.invalidate(currentUserProfileProvider);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final profileAsync = ref.watch(currentUserProfileProvider);
-    final user = ref.watch(authClientProvider).currentUser;
+    final user = ref.watch(currentUserProvider);
     final currency = ref.watch(currencyProvider);
 
     return Scaffold(
@@ -122,6 +141,25 @@ class ProfileScreen extends ConsumerWidget {
                   },
                 ),
                 const Spacer(),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await ref.read(authControllerProvider).signOut();
+                    if (!context.mounted) return;
+                    context.go('/login');
+                  },
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Çıkış Yap'),
+                ),
+                const SizedBox(height: 32),
+                Text(
+                  'Tehlikeli bölge',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red.shade100,
@@ -133,22 +171,12 @@ class ProfileScreen extends ConsumerWidget {
                   icon: const Icon(Icons.delete_forever),
                   label: const Text('Hesabı ve Verileri Sil'),
                 ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    await ref.read(authControllerProvider).signOut();
-                    if (!context.mounted) return;
-                    context.go('/login');
-                  },
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Çıkış Yap'),
-                ),
               ],
             ),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Hata: ')),
+        error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
       ),
     );
   }
@@ -257,9 +285,11 @@ class ProfileScreen extends ConsumerWidget {
                             }
                           } catch (e) {
                             if (ctx.mounted) {
-                              ScaffoldMessenger.of(
-                                ctx,
-                              ).showSnackBar(SnackBar(content: Text('Hata: ')));
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(
+                                  content: Text(friendlyErrorMessage(e)),
+                                ),
+                              );
                             }
                           } finally {
                             if (ctx.mounted) setState(() => isLoading = false);

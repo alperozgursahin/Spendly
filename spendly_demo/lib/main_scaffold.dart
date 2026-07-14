@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'features/social/social_provider.dart';
 
 class MainScaffold extends ConsumerStatefulWidget {
   final Widget child;
@@ -45,27 +46,39 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
     if (location.startsWith('/social')) _currentIndex = 3;
     if (location.startsWith('/profile')) _currentIndex = 4;
 
+    final pendingRequests = ref.watch(pendingFriendRequestCountProvider);
+
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
         onTap: (index) => _onItemTapped(index, context),
-        items: const [
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
             label: 'Dashboard',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.account_balance_wallet_outlined),
             label: 'Borçlar',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Gruplar'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.group),
+            label: 'Gruplar',
+          ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
+            icon: Badge(
+              isLabelVisible: pendingRequests > 0,
+              label: Text('$pendingRequests'),
+              child: const Icon(Icons.chat_bubble_outline),
+            ),
             label: 'Sosyal',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profil',
+          ),
         ],
       ),
     );

@@ -35,12 +35,16 @@ dependencies:
   # Dashboard Grafikleri (Pasta ve Çizgi Grafikler)
   fl_chart: ^0.67.0
   flutter_heatmap_calendar: ^1.0.5
-  http: ^0.13.6
+  http: ^1.6.0
   intl: ^0.18.1
 
   # PDF Generation
   pdf: ^3.11.1
   printing: ^5.13.0
+
+  # Fonts (Inter is set as the app font in main.dart's ThemeData but was
+  # never actually bundled/loaded — google_fonts fetches and caches it)
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:

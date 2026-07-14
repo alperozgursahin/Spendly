@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:fl_chart/fl_chart.dart';
+import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import '../transactions/transaction_provider.dart';
 import '../transactions/transaction_model.dart';
 import '../profile/currency_provider.dart';
 import '../profile/exchange_rate_provider.dart';
 import 'activity_provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'heatmap_provider.dart';
-import 'heatmap_widget.dart';
 import '../filters/filters_provider.dart';
 import '../notifications/notification_provider.dart';
 
@@ -32,6 +29,11 @@ class DashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.insights_outlined),
+            tooltip: 'İstatistikler',
+            onPressed: () => context.push('/dashboard/statistics'),
+          ),
           Badge(
             isLabelVisible: unreadNotificationCount > 0,
             label: Text(unreadNotificationCount.toString()),
@@ -57,7 +59,7 @@ class DashboardScreen extends ConsumerWidget {
               children: [
                 const QuickAddWidget(),
                 const SizedBox(height: 16),
-                _buildNetBalanceCard(ref, netBalance, currency),
+                _buildNetBalanceCard(context, ref, netBalance, currency),
                 const SizedBox(height: 24),
                 const Text(
                   'Aktivite Akışı',
@@ -65,15 +67,6 @@ class DashboardScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 _buildActivityFeed(activityAsync),
-                const SizedBox(height: 24),
-                const Text(
-                  'Kategori Dağılımı (Bu Ay)',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                _buildPieChart(ref, transactionsAsync, currency),
-                const SizedBox(height: 24),
-                const HeatmapCard(),
                 const SizedBox(height: 24),
                 const Text(
                   'Son İşlemler',
@@ -223,84 +216,18 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildQuickAddWidget(BuildContext context, WidgetRef ref) {
-    final amountController = TextEditingController();
-    final categoryController = TextEditingController();
-
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: TextField(
-                controller: amountController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'Tutar',
-                  border: InputBorder.none,
-                  prefixIcon: Icon(Icons.attach_money, size: 20),
-                ),
-              ),
-            ),
-            Container(height: 30, width: 1, color: Colors.grey.shade300),
-            Expanded(
-              flex: 3,
-              child: TextField(
-                controller: categoryController,
-                decoration: const InputDecoration(
-                  hintText: 'Kategori',
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.only(left: 12),
-                ),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.send, color: Colors.deepPurple),
-              onPressed: () async {
-                final amount = double.tryParse(amountController.text) ?? 0.0;
-                if (amount <= 0 || categoryController.text.isEmpty) return;
-                final user = ref.read(authClientProvider).currentUser;
-                if (user == null) return;
-                final transaction = TransactionModel(
-                  userId: user.id,
-                  amount: amount,
-                  category: categoryController.text,
-                  date: DateTime.now(),
-                  type: 'expense',
-                );
-                try {
-                  await ref
-                      .read(transactionServiceProvider)
-                      .addTransaction(transaction);
-                  ref.invalidate(transactionsProvider);
-                  amountController.clear();
-                  categoryController.clear();
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text('Hata: $e')));
-                  }
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNetBalanceCard(WidgetRef ref, double balance, String currency) {
+  Widget _buildNetBalanceCard(
+    BuildContext context,
+    WidgetRef ref,
+    double balance,
+    String currency,
+  ) {
     final exchanger = ref.watch(exchangeRateProvider);
+    final colorScheme = Theme.of(context).colorScheme;
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: const Color(0xFFF3E5F5), // Lighter premium purple
+      color: colorScheme.primaryContainer,
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -316,10 +243,11 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             Text(
               '$currency${exchanger.convertFromTRY(balance, currency).toStringAsFixed(2)}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 36,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF6200EA),
+                color: colorScheme.primary,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ],
@@ -348,11 +276,12 @@ class DashboardScreen extends ConsumerWidget {
           itemCount: activities.length,
           itemBuilder: (context, index) {
             final act = activities[index];
+            final colorScheme = Theme.of(context).colorScheme;
             return ListTile(
               contentPadding: EdgeInsets.zero,
               leading: CircleAvatar(
-                backgroundColor: Colors.deepPurple.shade100,
-                child: Icon(act.icon, color: Colors.deepPurple, size: 20),
+                backgroundColor: colorScheme.primaryContainer,
+                child: Icon(act.icon, color: colorScheme.primary, size: 20),
               ),
               title: Text(
                 act.description,
@@ -367,184 +296,7 @@ class DashboardScreen extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, st) => Center(child: Text('Hata: $e')),
-    );
-  }
-
-  Widget _buildPieChart(
-    WidgetRef ref,
-    AsyncValue<List<TransactionModel>> transactionsAsync,
-    String currency,
-  ) {
-    return transactionsAsync.when(
-      data: (transactions) {
-        final now = DateTime.now();
-        final currentMonthExpenses = transactions
-            .where(
-              (t) =>
-                  t.type == 'expense' &&
-                  t.date.month == now.month &&
-                  t.date.year == now.year,
-            )
-            .toList();
-
-        if (currentMonthExpenses.isEmpty) {
-          return const SizedBox(
-            height: 150,
-            child: Center(
-              child: Text(
-                'Bu ay hiç harcamanız yok.',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-          );
-        }
-
-        final exchanger = ref.watch(exchangeRateProvider);
-
-        final Map<String, double> categorySums = {};
-        for (var t in currentMonthExpenses) {
-          final cat = t.category;
-          final sanitized = sanitizeCategory(cat);
-          if (sanitized.isEmpty) continue;
-          categorySums[sanitized] =
-              (categorySums[sanitized] ?? 0) +
-              exchanger.convertFromTRY(t.amount, currency);
-        }
-
-        final List<Color> colors = [
-          Colors.red,
-          Colors.blue,
-          Colors.green,
-          Colors.orange,
-          Colors.purple,
-          Colors.teal,
-        ];
-        int colorIdx = 0;
-
-        final entries = categorySums.entries.toList();
-
-        final total = categorySums.values.fold<double>(0.0, (p, e) => p + e);
-
-        final List<PieChartSectionData> sections = entries.asMap().entries.map((
-          me,
-        ) {
-          final idx = me.key;
-          final e = me.value;
-          final color = colors[idx % colors.length];
-          final percent = total > 0 ? (e.value / total * 100) : 0.0;
-          return PieChartSectionData(
-            color: color,
-            value: e.value,
-            title: '${percent.toStringAsFixed(0)}%',
-            radius: 50,
-            titleStyle: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          );
-        }).toList();
-        // Legacy category list (simple vertical list)
-        final legacyList = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: entries.asMap().entries.map((me) {
-            final idx = me.key;
-            final e = me.value;
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6.0),
-              child: Row(
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      color: colors[idx % colors.length],
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      e.key,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        );
-
-        final chartRow = SizedBox(
-          height: 220,
-          child: Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: PieChart(
-                  PieChartData(
-                    sections: sections,
-                    centerSpaceRadius: 40,
-                    sectionsSpace: 2,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 1,
-                child: Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: SingleChildScrollView(child: legacyList),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-
-        // simple amounts table to display under the chart
-        final amountsCard = Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: entries.map((e) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: Text(
-                    '${e.key}: ${currency}${e.value.toStringAsFixed(0)}',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        );
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [chartRow, const SizedBox(height: 12), amountsCard],
-        );
-      },
-      loading: () => const SizedBox(
-        height: 150,
-        child: Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, st) => const SizedBox.shrink(),
+      error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
     );
   }
 
@@ -608,10 +360,10 @@ class DashboardScreen extends ConsumerWidget {
                       children: [
                         Text(
                           t.date.day.toString().padLeft(2, '0'),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.deepPurple,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                         Text(
@@ -657,6 +409,7 @@ class DashboardScreen extends ConsumerWidget {
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
                             color: isIncome ? Colors.green : Colors.red,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
                       ),
@@ -669,7 +422,7 @@ class DashboardScreen extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, st) => Center(child: Text('Hata: $e')),
+      error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
     );
   }
 
@@ -690,13 +443,6 @@ class DashboardScreen extends ConsumerWidget {
     ];
     if (month >= 1 && month <= 12) return abbrs[month - 1];
     return '';
-  }
-
-  String sanitizeCategory(String raw) {
-    final s = raw.trim().replaceAll(RegExp(r"\s+"), ' ');
-    if (s.isEmpty) return '';
-    final lower = s.toLowerCase();
-    return lower[0].toUpperCase() + lower.substring(1);
   }
 }
 
@@ -871,7 +617,7 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isIncome
                         ? Colors.green
-                        : const Color(0xFF6200EA),
+                        : Theme.of(context).colorScheme.primary,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,
@@ -899,7 +645,7 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
 
     if (amount <= 0 || finalCategory.isEmpty) return;
 
-    final user = ref.read(authClientProvider).currentUser;
+    final user = ref.read(currentUserProvider);
     if (user == null) return;
 
     final selectedCurrency = ref.read(currencyProvider);
@@ -932,7 +678,10 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(friendlyErrorMessage(e)),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

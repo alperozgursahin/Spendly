@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import '../../core/friendly_error.dart';
 import 'premium_provider.dart';
 
 class PaywallScreen extends ConsumerWidget {
@@ -10,14 +11,15 @@ class PaywallScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final offeringsAsync = ref.watch(offeringsProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.deepPurple.shade50,
+      backgroundColor: colorScheme.primaryContainer,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.deepPurple),
+          icon: Icon(Icons.close, color: colorScheme.primary),
           onPressed: () => context.pop(),
         ),
       ),
@@ -28,18 +30,14 @@ class PaywallScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 20),
-              const Icon(
-                Icons.workspace_premium,
-                size: 80,
-                color: Colors.deepPurple,
-              ),
+              Icon(Icons.workspace_premium, size: 80, color: colorScheme.primary),
               const SizedBox(height: 24),
-              const Text(
-                'Unlock Spendly Pro',
+              Text(
+                'Spendly Pro\'ya Geç',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
+                  color: colorScheme.primary,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -72,8 +70,7 @@ class PaywallScreen extends ConsumerWidget {
                   },
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
-                  error: (e, st) =>
-                      Center(child: Text('Paketler yüklenemedi: $e')),
+                  error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
                 ),
               ),
               TextButton(
@@ -90,10 +87,10 @@ class PaywallScreen extends ConsumerWidget {
                     context.pop();
                   }
                 },
-                child: const Text(
+                child: Text(
                   'Satın Alımları Geri Yükle',
                   style: TextStyle(
-                    color: Colors.deepPurple,
+                    color: colorScheme.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -117,31 +114,54 @@ class PaywallScreen extends ConsumerWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () async {
+          // A blocking spinner with no way out feels broken if the purchase
+          // call hangs. Track whether the user dismissed it manually so the
+          // late-arriving result doesn't pop/navigate a screen they're no
+          // longer looking at.
+          var cancelled = false;
+
           showDialog(
             context: context,
             barrierDismissible: false,
-            builder: (context) =>
-                const Center(child: CircularProgressIndicator()),
+            builder: (dialogContext) => AlertDialog(
+              content: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 20),
+                  Expanded(child: Text('Satın alma işleniyor...')),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    cancelled = true;
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text('İptal'),
+                ),
+              ],
+            ),
           );
 
           final success = await ref
               .read(premiumProvider.notifier)
               .purchasePackage(package);
 
-          if (context.mounted) {
-            Navigator.pop(context);
-            if (success) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Spendly Pro\'ya hoş geldiniz!')),
-              );
-              context.pop(); 
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('İşlem iptal edildi veya başarısız oldu.'),
-                ),
-              );
-            }
+          if (cancelled || !context.mounted) return;
+
+          Navigator.pop(context);
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Spendly Pro\'ya hoş geldiniz!')),
+            );
+            context.pop();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('İşlem iptal edildi veya başarısız oldu.'),
+              ),
+            );
           }
         },
         child: Padding(
@@ -168,10 +188,10 @@ class PaywallScreen extends ConsumerWidget {
               ),
               Text(
                 package.storeProduct.priceString,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ],

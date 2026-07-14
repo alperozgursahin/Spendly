@@ -9,6 +9,14 @@ class HeatmapCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final data = ref.watch(heatmapDataProvider);
+    final primary = Theme.of(context).colorScheme.primary;
+    // Tints derived from the actual theme color instead of a separately
+    // hand-picked purple palette, so this matches the rest of the app.
+    final colorsets = {
+      1: Color.lerp(Colors.white, primary, 0.25)!,
+      2: Color.lerp(Colors.white, primary, 0.55)!,
+      3: primary,
+    };
 
     // flutter_heatmap_calendar expects a Map<DateTime, int>
     return Card(
@@ -23,11 +31,7 @@ class HeatmapCard extends ConsumerWidget {
             const SizedBox(height: 8),
             HeatMapCalendar(
               datasets: data,
-              colorsets: const {
-                1: Color(0xFFE9E0FB),
-                2: Color(0xFFBDA4FF),
-                3: Color(0xFF6F2DBD),
-              },
+              colorsets: colorsets,
               colorMode: ColorMode.color,
               size: 18,
               flexible: true,

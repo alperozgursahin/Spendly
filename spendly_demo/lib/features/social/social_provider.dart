@@ -55,6 +55,23 @@ final friendsStreamProvider = StreamProvider<List<Map<String, dynamic>>>((
   }
 });
 
+// Drives the "Sosyal" bottom-nav badge: how many incoming friend requests
+// are waiting on the current user (i.e. someone else sent them, they
+// haven't responded yet). Outgoing pending requests don't count.
+final pendingFriendRequestCountProvider = Provider<int>((ref) {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return 0;
+
+  final friendships = ref.watch(friendsStreamProvider);
+
+  return friendships.maybeWhen(
+    data: (items) => items
+        .where((f) => f['status'] == 'pending' && f['user_id1'] != userId)
+        .length,
+    orElse: () => 0,
+  );
+});
+
 class SocialService {
   final SupabaseClient db;
   SocialService(this.db);
@@ -104,6 +121,24 @@ class SocialService {
           'avatar_url': avatarUrl,
         })
         .eq('id', user.id);
+  }
+
+  Future<List<Map<String, dynamic>>> searchUsers(
+    String query,
+    String currentUserId,
+  ) async {
+    final trimmed = query.trim().replaceFirst(RegExp(r'^@'), '');
+    if (trimmed.isEmpty) return [];
+
+    final rows = await db
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .ilike('username', '%$trimmed%')
+        .neq('id', currentUserId)
+        .not('username', 'is', null)
+        .limit(20);
+
+    return List<Map<String, dynamic>>.from(rows);
   }
 
   Future<void> sendFriendRequest(
@@ -165,19 +200,15 @@ class SocialService {
         .eq('user_id2', currentUserId)
         .eq('status', 'accepted');
 
-    List<Map<String, dynamic>> friends = [];
+    final friendsById = <String, Map<String, dynamic>>{};
     for (var row in fetch1) {
-      friends.add({
-        'id': row['profiles']['id'],
-        'username': row['profiles']['username'],
-      });
+      final id = row['profiles']['id'] as String;
+      friendsById[id] = {'id': id, 'username': row['profiles']['username']};
     }
     for (var row in fetch2) {
-      friends.add({
-        'id': row['profiles']['id'],
-        'username': row['profiles']['username'],
-      });
+      final id = row['profiles']['id'] as String;
+      friendsById[id] = {'id': id, 'username': row['profiles']['username']};
     }
-    return friends;
+    return friendsById.values.toList();
   }
 }

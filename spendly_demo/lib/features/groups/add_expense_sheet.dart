@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/friendly_error.dart';
 import 'group_provider.dart';
 import 'group_transaction_model.dart';
 import 'group_model.dart';
@@ -221,7 +222,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, st) => Center(child: Text('Hata: $e')),
+              error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
             ),
           ),
 
@@ -233,8 +234,6 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              backgroundColor: Colors.deepPurple,
-              foregroundColor: Colors.white,
             ),
             child: const Text(
               'Kaydet',
@@ -345,18 +344,46 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
               }
             });
           },
-          title: Text(
-            isMe
-                ? 'Sen'
-                : '@${member.username ?? member.userId.substring(0, 4)}',
+          title: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  isMe
+                      ? 'Sen'
+                      : '@${member.username ?? member.userId.substring(0, 4)}',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (isSelected &&
+                  ((_splitType == 'percentage' &&
+                          member.userId == _percentageAutoUserId) ||
+                      (_splitType == 'exact' &&
+                          member.userId == _exactAutoUserId))) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'otomatik',
+                    style: TextStyle(fontSize: 11, color: Colors.black54),
+                  ),
+                ),
+              ],
+            ],
           ),
           secondary: CircleAvatar(
             backgroundColor: isMe
-                ? Colors.deepPurple.shade100
+                ? Theme.of(context).colorScheme.primaryContainer
                 : Colors.grey.shade200,
             child: Icon(
               Icons.person,
-              color: isMe ? Colors.deepPurple : Colors.grey,
+              color: isMe ? Theme.of(context).colorScheme.primary : Colors.grey,
             ),
           ),
           controlAffinity: ListTileControlAffinity.leading,
@@ -492,7 +519,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(e))));
       }
     }
   }

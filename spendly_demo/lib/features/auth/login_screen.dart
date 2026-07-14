@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/friendly_error.dart';
 import 'auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -14,8 +15,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  String? _usernameError;
+  String? _passwordError;
+
+  bool _validate() {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+
+    setState(() {
+      _usernameError = username.isEmpty ? 'Kullanıcı adınızı girin.' : null;
+      _passwordError = password.isEmpty ? 'Şifrenizi girin.' : null;
+    });
+
+    return _usernameError == null && _passwordError == null;
+  }
 
   Future<void> _login() async {
+    if (!_validate()) return;
+
     setState(() => _isLoading = true);
     try {
       await ref
@@ -28,93 +45,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Hata: ${e.toString()}')));
+        ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(e))));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  void _showForgotPasswordDialog() {
-    final resetEmailController = TextEditingController();
-    bool isResetting = false;
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              title: const Text('Şifremi Unuttum'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Lütfen hesabınıza kayıtlı email adresini girin.'),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: resetEmailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isResetting ? null : () => Navigator.pop(ctx),
-                  child: const Text('İptal'),
-                ),
-                ElevatedButton(
-                  onPressed: isResetting
-                      ? null
-                      : () async {
-                          setStateDialog(() => isResetting = true);
-                          try {
-                            await ref
-                                .read(authControllerProvider)
-                                .resetPassword(
-                                  email: resetEmailController.text.trim(),
-                                );
-                            if (ctx.mounted) {
-                              Navigator.pop(ctx);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Şifre sıfırlama linki e-postanıza gönderildi.',
-                                  ),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (ctx.mounted) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                SnackBar(
-                                  content: Text('Hata: ${e.toString()}'),
-                                ),
-                              );
-                            }
-                          } finally {
-                            if (ctx.mounted)
-                              setStateDialog(() => isResetting = false);
-                          }
-                        },
-                  child: isResetting
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Gönder'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
   }
 
   @override
@@ -127,7 +62,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Spendly Login')),
+      appBar: AppBar(title: const Text('Spendly Giriş')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -136,39 +71,56 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           children: [
             TextField(
               controller: _usernameController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Kullanıcı Adı (@username)',
-                border: OutlineInputBorder(),
                 prefixText: '@',
+                errorText: _usernameError,
               ),
               keyboardType: TextInputType.text,
+              onChanged: (_) {
+                if (_usernameError != null) {
+                  setState(() => _usernameError = null);
+                }
+              },
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _passwordController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Şifre',
-                border: OutlineInputBorder(),
+                errorText: _passwordError,
               ),
               obscureText: true,
+              onChanged: (_) {
+                if (_passwordError != null) {
+                  setState(() => _passwordError = null);
+                }
+              },
             ),
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: _showForgotPasswordDialog,
+                onPressed: () => context.push('/forgot-password'),
                 child: const Text('Şifremi Unuttum?'),
               ),
             ),
             const SizedBox(height: 8),
-            _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ElevatedButton(
-                    onPressed: _login,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    child: const Text('Giriş Yap'),
-                  ),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _login,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Giriş Yap'),
+            ),
             const SizedBox(height: 16),
             TextButton(
               onPressed: () => context.go('/register'),

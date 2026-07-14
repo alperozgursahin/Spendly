@@ -39,6 +39,19 @@ final currentUserIdProvider = Provider<String?>((ref) {
   );
 });
 
+// Same rationale as `currentUserIdProvider`: derive from `authStateProvider`
+// (not `authClientProvider`) so widgets watching this actually rebuild when
+// the signed-in user changes. Use this instead of
+// `ref.watch(authClientProvider).currentUser` anywhere the current user's
+// email/metadata is needed reactively.
+final currentUserProvider = Provider<User?>((ref) {
+  final authState = ref.watch(authStateProvider);
+  return authState.maybeWhen(
+    data: (state) => state.session?.user,
+    orElse: () => ref.read(authClientProvider).currentUser,
+  );
+});
+
 final authControllerProvider = Provider<AuthController>((ref) {
   return AuthController(Supabase.instance.client, ref);
 });
