@@ -1,3 +1,29 @@
+enum DebtApprovalStatus { pending, approved, rejected }
+
+// Reads the approval status of one participant's share of a group
+// transaction. The payer's own share never needs approval. A missing
+// `status` key means the row predates this feature — treat it as approved
+// so existing history doesn't suddenly appear "pending" for everyone.
+DebtApprovalStatus participantApprovalStatus(
+  Map<String, dynamic> splitData,
+  String participantId,
+  String payerId,
+) {
+  if (participantId == payerId) return DebtApprovalStatus.approved;
+
+  final rawValue = splitData[participantId];
+  if (rawValue is Map) {
+    switch (rawValue['status'] as String?) {
+      case 'pending':
+        return DebtApprovalStatus.pending;
+      case 'rejected':
+        return DebtApprovalStatus.rejected;
+    }
+  }
+
+  return DebtApprovalStatus.approved;
+}
+
 class GroupTransactionModel {
   final String? id;
   final String groupId;

@@ -30,6 +30,23 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
   String? _activeTransactionId;
 
   @override
+  void initState() {
+    super.initState();
+    // The realtime .stream() providers occasionally come back empty on
+    // their very first subscribe (a timing race right after navigation),
+    // and only self-correct once something else forces a fresh subscribe
+    // (e.g. adding a new expense invalidates them). Force that fresh
+    // subscribe proactively every time this screen opens instead of
+    // waiting on that coincidence.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.invalidate(groupTransactionsStreamProvider(widget.groupId));
+      ref.invalidate(groupMembersProvider(widget.groupId));
+      ref.invalidate(balanceEngineProvider(widget.groupId));
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     ref.watch(groupDataRefreshProvider);
     final paidOverrides = ref.watch(groupPaidOverridesProvider);
@@ -237,6 +254,79 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                                                 ?.toDouble() ??
                                             0.0
                                       : (splitValue as num).toDouble();
+
+                                  final subName = isCurrentUser
+                                      ? 'Sen'
+                                      : getUsername(participantId);
+                                  final amountLabel =
+                                      '$subName: $currency${exchanger.convertFromTRY(amount, currency).toStringAsFixed(2)}';
+
+                                  final status = participantApprovalStatus(
+                                    tx.splitData,
+                                    participantId,
+                                    tx.payerId,
+                                  );
+
+                                  Future<void> setApprovalStatus(
+                                    String newStatus,
+                                  ) async {
+                                    if (tx.id == null) return;
+
+                                    final existingValue =
+                                        tx.splitData[participantId];
+                                    final existingPaid = existingValue is Map
+                                        ? (existingValue['paid'] as bool?) ??
+                                              false
+                                        : isPayer;
+
+                                    try {
+                                      await ref
+                                          .read(groupServiceProvider)
+                                          .updateOwnSplitEntry(
+                                            transactionId: tx.id!,
+                                            paid: existingPaid,
+                                            status: newStatus,
+                                          );
+
+                                      ref.invalidate(
+                                        groupTransactionsStreamProvider(
+                                          widget.groupId,
+                                        ),
+                                      );
+                                      ref.invalidate(
+                                        balanceEngineProvider(widget.groupId),
+                                      );
+                                      ref.read(groupDataRefreshProvider.notifier).state++;
+                                    } catch (_) {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'İşlem gerçekleştirilemedi. Tekrar deneyin.',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  }
+
+                                  if (status == DebtApprovalStatus.pending) {
+                                    final canRespond =
+                                        isCurrentUser && isActive;
+                                    return _buildPendingChip(
+                                      amountLabel,
+                                      canRespond,
+                                      () => setApprovalStatus('approved'),
+                                      () => setApprovalStatus('rejected'),
+                                    );
+                                  }
+
+                                  if (status == DebtApprovalStatus.rejected) {
+                                    return _buildRejectedChip(amountLabel);
+                                  }
+
                                   final basePaid = splitValue is Map
                                       ? (splitValue['paid'] as bool?) ?? false
                                       : isPayer;
@@ -247,14 +337,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                                       paidOverrides,
                                       ) ||
                                       basePaid;
-                                  final canToggle =
-                                      tx.id != null &&
-                                      isActive &&
-                                      isCurrentUser;
 
-                                  final subName = isCurrentUser
-                                      ? 'Sen'
-                                      : getUsername(participantId);
                                   final chipColor = paid
                                       ? Colors.green.shade50
                                       : Colors.red.shade50;
@@ -283,31 +366,20 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                                           !currentPaid,
                                         );
 
-                                    final currentSplitData =
-                                        Map<String, dynamic>.from(tx.splitData);
                                     final existingValue =
-                                        currentSplitData[participantId];
-                                    final existingAmount = existingValue is Map
-                                        ? (existingValue['amount'] as num?)
-                                                  ?.toDouble() ??
-                                              0.0
-                                        : (existingValue as num).toDouble();
+                                        tx.splitData[participantId];
                                     final existingPaid = existingValue is Map
                                         ? (existingValue['paid'] as bool?) ??
                                               false
                                         : isPayer;
 
-                                    currentSplitData[participantId] = {
-                                      'amount': existingAmount,
-                                      'paid': !existingPaid,
-                                    };
-
                                     try {
                                       await ref
                                           .read(groupServiceProvider)
-                                          .updateGroupTransactionSplitData(
-                                            transactionId,
-                                            currentSplitData,
+                                          .updateOwnSplitEntry(
+                                            transactionId: transactionId,
+                                            paid: !existingPaid,
+                                            status: 'approved',
                                           );
 
                                       ref.invalidate(
@@ -348,7 +420,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                                       children: [
                                         Flexible(
                                             child: Text(
-                                            '$subName: $currency${exchanger.convertFromTRY(amount, currency).toStringAsFixed(2)}',
+                                            amountLabel,
                                             overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
                                               color: textColor,
@@ -437,6 +509,109 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         },
         icon: const Icon(Icons.receipt_long),
         label: const Text('Harcama Ekle'),
+      ),
+    );
+  }
+
+  Widget _buildPendingChip(
+    String amountLabel,
+    bool canRespond,
+    VoidCallback onApprove,
+    VoidCallback onReject,
+  ) {
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.amber.shade300),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.hourglass_top, size: 16, color: Colors.amber.shade800),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              '$amountLabel · Onay bekliyor',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.amber.shade900,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          if (canRespond) ...[
+            const SizedBox(width: 10),
+            InkWell(
+              onTap: onApprove,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: Colors.green.shade600,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_rounded,
+                  size: 18,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            InkWell(
+              onTap: onReject,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade600,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    if (!canRespond) return chip;
+    return Material(color: Colors.transparent, child: chip);
+  }
+
+  Widget _buildRejectedChip(String amountLabel) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.block, size: 16, color: Colors.grey.shade600),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              '$amountLabel · Reddedildi',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.lineThrough,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

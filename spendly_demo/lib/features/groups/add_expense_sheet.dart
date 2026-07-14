@@ -371,6 +371,9 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     );
   }
 
+  String _initialStatusFor(String uid) =>
+      uid == widget.currentUserId ? 'approved' : 'pending';
+
   void _submitExpense() async {
     final amount = _totalAmount;
     if (amount <= 0 || _descController.text.isEmpty || _selectedUsers.isEmpty) {
@@ -389,7 +392,11 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         (amount / _selectedUsers.length).toStringAsFixed(2),
       );
       for (var uid in _selectedUsers) {
-        splitData[uid] = {'amount': share, 'paid': uid == widget.currentUserId};
+        splitData[uid] = {
+          'amount': share,
+          'paid': uid == widget.currentUserId,
+          'status': _initialStatusFor(uid),
+        };
       }
 
       // Fix rounding errors (add remainder to current user if they are in the split, or first user)
@@ -401,6 +408,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
             (share + (amount - totalCalculated)).toStringAsFixed(2),
           ),
           'paid': firstUser == widget.currentUserId,
+          'status': _initialStatusFor(firstUser),
         };
       }
     } else if (_splitType == 'percentage') {
@@ -434,6 +442,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         splitData[uid] = {
           'amount': double.parse(((amount * pct) / 100).toStringAsFixed(2)),
           'paid': uid == widget.currentUserId,
+          'status': _initialStatusFor(uid),
         };
       }
     } else if (_splitType == 'exact') {
@@ -453,6 +462,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         splitData[uid] = {
           'amount': splitValues[uid] ?? 0.0,
           'paid': uid == widget.currentUserId,
+          'status': _initialStatusFor(uid),
         };
       }
     }

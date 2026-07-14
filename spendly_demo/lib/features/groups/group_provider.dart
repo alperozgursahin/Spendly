@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'group_model.dart';
 import 'group_transaction_model.dart';
 import '../auth/auth_provider.dart';
-import '../transactions/transaction_model.dart';
 
 final groupServiceProvider = Provider<GroupService>((ref) {
   return GroupService(Supabase.instance.client);
@@ -64,6 +63,14 @@ final balanceEngineProvider = Provider.family<Map<String, double>, String>((
           }
 
           if (owedAmount is! num && owedAmount is! Map) {
+            return;
+          }
+
+          // A share that's still awaiting the counterparty's approval (or
+          // was rejected by them) isn't a finalized debt yet, so it must not
+          // move the group balance.
+          if (participantApprovalStatus(tx.splitData, userId, tx.payerId) !=
+              DebtApprovalStatus.approved) {
             return;
           }
 
@@ -146,14 +153,28 @@ class GroupService {
     await _supabase.from('group_transactions').insert(tx.toJson());
   }
 
-  Future<void> updateGroupTransactionSplitData(
-    String transactionId,
-    Map<String, dynamic> splitData,
-  ) async {
-    await _supabase
-        .from('group_transactions')
-        .update({'split_data': splitData})
-        .eq('id', transactionId);
+  // Updates only the calling user's own entry within a transaction's
+  // split_data (their paid state and/or approval status). Goes through the
+  // `update_own_group_transaction_split` RPC (see
+  // supabase/migrations/20260714_group_transaction_participant_update.sql)
+  // rather than a plain `.update()`, because the base RLS policy on
+  // group_transactions only allows the payer to modify the row — a
+  // non-payer participant approving/rejecting or settling their own share
+  // would otherwise be silently blocked (Postgrest reports success with
+  // zero rows changed, no exception).
+  Future<void> updateOwnSplitEntry({
+    required String transactionId,
+    required bool paid,
+    required String status,
+  }) async {
+    await _supabase.rpc(
+      'update_own_group_transaction_split',
+      params: {
+        'p_transaction_id': transactionId,
+        'p_paid': paid,
+        'p_status': status,
+      },
+    );
   }
 }
 

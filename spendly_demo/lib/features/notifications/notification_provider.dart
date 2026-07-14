@@ -29,9 +29,17 @@ Future<DateTime> _loadInitialCursor(String userId) async {
     if (parsed != null) return parsed.toUtc();
   }
 
-  final now = DateTime.now().toUtc();
-  await storage.write(key: _cursorKeyFor(userId), value: now.toIso8601String());
-  return now;
+  // First-ever check for this user (or the cursor was cleared at logout).
+  // Persist "now" so *future* checks only show what's new from here on,
+  // but this call must still return everything that already happened —
+  // otherwise a share added moments before this first check (which is
+  // exactly what a brand-new participant is opening this screen to see)
+  // would be stamped as "already seen" and silently never shown.
+  await storage.write(
+    key: _cursorKeyFor(userId),
+    value: DateTime.now().toUtc().toIso8601String(),
+  );
+  return DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 }
 
 class NotificationCursorStorage {
@@ -111,7 +119,7 @@ Future<List<AppNotificationModel>> _buildNotifications(
       actorId: payerId,
       groupId: groupId,
       message:
-          '$actorUsername kullanıcısı $groupName grubuna $description harcamasına sizi ekledi. Miktar ${amount.toStringAsFixed(2)} TL.',
+          '$actorUsername kullanıcısı $groupName grubuna $description harcamasına sizi ekledi. Miktar ${amount.toStringAsFixed(2)} TL. Onayınızı bekliyor.',
       isRead: false,
       createdAt: createdAt,
     );

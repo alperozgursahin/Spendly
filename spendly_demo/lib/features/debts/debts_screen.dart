@@ -10,11 +10,38 @@ import '../profile/currency_provider.dart';
 import '../profile/exchange_rate_provider.dart';
 import '../filters/filters_provider.dart';
 
-class DebtsScreen extends ConsumerWidget {
+class DebtsScreen extends ConsumerStatefulWidget {
   const DebtsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DebtsScreen> createState() => _DebtsScreenState();
+}
+
+class _DebtsScreenState extends ConsumerState<DebtsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // See GroupDetailScreen: the realtime .stream() providers occasionally
+    // return empty on their first subscribe. Force a fresh subscribe for
+    // every group's data whenever this screen opens.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      ref.invalidate(userGroupsProvider);
+      try {
+        final groups = await ref.read(userGroupsProvider.future);
+        if (!mounted) return;
+        for (final group in groups) {
+          if (group.id == null) continue;
+          ref.invalidate(groupTransactionsStreamProvider(group.id!));
+          ref.invalidate(groupMembersProvider(group.id!));
+          ref.invalidate(balanceEngineProvider(group.id!));
+        }
+      } catch (_) {}
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     ref.watch(groupDataRefreshProvider);
     final groupsAsync = ref.watch(userGroupsProvider);
     final currency = ref.watch(currencyProvider);
@@ -22,7 +49,7 @@ class DebtsScreen extends ConsumerWidget {
     final currentUserId = ref.watch(authClientProvider).currentUser?.id;
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
@@ -38,13 +65,14 @@ class DebtsScreen extends ConsumerWidget {
           ),
           title: const Text('Borçlar'),
           bottom: const TabBar(
-            isScrollable: false,
-            labelPadding: EdgeInsets.zero,
-            indicatorSize: TabBarIndicatorSize.tab,
+            isScrollable: true,
+            labelPadding: EdgeInsets.symmetric(horizontal: 16),
+            indicatorSize: TabBarIndicatorSize.label,
             tabs: [
-              Tab(child: Center(child: Text('Bizim Borçlarımız'))),
-              Tab(child: Center(child: Text('Bize Borçlular'))),
-              Tab(child: Center(child: Text('Net Özet'))),
+              Tab(child: Text('Bizim Borçlarımız')),
+              Tab(child: Text('Bize Borçlular')),
+              Tab(child: Text('Onaylar')),
+              Tab(child: Text('Net Özet')),
             ],
           ),
         ),
@@ -69,6 +97,14 @@ class DebtsScreen extends ConsumerWidget {
                       exchanger,
                     ),
                     _buildOweUsTab(
+                      context,
+                      ref,
+                      groups,
+                      currentUserId,
+                      currency,
+                      exchanger,
+                    ),
+                    _buildApprovalsTab(
                       context,
                       ref,
                       groups,
@@ -319,6 +355,224 @@ class DebtsScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildApprovalsTab(
+    BuildContext context,
+    WidgetRef ref,
+    List<GroupModel> groups,
+    String currentUserId,
+    String currency,
+    ExchangeRateService exchanger,
+  ) {
+    final awaitingMe = <_PendingLine>[];
+    final awaitingOthers = <_PendingLine>[];
+
+    for (final group in groups) {
+      if (group.id == null) continue;
+
+      final membersAsync = ref.watch(groupMembersProvider(group.id!));
+      final transactionsAsync = ref.watch(
+        groupTransactionsStreamProvider(group.id!),
+      );
+
+      transactionsAsync.whenData((transactions) {
+        for (final tx in transactions) {
+          tx.splitData.forEach((participantId, rawValue) {
+            if (participantId == tx.payerId) return;
+            final status = participantApprovalStatus(
+              tx.splitData,
+              participantId,
+              tx.payerId,
+            );
+            if (status != DebtApprovalStatus.pending) return;
+
+            final amount = rawValue is Map
+                ? (rawValue['amount'] as num?)?.toDouble() ?? 0.0
+                : (rawValue as num).toDouble();
+            if (amount <= 0) return;
+
+            if (participantId == currentUserId) {
+              awaitingMe.add(
+                _PendingLine(
+                  transactionId: tx.id,
+                  groupId: group.id!,
+                  groupName: group.name,
+                  title: tx.description,
+                  counterpartyName: _memberName(
+                    membersAsync,
+                    tx.payerId,
+                    currentUserId,
+                  ),
+                  amount: amount,
+                  date: tx.createdAt,
+                  participantId: participantId,
+                  payerId: tx.payerId,
+                  splitData: tx.splitData,
+                ),
+              );
+            } else if (tx.payerId == currentUserId) {
+              awaitingOthers.add(
+                _PendingLine(
+                  transactionId: tx.id,
+                  groupId: group.id!,
+                  groupName: group.name,
+                  title: tx.description,
+                  counterpartyName: _memberName(
+                    membersAsync,
+                    participantId,
+                    currentUserId,
+                  ),
+                  amount: amount,
+                  date: tx.createdAt,
+                  participantId: participantId,
+                  payerId: tx.payerId,
+                  splitData: tx.splitData,
+                ),
+              );
+            }
+          });
+        }
+      });
+    }
+
+    Future<void> respond(_PendingLine item, String newStatus) async {
+      if (item.transactionId == null) return;
+      final existingValue = item.splitData[item.participantId];
+      final existingPaid = existingValue is Map
+          ? (existingValue['paid'] as bool?) ?? false
+          : false;
+
+      try {
+        await ref
+            .read(groupServiceProvider)
+            .updateOwnSplitEntry(
+              transactionId: item.transactionId!,
+              paid: existingPaid,
+              status: newStatus,
+            );
+        ref.invalidate(groupTransactionsStreamProvider(item.groupId));
+        ref.invalidate(balanceEngineProvider(item.groupId));
+        ref.read(groupDataRefreshProvider.notifier).state++;
+      } catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('İşlem gerçekleştirilemedi. Tekrar deneyin.'),
+            ),
+          );
+        }
+      }
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text(
+          'Onayınızı Bekleyenler',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        if (awaitingMe.isEmpty)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 16),
+            child: Text(
+              'Onayınızı bekleyen bir borç bulunmuyor.',
+              style: TextStyle(color: Colors.black54),
+            ),
+          )
+        else
+          ...awaitingMe.map(
+            (item) => Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: Padding(
+                padding: const EdgeInsets.all(14.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.title,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${item.groupName} · ${item.counterpartyName} ekledi',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '$currency${exchanger.convertFromTRY(item.amount, currency).toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.deepPurple,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(
+                      onPressed: () => respond(item, 'rejected'),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.red.shade50,
+                        foregroundColor: Colors.red.shade700,
+                      ),
+                      icon: const Icon(Icons.close_rounded),
+                      tooltip: 'Reddet',
+                    ),
+                    const SizedBox(width: 6),
+                    IconButton.filled(
+                      onPressed: () => respond(item, 'approved'),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.green.shade50,
+                        foregroundColor: Colors.green.shade700,
+                      ),
+                      icon: const Icon(Icons.check_rounded),
+                      tooltip: 'Onayla',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        const SizedBox(height: 24),
+        const Text(
+          'Onay Bekleyen Alacaklarınız',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        if (awaitingOthers.isEmpty)
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Text(
+              'Karşı taraf onayı bekleyen bir eklemeniz bulunmuyor.',
+              style: TextStyle(color: Colors.black54),
+            ),
+          )
+        else
+          ...awaitingOthers.map(
+            (item) => Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListTile(
+                title: Text(item.title),
+                subtitle: Text(
+                  '${item.groupName} · ${item.counterpartyName} onayı bekleniyor',
+                ),
+                trailing: Text(
+                  '$currency${exchanger.convertFromTRY(item.amount, currency).toStringAsFixed(2)}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildNetSummaryTab(
     BuildContext context,
     WidgetRef ref,
@@ -552,7 +806,16 @@ class DebtsScreen extends ConsumerWidget {
         paidOverrides,
       ) || paid;
 
-      if (amount <= 0 || tx.payerId == currentUserId || effectivePaid) continue;
+      final isApproved =
+          participantApprovalStatus(tx.splitData, currentUserId, tx.payerId) ==
+          DebtApprovalStatus.approved;
+
+      if (amount <= 0 ||
+          tx.payerId == currentUserId ||
+          effectivePaid ||
+          !isApproved) {
+        continue;
+      }
 
       // date filter
       if (filters.start != null && tx.createdAt != null) {
@@ -603,7 +866,11 @@ class DebtsScreen extends ConsumerWidget {
           paidOverrides,
         ) || paid;
 
-        if (amount <= 0 || effectivePaid) return;
+        final isApproved =
+            participantApprovalStatus(tx.splitData, userId, tx.payerId) ==
+            DebtApprovalStatus.approved;
+
+        if (amount <= 0 || effectivePaid || !isApproved) return;
 
         // date filter
         if (filters.start != null && tx.createdAt != null) {
@@ -860,6 +1127,32 @@ class _DebtLine {
     required this.amount,
     required this.date,
     required this.groupName,
+  });
+}
+
+class _PendingLine {
+  final String? transactionId;
+  final String groupId;
+  final String groupName;
+  final String title;
+  final String counterpartyName;
+  final double amount;
+  final DateTime? date;
+  final String participantId;
+  final String payerId;
+  final Map<String, dynamic> splitData;
+
+  const _PendingLine({
+    required this.transactionId,
+    required this.groupId,
+    required this.groupName,
+    required this.title,
+    required this.counterpartyName,
+    required this.amount,
+    required this.date,
+    required this.participantId,
+    required this.payerId,
+    required this.splitData,
   });
 }
 
