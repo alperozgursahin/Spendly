@@ -12,6 +12,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'heatmap_provider.dart';
 import 'heatmap_widget.dart';
 import '../filters/filters_provider.dart';
+import '../notifications/notification_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -22,15 +23,23 @@ class DashboardScreen extends ConsumerWidget {
     final transactionsAsync = ref.watch(transactionsProvider);
     final activityAsync = ref.watch(activityProvider);
     final currency = ref.watch(currencyProvider);
+    final userId = ref.watch(currentUserIdProvider);
+    final unreadNotificationCount = userId == null
+        ? 0
+        : ref.watch(unreadNotificationCountProvider(userId));
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            tooltip: 'Bildirimler',
-            onPressed: () => context.push('/notifications'),
+          Badge(
+            isLabelVisible: unreadNotificationCount > 0,
+            label: Text(unreadNotificationCount.toString()),
+            child: IconButton(
+              icon: const Icon(Icons.notifications_none),
+              tooltip: 'Bildirimler',
+              onPressed: () => context.push('/notifications'),
+            ),
           ),
         ],
       ),

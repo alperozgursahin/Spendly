@@ -43,9 +43,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           : notificationsAsync.when(
               data: (notifications) {
                 if (notifications.isEmpty) {
-                  return const Center(
-                    child: Text('Henüz bildiriminiz yok.'),
-                  );
+                  return const Center(child: Text('Henüz bildiriminiz yok.'));
                 }
 
                 return ListView.separated(
@@ -71,10 +69,24 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         ),
                         title: Text(notification.message),
                         subtitle: Text(_formatDate(notification.createdAt)),
-                        trailing: const Icon(Icons.fiber_manual_record, size: 10),
-                        onTap: () => context.push(
-                          '/groups/${notification.groupId}',
-                        ),
+                        trailing: notification.isRead
+                            ? null
+                            : const Icon(Icons.fiber_manual_record, size: 10),
+                        onTap: () async {
+                          final userId = ref.read(currentUserIdProvider);
+                          if (userId != null && !notification.isRead) {
+                            await ref
+                                .read(notificationServiceProvider)
+                                .markAsRead(
+                                  notificationId: notification.id,
+                                  recipientId: userId,
+                                );
+                          }
+
+                          if (notification.groupId != null && context.mounted) {
+                            context.push('/groups/${notification.groupId}');
+                          }
+                        },
                       ),
                     );
                   },

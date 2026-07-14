@@ -1,44 +1,47 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../auth/auth_provider.dart';
 import 'notification_model.dart';
 
 String _cursorKeyFor(String userId) => 'notification_feature_cutoff_$userId';
 
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService(Supabase.instance.client);
+});
+
 final userNotificationsProvider =
     StreamProvider.family<List<AppNotificationModel>, String>((ref, userId) {
-      final supabase = Supabase.instance.client;
-      return Stream.fromFuture(_loadInitialCursor(userId)).asyncExpand((
-        cursor,
-      ) {
-        return supabase
-            .from('group_transactions')
-            .stream(primaryKey: ['id'])
-            .order('created_at', ascending: false)
-            .asyncMap((rows) => _buildNotifications(rows, userId, cursor));
-      });
+      final service = ref.watch(notificationServiceProvider);
+      return service.watchNotifications(userId);
     });
 
-Future<DateTime> _loadInitialCursor(String userId) async {
+final unreadNotificationCountProvider = Provider.family<int, String>((
+  ref,
+  userId,
+) {
+  final notifications = ref.watch(userNotificationsProvider(userId));
+
+  return notifications.maybeWhen(
+    data: (items) => items.where((item) => !item.isRead).length,
+    orElse: () => 0,
+  );
+});
+
+Future<DateTime> loadInitialNotificationCursor(String userId) async {
   const storage = FlutterSecureStorage();
-  final storedValue = await storage.read(key: _cursorKeyFor(userId));
-  if (storedValue != null) {
-    final parsed = DateTime.tryParse(storedValue);
+  final value = await storage.read(key: _cursorKeyFor(userId));
+
+  if (value != null) {
+    final parsed = DateTime.tryParse(value);
     if (parsed != null) return parsed.toUtc();
   }
 
-  // First-ever check for this user (or the cursor was cleared at logout).
-  // Persist "now" so *future* checks only show what's new from here on,
-  // but this call must still return everything that already happened —
-  // otherwise a share added moments before this first check (which is
-  // exactly what a brand-new participant is opening this screen to see)
-  // would be stamped as "already seen" and silently never shown.
   await storage.write(
     key: _cursorKeyFor(userId),
     value: DateTime.now().toUtc().toIso8601String(),
   );
+
   return DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 }
 
@@ -52,76 +55,151 @@ class NotificationCursorStorage {
 Future<List<AppNotificationModel>> _buildNotifications(
   List<Map<String, dynamic>> rows,
   String userId,
-  DateTime cursor,
 ) async {
   final supabase = Supabase.instance.client;
 
-  final relevantRows = rows.where((row) {
-    final createdAt = DateTime.parse(row['created_at'] as String).toUtc();
-    if (!createdAt.isAfter(cursor)) return false;
+  final expenseIds = rows
+      .map((row) => row['expense_id'] as String?)
+      .whereType<String>()
+      .toSet()
+      .toList();
 
-    final splitData = Map<String, dynamic>.from(
-      row['split_data'] as Map? ?? {},
-    );
-    return row['payer_id'] != userId && splitData.containsKey(userId);
-  }).toList();
-
-  final groupIds = relevantRows
+  final groupIds = rows
       .map((row) => row['group_id'] as String?)
       .whereType<String>()
       .toSet()
       .toList();
-  final payerIds = relevantRows
-      .map((row) => row['payer_id'] as String?)
+
+  final senderIds = rows
+      .map((row) => row['sender_id'] as String?)
       .whereType<String>()
       .toSet()
       .toList();
 
+  final expenseResults = await Future.wait(
+    expenseIds.map(
+      (id) => supabase
+          .from('group_transactions')
+          .select('id, group_id, payer_id, amount, description, created_at')
+          .eq('id', id)
+          .maybeSingle(),
+    ),
+  );
+
+  final groupResults = await Future.wait(
+    groupIds.map(
+      (id) =>
+          supabase.from('groups').select('id, name').eq('id', id).maybeSingle(),
+    ),
+  );
+
+  final profileResults = await Future.wait(
+    senderIds.map(
+      (id) => supabase
+          .from('profiles')
+          .select('id, username')
+          .eq('id', id)
+          .maybeSingle(),
+    ),
+  );
+
+  final expenses = <String, Map<String, dynamic>>{};
+  for (final row in expenseResults) {
+    if (row != null) expenses[row['id'] as String] = row;
+  }
+
   final groupNames = <String, String>{};
-  for (final groupId in groupIds) {
-    final groupRow = await supabase
-        .from('groups')
-        .select('id, name')
-        .eq('id', groupId)
-        .maybeSingle();
-    if (groupRow != null) {
-      groupNames[groupId] = groupRow['name'] as String? ?? 'Bir grup';
+  for (final row in groupResults) {
+    if (row != null) {
+      groupNames[row['id'] as String] = row['name'] as String? ?? 'Bir grup';
     }
   }
 
   final usernames = <String, String>{};
-  for (final payerId in payerIds) {
-    final profileRow = await supabase
-        .from('profiles')
-        .select('id, username')
-        .eq('id', payerId)
-        .maybeSingle();
-    if (profileRow != null) {
-      final username = (profileRow['username'] as String?)?.trim();
-      usernames[payerId] = (username != null && username.isNotEmpty)
-          ? username
-          : 'Bir kullanıcı';
-    }
+  for (final row in profileResults) {
+    if (row == null) continue;
+
+    final username = (row['username'] as String?)?.trim();
+    usernames[row['id'] as String] = username == null || username.isEmpty
+        ? 'Bir kullanıcı'
+        : username;
   }
 
-  return relevantRows.map((row) {
-    final groupId = row['group_id'] as String;
-    final payerId = row['payer_id'] as String;
-    final description = row['description'] as String? ?? 'harcama';
-    final amount = (row['amount'] as num?)?.toDouble() ?? 0.0;
-    final groupName = groupNames[groupId] ?? 'Bir grup';
-    final actorUsername = usernames[payerId] ?? 'Bir kullanıcı';
-    final createdAt = DateTime.parse(row['created_at'] as String).toUtc();
+  return rows.map((row) {
+    final notificationId = row['id'] as String;
+    final expenseId = row['expense_id'] as String?;
+    final expense = expenseId == null ? null : expenses[expenseId];
+
+    final groupId =
+        (row['group_id'] as String?) ?? (expense?['group_id'] as String?);
+    final senderId = row['sender_id'] as String;
+    final type = (row['type'] as String?) ?? 'debt_request';
+    final amount = (expense?['amount'] as num?)?.toDouble() ?? 0;
+    final description = expense?['description'] as String? ?? 'harcama';
+    final groupName = groupId == null
+        ? 'Bir grup'
+        : groupNames[groupId] ?? 'Bir grup';
+    final senderName = usernames[senderId] ?? 'Bir kullanıcı';
+
+    var message =
+        '$senderName sizi $groupName grubundaki "$description" harcamasına ekledi. '
+        'Tutar: ${amount.toStringAsFixed(2)} TL. Onayınızı bekliyor.';
+
+    if (type == 'payment_confirmation') {
+      message =
+          '$senderName, $groupName grubundaki "$description" için ödeme '
+          'bildirimi gönderdi.';
+    } else if (type == 'debt_approved') {
+      message =
+          '$senderName, $groupName grubundaki "$description" borcunu onayladı.';
+    }
 
     return AppNotificationModel(
-      id: '${row['id']}_$userId',
+      // This must be the real UUID. Do not append userId here.
+      id: notificationId,
       recipientId: userId,
-      actorId: payerId,
+      senderId: senderId,
       groupId: groupId,
-      message:
-          '$actorUsername kullanıcısı $groupName grubuna $description harcamasına sizi ekledi. Miktar ${amount.toStringAsFixed(2)} TL. Onayınızı bekliyor.',
-      isRead: false,
-      createdAt: createdAt,
+      expenseId: expenseId,
+      type: type,
+      message: message,
+      isRead: row['is_read'] as bool? ?? false,
+      createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
     );
   }).toList();
+}
+
+class NotificationService {
+  final SupabaseClient _supabase;
+
+  NotificationService(this._supabase);
+
+  Stream<List<AppNotificationModel>> watchNotifications(String userId) {
+    return _supabase
+        .from('notifications')
+        .stream(primaryKey: ['id'])
+        .eq('recipient_id', userId)
+        .order('created_at', ascending: false)
+        .asyncMap(
+          (rows) => _buildNotifications(
+            rows.map(Map<String, dynamic>.from).toList(),
+            userId,
+          ),
+        );
+  }
+
+  Future<void> markAsRead({
+    required String notificationId,
+    required String recipientId,
+  }) async {
+    await _supabase
+        .from('notifications')
+        .update({'is_read': true})
+        .eq('id', notificationId)
+        .eq('recipient_id', recipientId);
+  }
+
+  Future<void> markNotificationsAsRead() {
+    return _supabase.rpc('mark_notifications_read');
+  }
 }
