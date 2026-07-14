@@ -3,26 +3,55 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../auth/auth_provider.dart';
+import '../filters/filters_provider.dart';
 import '../groups/group_model.dart';
 import '../groups/group_provider.dart';
 import '../groups/group_transaction_model.dart';
 import '../profile/currency_provider.dart';
 import '../profile/exchange_rate_provider.dart';
-import '../filters/filters_provider.dart';
 
-class DebtsScreen extends ConsumerWidget {
+class DebtsScreen extends ConsumerStatefulWidget {
   const DebtsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DebtsScreen> createState() => _DebtsScreenState();
+}
+
+class _DebtsScreenState extends ConsumerState<DebtsScreen> {
+  final Set<String> _processingTransactions = <String>{};
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      ref.invalidate(userGroupsProvider);
+
+      try {
+        final groups = await ref.read(userGroupsProvider.future);
+        for (final group in groups) {
+          if (group.id == null) continue;
+          ref.invalidate(groupTransactionsStreamProvider(group.id!));
+          ref.invalidate(groupMembersProvider(group.id!));
+          ref.invalidate(balanceEngineProvider(group.id!));
+        }
+      } catch (_) {
+        // Providers show their own error states.
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     ref.watch(groupDataRefreshProvider);
+
     final groupsAsync = ref.watch(userGroupsProvider);
+    final currentUserId = ref.watch(authClientProvider).currentUser?.id;
     final currency = ref.watch(currencyProvider);
     final exchanger = ref.watch(exchangeRateProvider);
-    final currentUserId = ref.watch(authClientProvider).currentUser?.id;
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
@@ -31,113 +60,125 @@ class DebtsScreen extends ConsumerWidget {
             onPressed: () {
               if (Navigator.of(context).canPop()) {
                 Navigator.of(context).pop();
-                return;
+              } else {
+                context.go('/dashboard');
               }
-              context.go('/dashboard');
             },
           ),
           title: const Text('Borçlar'),
           bottom: const TabBar(
-            isScrollable: false,
-            labelPadding: EdgeInsets.zero,
-            indicatorSize: TabBarIndicatorSize.tab,
+            isScrollable: true,
             tabs: [
-              Tab(child: Center(child: Text('Bizim Borçlarımız'))),
-              Tab(child: Center(child: Text('Bize Borçlular'))),
-              Tab(child: Center(child: Text('Net Özet'))),
+              Tab(text: 'Bizim Borçlarımız'),
+              Tab(text: 'Bize Borçlular'),
+              Tab(text: 'Onaylar'),
+              Tab(text: 'Net Özet'),
             ],
           ),
         ),
         body: groupsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(child: Text('Hata: $error')),
           data: (groups) {
             if (currentUserId == null) {
               return const Center(child: Text('Kullanıcı bilgisi alınamadı.'));
             }
 
             if (groups.isEmpty) {
-              return const Center(child: Text('Henüz bir gruba dahil değilsiniz.'));
+              return const Center(
+                child: Text('Henüz herhangi bir gruba dahil değilsiniz.'),
+              );
             }
 
             return TabBarView(
               children: [
-                    _buildOurDebtsTab(
-                      context,
-                      ref,
-                      groups,
-                      currentUserId,
-                      currency,
-                      exchanger,
-                    ),
-                    _buildOweUsTab(
-                      context,
-                      ref,
-                      groups,
-                      currentUserId,
-                      currency,
-                      exchanger,
-                    ),
-                    _buildNetSummaryTab(
-                      context,
-                      ref,
-                      groups,
-                      currentUserId,
-                      currency,
-                      exchanger,
-                    ),
+                _buildDebtList(
+                  groups: groups,
+                  currentUserId: currentUserId,
+                  currency: currency,
+                  exchanger: exchanger,
+                  isOurDebt: true,
+                ),
+                _buildDebtList(
+                  groups: groups,
+                  currentUserId: currentUserId,
+                  currency: currency,
+                  exchanger: exchanger,
+                  isOurDebt: false,
+                ),
+                _buildApprovals(
+                  groups: groups,
+                  currentUserId: currentUserId,
+                  currency: currency,
+                  exchanger: exchanger,
+                ),
+                _buildNetSummary(
+                  groups: groups,
+                  currentUserId: currentUserId,
+                  currency: currency,
+                  exchanger: exchanger,
+                ),
               ],
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, st) => Center(child: Text('Hata: $e')),
         ),
       ),
     );
   }
 
-  Widget _buildOurDebtsTab(
-    BuildContext context,
-    WidgetRef ref,
-    List<GroupModel> groups,
-    String currentUserId,
-    String currency,
-    ExchangeRateService exchanger,
-  ) {
+  Widget _buildDebtList({
+    required List<GroupModel> groups,
+    required String currentUserId,
+    required String currency,
+    required ExchangeRateService exchanger,
+    required bool isOurDebt,
+  }) {
     final filters = ref.watch(transactionFilterProvider);
-    final paidOverrides = ref.watch(groupPaidOverridesProvider);
     final sections = <Widget>[];
-    double totalAmount = 0.0;
+    var total = 0.0;
 
     for (final group in groups) {
-      if (filters.groupId.isNotEmpty && filters.groupId != group.id) continue;
-      if (group.id == null) continue;
+      final groupId = group.id;
+      if (groupId == null) continue;
+      if (filters.groupId.isNotEmpty && filters.groupId != groupId) continue;
 
-      final membersAsync = ref.watch(groupMembersProvider(group.id!));
-      final transactionsAsync = ref.watch(
-        groupTransactionsStreamProvider(group.id!),
-      );
+      final members = ref.watch(groupMembersProvider(groupId));
+      final transactions = ref.watch(groupTransactionsStreamProvider(groupId));
 
-      final items = transactionsAsync.maybeWhen(
-        data: (transactions) => _collectOurDebts(
-          transactions,
-          group,
-          currentUserId,
-          membersAsync,
-          filters,
-          paidOverrides,
-        ),
+      final lines = transactions.maybeWhen(
+        data: (items) => isOurDebt
+            ? _collectOurDebts(
+                transactions: items,
+                group: group,
+                currentUserId: currentUserId,
+                members: members,
+                filters: filters,
+              )
+            : _collectPeopleOweUs(
+                transactions: items,
+                group: group,
+                currentUserId: currentUserId,
+                members: members,
+                filters: filters,
+              ),
         orElse: () => const <_DebtLine>[],
       );
 
-      if (items.isEmpty) continue;
+      if (lines.isEmpty) continue;
 
-      final groupTotal = items.fold<double>(0.0, (p, e) => p + e.amount);
-      totalAmount += groupTotal;
+      final groupTotal = lines.fold<double>(
+        0,
+        (sum, line) => sum + line.amount,
+      );
+      total += groupTotal;
+
+      final color = isOurDebt ? Colors.red.shade700 : Colors.green.shade700;
 
       sections.add(
         Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -155,361 +196,382 @@ class DebtsScreen extends ConsumerWidget {
                     Text(
                       '$currency${exchanger.convertFromTRY(groupTotal, currency).toStringAsFixed(2)}',
                       style: TextStyle(
-                        fontSize: 15,
+                        color: color,
                         fontWeight: FontWeight.w700,
-                        color: Colors.red.shade700,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                ...items.map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _DebtRow(
-                      title: item.title,
-                      subtitle: 'Borçlu olunan kişi: ${item.counterpartyName}',
-                      amountText:
-                          '$currency${exchanger.convertFromTRY(item.amount, currency).toStringAsFixed(2)}',
-                      date: item.date,
-                      accentColor: Colors.red.shade700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildFilterCard(context, ref, groups),
-        const SizedBox(height: 6),
-        if (sections.isNotEmpty) ...[
-          _SummaryCard(
-            label: 'Toplam Borç',
-            value:
-                '$currency${exchanger.convertFromTRY(totalAmount, currency).toStringAsFixed(2)}',
-            accentColor: Colors.red,
-          ),
-          const SizedBox(height: 12),
-          ...sections,
-        ] else
-          const Padding(
-            padding: EdgeInsets.only(top: 56),
-            child: Center(child: Text('Bizim borcumuz bulunmuyor.')),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildOweUsTab(
-    BuildContext context,
-    WidgetRef ref,
-    List<GroupModel> groups,
-    String currentUserId,
-    String currency,
-    ExchangeRateService exchanger,
-  ) {
-    final filters = ref.watch(transactionFilterProvider);
-    final paidOverrides = ref.watch(groupPaidOverridesProvider);
-    final sections = <Widget>[];
-    double totalAmount = 0.0;
-
-    for (final group in groups) {
-      if (group.id == null) continue;
-
-      final membersAsync = ref.watch(groupMembersProvider(group.id!));
-      final transactionsAsync = ref.watch(
-        groupTransactionsStreamProvider(group.id!),
-      );
-
-      if (filters.groupId.isNotEmpty && filters.groupId != group.id) continue;
-
-      final items = transactionsAsync.maybeWhen(
-        data: (transactions) => _collectPeopleOweUs(
-          transactions,
-          group,
-          currentUserId,
-          membersAsync,
-          filters,
-          paidOverrides,
-        ),
-        orElse: () => const <_DebtLine>[],
-      );
-
-      if (items.isEmpty) continue;
-
-      final groupTotal = items.fold<double>(0.0, (p, e) => p + e.amount);
-      totalAmount += groupTotal;
-
-      sections.add(
-        Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        group.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '$currency${exchanger.convertFromTRY(groupTotal, currency).toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.green.shade700,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                ...items.map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _DebtRow(
-                      title: item.title,
-                      subtitle: 'Bize borçlu: ${item.counterpartyName}',
-                      amountText:
-                          '$currency${exchanger.convertFromTRY(item.amount, currency).toStringAsFixed(2)}',
-                      date: item.date,
-                      accentColor: Colors.green.shade700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildFilterCard(context, ref, groups),
-        const SizedBox(height: 6),
-        if (sections.isNotEmpty) ...[
-          _SummaryCard(
-            label: 'Toplam Alacak',
-            value:
-                '$currency${exchanger.convertFromTRY(totalAmount, currency).toStringAsFixed(2)}',
-            accentColor: Colors.green,
-          ),
-          const SizedBox(height: 12),
-          ...sections,
-        ] else
-          const Padding(
-            padding: EdgeInsets.only(top: 56),
-            child: Center(child: Text('Bize borcu olan kimse bulunmuyor.')),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildNetSummaryTab(
-    BuildContext context,
-    WidgetRef ref,
-    List<GroupModel> groups,
-    String currentUserId,
-    String currency,
-    ExchangeRateService exchanger,
-  ) {
-    final filters = ref.watch(transactionFilterProvider);
-    final sections = <Widget>[];
-
-    for (final group in groups) {
-      if (filters.groupId.isNotEmpty && filters.groupId != group.id) continue;
-      if (group.id == null) continue;
-
-      final membersAsync = ref.watch(groupMembersProvider(group.id!));
-      final balanceMap = ref.watch(balanceEngineProvider(group.id!));
-
-      final settlements = membersAsync.maybeWhen(
-        data: (members) => _buildSettlements(
-          balanceMap,
-          members,
-          currentUserId,
-        ),
-        orElse: () => const <_SettlementLine>[],
-      );
-
-      if (settlements.isEmpty) continue;
-
-      final groupTotal = settlements.fold<double>(0.0, (p, e) => p + e.amount);
-
-      sections.add(
-        Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        group.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '$currency${exchanger.convertFromTRY(groupTotal, currency).toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.deepPurple.shade700,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                ...settlements.map(
-                  (settlement) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _DebtRow(
-                      title: '${settlement.fromName} -> ${settlement.toName}',
-                      subtitle: settlement.title,
-                      amountText:
-                          '$currency${exchanger.convertFromTRY(settlement.amount, currency).toStringAsFixed(2)}',
-                      date: settlement.date,
-                      accentColor: Colors.deepPurple.shade700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildFilterCard(context, ref, groups),
-        const SizedBox(height: 6),
-        if (sections.isNotEmpty)
-          ...sections
-        else
-          const Padding(
-            padding: EdgeInsets.only(top: 56),
-            child: Center(child: Text('Netleşecek borç bulunmuyor.')),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildFilterCard(BuildContext context, WidgetRef ref, List<GroupModel> groups) {
-    final filters = ref.watch(transactionFilterProvider);
-    var selectedGroupId = filters.groupId;
-    DateTime? selectedStart = filters.start;
-    DateTime? selectedEnd = filters.end;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: StatefulBuilder(
-          builder: (context, setLocalState) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Filtreler', style: TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: selectedGroupId.isEmpty ? '' : selectedGroupId,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Grup',
-                          isDense: true,
-                        ),
-                        items: [
-                          const DropdownMenuItem(value: '', child: Text('Hepsi')),
-                          ...groups
-                              .where((g) => g.id != null)
-                              .map((g) => DropdownMenuItem(value: g.id!, child: Text(g.name))),
-                        ],
-                        onChanged: (value) {
-                          setLocalState(() {
-                            selectedGroupId = value ?? '';
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () async {
-                          final picked = await showDateRangePicker(
-                            context: context,
-                            firstDate: DateTime.now().subtract(const Duration(days: 3650)),
-                            lastDate: DateTime.now().add(const Duration(days: 3650)),
-                          );
-                          if (picked != null) {
-                            setLocalState(() {
-                              selectedStart = picked.start;
-                              selectedEnd = picked.end;
-                            });
-                          }
-                        },
-                        child: Text(
-                          selectedStart != null && selectedEnd != null
-                              ? '${selectedStart!.day}.${selectedStart!.month}.${selectedStart!.year} - ${selectedEnd!.day}.${selectedEnd!.month}.${selectedEnd!.year}'
-                              : 'Tarih seç',
-                          textAlign: TextAlign.center,
-                        ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
+                ...lines.map(
+                  (line) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _DebtRow(
+                      title: line.title,
+                      subtitle: isOurDebt
+                          ? 'Borçlu olunan kişi: ${line.counterpartyName}'
+                          : 'Bize borçlu: ${line.counterpartyName}',
+                      amountText:
+                          '$currency${exchanger.convertFromTRY(line.amount, currency).toStringAsFixed(2)}',
+                      date: line.date,
+                      accentColor: color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final color = isOurDebt ? Colors.red : Colors.green;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildFilterCard(groups),
+        const SizedBox(height: 12),
+        if (sections.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 56),
+            child: Center(
+              child: Text(
+                isOurDebt
+                    ? 'Aktif borcunuz bulunmuyor.'
+                    : 'Size olan aktif borç bulunmuyor.',
+              ),
+            ),
+          )
+        else ...[
+          _SummaryCard(
+            label: isOurDebt ? 'Toplam Borç' : 'Toplam Alacak',
+            value:
+                '$currency${exchanger.convertFromTRY(total, currency).toStringAsFixed(2)}',
+            accentColor: color,
+          ),
+          const SizedBox(height: 12),
+          ...sections,
+        ],
+      ],
+    );
+  }
+
+  Widget _buildApprovals({
+    required List<GroupModel> groups,
+    required String currentUserId,
+    required String currency,
+    required ExchangeRateService exchanger,
+  }) {
+    final awaitingMe = <_PendingLine>[];
+    final awaitingOthers = <_PendingLine>[];
+
+    for (final group in groups) {
+      final groupId = group.id;
+      if (groupId == null) continue;
+
+      final members = ref.watch(groupMembersProvider(groupId));
+      final transactions = ref.watch(groupTransactionsStreamProvider(groupId));
+
+      transactions.whenData((items) {
+        for (final transaction in items) {
+          transaction.splitData.forEach((participantId, rawValue) {
+            if (participantId == transaction.payerId) return;
+
+            final status = participantApprovalStatus(
+              transaction.splitData,
+              participantId,
+              transaction.payerId,
+            );
+
+            if (status != DebtApprovalStatus.pending) return;
+
+            final amount = _amountFromSplit(rawValue);
+            if (amount <= 0) return;
+
+            final line = _PendingLine(
+              transactionId: transaction.id,
+              groupId: groupId,
+              groupName: group.name,
+              title: transaction.description,
+              counterpartyName: _memberName(
+                members,
+                participantId == currentUserId
+                    ? transaction.payerId
+                    : participantId,
+                currentUserId,
+              ),
+              amount: amount,
+            );
+
+            if (participantId == currentUserId) {
+              awaitingMe.add(line);
+            } else if (transaction.payerId == currentUserId) {
+              awaitingOthers.add(line);
+            }
+          });
+        }
+      });
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text(
+          'Onayınızı Bekleyenler',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        if (awaitingMe.isEmpty)
+          const Text(
+            'Onayınızı bekleyen borç bulunmuyor.',
+            style: TextStyle(color: Colors.black54),
+          )
+        else
+          ...awaitingMe.map(
+            (item) => Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListTile(
+                title: Text(item.title),
+                subtitle: Text(
+                  '${item.groupName} • ${item.counterpartyName}\n'
+                  '${item.amount.toStringAsFixed(2)} TL',
+                ),
+                isThreeLine: true,
+                trailing: _processingTransactions.contains(item.transactionId)
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: 'Reddet',
+                            icon: const Icon(Icons.close_rounded),
+                            color: Colors.red.shade700,
+                            onPressed: () => _rejectDebt(item),
+                          ),
+                          IconButton(
+                            tooltip: 'Onayla',
+                            icon: const Icon(Icons.check_rounded),
+                            color: Colors.green.shade700,
+                            onPressed: () => _acknowledgeDebt(item),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+        const SizedBox(height: 28),
+        const Text(
+          'Karşı Tarafın Onayını Bekleyenler',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        if (awaitingOthers.isEmpty)
+          const Text(
+            'Karşı tarafın onayını bekleyen borç bulunmuyor.',
+            style: TextStyle(color: Colors.black54),
+          )
+        else
+          ...awaitingOthers.map(
+            (item) => Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListTile(
+                title: Text(item.title),
+                subtitle: Text('${item.groupName} • ${item.counterpartyName}'),
+                trailing: Text(
+                  '$currency${exchanger.convertFromTRY(item.amount, currency).toStringAsFixed(2)}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNetSummary({
+    required List<GroupModel> groups,
+    required String currentUserId,
+    required String currency,
+    required ExchangeRateService exchanger,
+  }) {
+    final filters = ref.watch(transactionFilterProvider);
+    final sections = <Widget>[];
+
+    for (final group in groups) {
+      final groupId = group.id;
+      if (groupId == null) continue;
+      if (filters.groupId.isNotEmpty && filters.groupId != groupId) continue;
+
+      final members = ref.watch(groupMembersProvider(groupId));
+      final balances = ref.watch(balanceEngineProvider(groupId));
+
+      final settlements = members.maybeWhen(
+        data: (items) => _buildSettlements(balances, items, currentUserId),
+        orElse: () => const <_SettlementLine>[],
+      );
+
+      if (settlements.isEmpty) continue;
+
+      final total = settlements.fold<double>(
+        0,
+        (sum, item) => sum + item.amount,
+      );
+
+      sections.add(
+        Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  group.name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Toplam: $currency${exchanger.convertFromTRY(total, currency).toStringAsFixed(2)}',
+                  style: TextStyle(
+                    color: Colors.deepPurple.shade700,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...settlements.map(
+                  (item) => _DebtRow(
+                    title: '${item.fromName} → ${item.toName}',
+                    subtitle: 'Netleştirilmiş borç',
+                    amountText:
+                        '$currency${exchanger.convertFromTRY(item.amount, currency).toStringAsFixed(2)}',
+                    accentColor: Colors.deepPurple.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildFilterCard(groups),
+        const SizedBox(height: 12),
+        if (sections.isEmpty)
+          const Padding(
+            padding: EdgeInsets.only(top: 56),
+            child: Center(child: Text('Netleştirilecek borç bulunmuyor.')),
+          )
+        else
+          ...sections,
+      ],
+    );
+  }
+
+  Widget _buildFilterCard(List<GroupModel> groups) {
+    final filters = ref.watch(transactionFilterProvider);
+    var groupId = filters.groupId;
+    DateTime? start = filters.start;
+    DateTime? end = filters.end;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: StatefulBuilder(
+          builder: (context, setLocalState) {
+            return Column(
+              children: [
+                DropdownButtonFormField<String>(
+                  value: groupId,
+                  decoration: const InputDecoration(
+                    labelText: 'Grup',
+                    isDense: true,
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: '', child: Text('Tümü')),
+                    ...groups
+                        .where((group) => group.id != null)
+                        .map(
+                          (group) => DropdownMenuItem(
+                            value: group.id!,
+                            child: Text(group.name),
+                          ),
+                        ),
+                  ],
+                  onChanged: (value) {
+                    setLocalState(() => groupId = value ?? '');
+                  },
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          final range = await showDateRangePicker(
+                            context: context,
+                            firstDate: DateTime.now().subtract(
+                              const Duration(days: 3650),
+                            ),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 3650),
+                            ),
+                          );
+
+                          if (range != null) {
+                            setLocalState(() {
+                              start = range.start;
+                              end = range.end;
+                            });
+                          }
+                        },
+                        child: Text(
+                          start == null || end == null
+                              ? 'Tarih seç'
+                              : '${start!.day}.${start!.month}.${start!.year} - '
+                                    '${end!.day}.${end!.month}.${end!.year}',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: 'Filtreleri temizle',
+                      icon: const Icon(Icons.filter_alt_off),
+                      onPressed: () {
+                        setLocalState(() {
+                          groupId = '';
+                          start = null;
+                          end = null;
+                        });
+                        ref.read(transactionFilterProvider.notifier).clear();
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextButton.icon(
-                        onPressed: () {
-                          setLocalState(() {
-                            selectedGroupId = '';
-                            selectedStart = null;
-                            selectedEnd = null;
-                          });
-                          _resetFilters(ref);
-                        },
-                        icon: const Icon(Icons.filter_alt_off),
-                        label: const Text('Sıfırla'),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          final notifier = ref.read(transactionFilterProvider.notifier);
-                          notifier.clear();
-                          notifier.setGroup(selectedGroupId);
-                          notifier.setDateRange(selectedStart, selectedEnd);
-                        },
-                        icon: const Icon(Icons.filter_alt),
-                        label: const Text('Filtrele'),
-                      ),
-                    ],
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.filter_alt),
+                    label: const Text('Filtrele'),
+                    onPressed: () {
+                      final notifier = ref.read(
+                        transactionFilterProvider.notifier,
+                      );
+                      notifier.clear();
+                      notifier.setGroup(groupId);
+                      notifier.setDateRange(start, end);
+                    },
                   ),
                 ),
               ],
@@ -520,109 +582,167 @@ class DebtsScreen extends ConsumerWidget {
     );
   }
 
-  void _resetFilters(WidgetRef ref) {
-    ref.read(transactionFilterProvider.notifier).clear();
+  Future<void> _acknowledgeDebt(_PendingLine item) async {
+    await _runPendingAction(
+      item,
+      () => ref
+          .read(groupServiceProvider)
+          .acknowledgeDebtParticipant(item.transactionId!),
+    );
   }
 
-  List<_DebtLine> _collectOurDebts(
-    List<GroupTransactionModel> transactions,
-    GroupModel group,
-    String currentUserId,
-    AsyncValue<List<GroupMemberModel>> membersAsync,
-    TransactionFilters filters,
-    Map<String, Map<String, bool>> paidOverrides,
-  ) {
-    final items = <_DebtLine>[];
+  Future<void> _rejectDebt(_PendingLine item) async {
+    await _runPendingAction(
+      item,
+      () => ref
+          .read(groupServiceProvider)
+          .rejectDebtParticipant(item.transactionId!),
+    );
+  }
 
-    for (final tx in transactions) {
-      final rawValue = tx.splitData[currentUserId];
+  Future<void> _runPendingAction(
+    _PendingLine item,
+    Future<void> Function() action,
+  ) async {
+    final transactionId = item.transactionId;
+    if (transactionId == null ||
+        _processingTransactions.contains(transactionId)) {
+      return;
+    }
+
+    setState(() => _processingTransactions.add(transactionId));
+
+    try {
+      await action();
+      ref.invalidate(groupTransactionsStreamProvider(item.groupId));
+      ref.invalidate(balanceEngineProvider(item.groupId));
+      ref.read(groupDataRefreshProvider.notifier).state++;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('İşlem gerçekleştirilemedi. Lütfen tekrar deneyin.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _processingTransactions.remove(transactionId));
+      }
+    }
+  }
+
+  List<_DebtLine> _collectOurDebts({
+    required List<GroupTransactionModel> transactions,
+    required GroupModel group,
+    required String currentUserId,
+    required AsyncValue<List<GroupMemberModel>> members,
+    required TransactionFilters filters,
+  }) {
+    final results = <_DebtLine>[];
+
+    for (final transaction in transactions) {
+      if (transaction.payerId == currentUserId) continue;
+      if (!_matchesDate(transaction.createdAt, filters)) continue;
+
+      final rawValue = transaction.splitData[currentUserId];
       if (rawValue == null) continue;
 
-      final amount = rawValue is Map
-          ? (rawValue['amount'] as num?)?.toDouble() ?? 0.0
-          : (rawValue as num).toDouble();
-
-      final paid = rawValue is Map
-          ? (rawValue['paid'] as bool?) ?? false
-          : tx.payerId == currentUserId;
-
-      final effectivePaid = _isParticipantPaid(
-        tx,
+      final status = participantApprovalStatus(
+        transaction.splitData,
         currentUserId,
-        paidOverrides,
-      ) || paid;
+        transaction.payerId,
+      );
 
-      if (amount <= 0 || tx.payerId == currentUserId || effectivePaid) continue;
+      // Only approved and payment_pending are live financial debts.
+      if (!isDebtCountedStatus(status)) continue;
 
-      // date filter
-      if (filters.start != null && tx.createdAt != null) {
-        if (tx.createdAt!.isBefore(filters.start!) || tx.createdAt!.isAfter(filters.end!)) continue;
-      }
+      final amount = _amountFromSplit(rawValue);
+      if (amount <= 0) continue;
 
-      items.add(
+      results.add(
         _DebtLine(
-          title: tx.description,
-          counterpartyName: _memberName(membersAsync, tx.payerId, currentUserId),
+          title: transaction.description,
+          counterpartyName: _memberName(
+            members,
+            transaction.payerId,
+            currentUserId,
+          ),
           amount: amount,
-          date: tx.createdAt,
+          date: transaction.createdAt,
           groupName: group.name,
         ),
       );
     }
 
-    return items;
+    return results;
   }
 
-  List<_DebtLine> _collectPeopleOweUs(
-    List<GroupTransactionModel> transactions,
-    GroupModel group,
-    String currentUserId,
-    AsyncValue<List<GroupMemberModel>> membersAsync,
-    TransactionFilters filters,
-    Map<String, Map<String, bool>> paidOverrides,
-  ) {
-    final items = <_DebtLine>[];
+  List<_DebtLine> _collectPeopleOweUs({
+    required List<GroupTransactionModel> transactions,
+    required GroupModel group,
+    required String currentUserId,
+    required AsyncValue<List<GroupMemberModel>> members,
+    required TransactionFilters filters,
+  }) {
+    final results = <_DebtLine>[];
 
-    for (final tx in transactions) {
-      if (tx.payerId != currentUserId) continue;
+    for (final transaction in transactions) {
+      if (transaction.payerId != currentUserId) continue;
+      if (!_matchesDate(transaction.createdAt, filters)) continue;
 
-      tx.splitData.forEach((userId, rawValue) {
-        if (userId == currentUserId) return;
+      transaction.splitData.forEach((participantId, rawValue) {
+        if (participantId == transaction.payerId) return;
 
-        final amount = rawValue is Map
-            ? (rawValue['amount'] as num?)?.toDouble() ?? 0.0
-            : (rawValue as num).toDouble();
+        final status = participantApprovalStatus(
+          transaction.splitData,
+          participantId,
+          transaction.payerId,
+        );
 
-        final paid = rawValue is Map
-            ? (rawValue['paid'] as bool?) ?? false
-            : false;
+        // settled, pending, and rejected shares are intentionally excluded.
+        if (!isDebtCountedStatus(status)) return;
 
-        final effectivePaid = _isParticipantPaid(
-          tx,
-          userId,
-          paidOverrides,
-        ) || paid;
+        final amount = _amountFromSplit(rawValue);
+        if (amount <= 0) return;
 
-        if (amount <= 0 || effectivePaid) return;
-
-        // date filter
-        if (filters.start != null && tx.createdAt != null) {
-          if (tx.createdAt!.isBefore(filters.start!) || tx.createdAt!.isAfter(filters.end!)) return;
-        }
-
-        items.add(
+        results.add(
           _DebtLine(
-            title: tx.description,
-            counterpartyName: _memberName(membersAsync, userId, currentUserId),
+            title: transaction.description,
+            counterpartyName: _memberName(
+              members,
+              participantId,
+              currentUserId,
+            ),
             amount: amount,
-            date: tx.createdAt,
+            date: transaction.createdAt,
             groupName: group.name,
           ),
         );
       });
     }
 
-    return items;
+    return results;
+  }
+
+  bool _matchesDate(DateTime? date, TransactionFilters filters) {
+    if (filters.start == null || filters.end == null || date == null) {
+      return true;
+    }
+
+    final normalized = DateTime(date.year, date.month, date.day);
+    final start = DateTime(
+      filters.start!.year,
+      filters.start!.month,
+      filters.start!.day,
+    );
+    final end = DateTime(
+      filters.end!.year,
+      filters.end!.month,
+      filters.end!.day,
+    );
+
+    return !normalized.isBefore(start) && !normalized.isAfter(end);
   }
 
   List<_SettlementLine> _buildSettlements(
@@ -630,31 +750,33 @@ class DebtsScreen extends ConsumerWidget {
     List<GroupMemberModel> members,
     String currentUserId,
   ) {
-    final creditors = balances.entries
-        .where((e) => e.value > 0.0001)
-        .map(
-          (e) => _BalanceNode(
-            userId: e.key,
-            name: _displayName(members, e.key, currentUserId),
-            amount: e.value,
-          ),
-        )
-        .toList()
-      ..sort((a, b) => b.amount.compareTo(a.amount));
+    final creditors =
+        balances.entries
+            .where((entry) => entry.value > 0.0001)
+            .map(
+              (entry) => _BalanceNode(
+                userId: entry.key,
+                amount: entry.value,
+                name: _displayName(members, entry.key, currentUserId),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.amount.compareTo(a.amount));
 
-    final debtors = balances.entries
-        .where((e) => e.value < -0.0001)
-        .map(
-          (e) => _BalanceNode(
-            userId: e.key,
-            name: _displayName(members, e.key, currentUserId),
-            amount: e.value.abs(),
-          ),
-        )
-        .toList()
-      ..sort((a, b) => b.amount.compareTo(a.amount));
+    final debtors =
+        balances.entries
+            .where((entry) => entry.value < -0.0001)
+            .map(
+              (entry) => _BalanceNode(
+                userId: entry.key,
+                amount: entry.value.abs(),
+                name: _displayName(members, entry.key, currentUserId),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.amount.compareTo(a.amount));
 
-    final settlements = <_SettlementLine>[];
+    final results = <_SettlementLine>[];
     var creditorIndex = 0;
     var debtorIndex = 0;
 
@@ -665,13 +787,11 @@ class DebtsScreen extends ConsumerWidget {
           ? creditor.amount
           : debtor.amount;
 
-      settlements.add(
+      results.add(
         _SettlementLine(
           fromName: debtor.name,
           toName: creditor.name,
           amount: amount,
-          title: 'Netleşmiş borç',
-          date: null,
         ),
       );
 
@@ -682,18 +802,26 @@ class DebtsScreen extends ConsumerWidget {
       if (debtor.amount <= 0.0001) debtorIndex++;
     }
 
-    return settlements;
+    return results;
+  }
+
+  double _amountFromSplit(dynamic value) {
+    if (value is Map) {
+      return (value['amount'] as num?)?.toDouble() ?? 0;
+    }
+
+    return (value as num?)?.toDouble() ?? 0;
   }
 
   String _memberName(
-    AsyncValue<List<GroupMemberModel>> membersAsync,
+    AsyncValue<List<GroupMemberModel>> members,
     String userId,
     String currentUserId,
   ) {
     if (userId == currentUserId) return 'Sen';
 
-    return membersAsync.maybeWhen(
-      data: (members) => _displayName(members, userId, currentUserId),
+    return members.maybeWhen(
+      data: (items) => _displayName(items, userId, currentUserId),
       orElse: () => 'Kullanıcı',
     );
   }
@@ -706,32 +834,13 @@ class DebtsScreen extends ConsumerWidget {
     if (userId == currentUserId) return 'Sen';
 
     try {
-      final found = members.firstWhere((m) => m.userId == userId);
-      return found.username != null && found.username!.isNotEmpty
-          ? '@${found.username}'
-          : 'Kullanıcı';
+      final member = members.firstWhere((item) => item.userId == userId);
+      final username = member.username?.trim();
+
+      return username == null || username.isEmpty ? 'Kullanıcı' : '@$username';
     } catch (_) {
       return 'Kullanıcı';
     }
-  }
-
-  bool _isParticipantPaid(
-    GroupTransactionModel tx,
-    String participantId,
-    Map<String, Map<String, bool>> overrides,
-  ) {
-    final transactionId = tx.id;
-    if (transactionId != null) {
-      final override = overrides[transactionId]?[participantId];
-      if (override != null) return override;
-    }
-
-    final rawValue = tx.splitData[participantId];
-    if (rawValue is Map) {
-      return (rawValue['paid'] as bool?) ?? (participantId == tx.payerId);
-    }
-
-    return participantId == tx.payerId;
   }
 }
 
@@ -759,10 +868,7 @@ class _DebtRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 2),
               Text(
                 subtitle,
@@ -771,7 +877,8 @@ class _DebtRow extends StatelessWidget {
               if (date != null) ...[
                 const SizedBox(height: 2),
                 Text(
-                  _formatDate(date!),
+                  '${date!.day.toString().padLeft(2, '0')}.'
+                  '${date!.month.toString().padLeft(2, '0')}.${date!.year}',
                   style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ],
@@ -781,19 +888,10 @@ class _DebtRow extends StatelessWidget {
         const SizedBox(width: 12),
         Text(
           amountText,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: accentColor,
-          ),
+          style: TextStyle(color: accentColor, fontWeight: FontWeight.bold),
         ),
       ],
     );
-  }
-
-  String _formatDate(DateTime date) {
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    return '$day.$month.${date.year}';
   }
 }
 
@@ -813,31 +911,18 @@ class _SummaryCard extends StatelessWidget {
     return Card(
       color: accentColor.withValues(alpha: 0.08),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.black54,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: accentColor,
-                    ),
-                  ),
-                ],
+            Text(label, style: const TextStyle(color: Colors.black54)),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                color: accentColor,
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ],
@@ -863,19 +948,33 @@ class _DebtLine {
   });
 }
 
+class _PendingLine {
+  final String? transactionId;
+  final String groupId;
+  final String groupName;
+  final String title;
+  final String counterpartyName;
+  final double amount;
+
+  const _PendingLine({
+    required this.transactionId,
+    required this.groupId,
+    required this.groupName,
+    required this.title,
+    required this.counterpartyName,
+    required this.amount,
+  });
+}
+
 class _SettlementLine {
   final String fromName;
   final String toName;
   final double amount;
-  final String title;
-  final DateTime? date;
 
   const _SettlementLine({
     required this.fromName,
     required this.toName,
     required this.amount,
-    required this.title,
-    required this.date,
   });
 }
 

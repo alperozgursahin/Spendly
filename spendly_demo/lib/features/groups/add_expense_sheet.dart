@@ -63,10 +63,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
   double get _totalAmount => double.tryParse(_amountController.text) ?? 0.0;
 
   TextEditingController _exactControllerFor(String userId) {
-    return _exactControllers.putIfAbsent(
-      userId,
-      () => TextEditingController(),
-    );
+    return _exactControllers.putIfAbsent(userId, () => TextEditingController());
   }
 
   void _removeSelectedUserValue(String userId) {
@@ -101,7 +98,8 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     if (_splitType != 'percentage' || _selectedUsers.isEmpty) return;
 
     final selectedUserIds = _selectedUsers.toList();
-    if (_percentageAutoUserId != null && !selectedUserIds.contains(_percentageAutoUserId)) {
+    if (_percentageAutoUserId != null &&
+        !selectedUserIds.contains(_percentageAutoUserId)) {
       _percentageAutoUserId = null;
     }
 
@@ -118,7 +116,10 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
 
     final manualTotal = selectedUserIds
         .where((userId) => userId != autoUserId)
-        .fold<double>(0.0, (sum, userId) => sum + (_percentageValues[userId] ?? 0.0));
+        .fold<double>(
+          0.0,
+          (sum, userId) => sum + (_percentageValues[userId] ?? 0.0),
+        );
 
     final remainder = double.parse((100.0 - manualTotal).toStringAsFixed(2));
     if (remainder < 0) return;
@@ -371,6 +372,9 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     );
   }
 
+  String _initialStatusFor(String uid) =>
+      uid == widget.currentUserId ? 'approved' : 'pending';
+
   void _submitExpense() async {
     final amount = _totalAmount;
     if (amount <= 0 || _descController.text.isEmpty || _selectedUsers.isEmpty) {
@@ -389,7 +393,11 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         (amount / _selectedUsers.length).toStringAsFixed(2),
       );
       for (var uid in _selectedUsers) {
-        splitData[uid] = {'amount': share, 'paid': uid == widget.currentUserId};
+        splitData[uid] = {
+          'amount': share,
+          'paid': uid == widget.currentUserId,
+          'status': _initialStatusFor(uid),
+        };
       }
 
       // Fix rounding errors (add remainder to current user if they are in the split, or first user)
@@ -401,6 +409,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
             (share + (amount - totalCalculated)).toStringAsFixed(2),
           ),
           'paid': firstUser == widget.currentUserId,
+          'status': _initialStatusFor(firstUser),
         };
       }
     } else if (_splitType == 'percentage') {
@@ -411,7 +420,9 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         if (value == null) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Yüzde alanlarında en fazla 1 kişi boş kalabilir ve toplam 100 olmalıdır.'),
+              content: Text(
+                'Yüzde alanlarında en fazla 1 kişi boş kalabilir ve toplam 100 olmalıdır.',
+              ),
             ),
           );
           return;
@@ -419,12 +430,13 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         splitValues[userId] = value;
       }
 
-      final totalPercentage = splitValues.values.fold<double>(0.0, (sum, value) => sum + value);
+      final totalPercentage = splitValues.values.fold<double>(
+        0.0,
+        (sum, value) => sum + value,
+      );
       if ((totalPercentage - 100).abs() > 0.01) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Yüzdelerin toplamı 100 olmalıdır.'),
-          ),
+          const SnackBar(content: Text('Yüzdelerin toplamı 100 olmalıdır.')),
         );
         return;
       }
@@ -434,6 +446,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         splitData[uid] = {
           'amount': double.parse(((amount * pct) / 100).toStringAsFixed(2)),
           'paid': uid == widget.currentUserId,
+          'status': _initialStatusFor(uid),
         };
       }
     } else if (_splitType == 'exact') {
@@ -453,6 +466,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         splitData[uid] = {
           'amount': splitValues[uid] ?? 0.0,
           'paid': uid == widget.currentUserId,
+          'status': _initialStatusFor(uid),
         };
       }
     }
@@ -464,6 +478,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       description: _descController.text,
       splitType: _splitType,
       splitData: splitData,
+      status: 'pending',
     );
 
     try {
@@ -501,7 +516,8 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     }
 
     final selectedUserIds = _selectedUsers.toList();
-    if (_exactAutoUserId != null && !selectedUserIds.contains(_exactAutoUserId)) {
+    if (_exactAutoUserId != null &&
+        !selectedUserIds.contains(_exactAutoUserId)) {
       _exactAutoUserId = null;
     }
 
@@ -518,7 +534,9 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         .where((userId) => userId != autoUserId)
         .fold<double>(0.0, (sum, userId) => sum + (values[userId] ?? 0.0));
 
-    final remainder = double.parse((targetTotal - manualTotal).toStringAsFixed(2));
+    final remainder = double.parse(
+      (targetTotal - manualTotal).toStringAsFixed(2),
+    );
     if (remainder < -0.01) {
       return null;
     }
@@ -539,5 +557,3 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     return values;
   }
 }
-
-

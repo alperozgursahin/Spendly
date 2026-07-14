@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../auth/auth_provider.dart';
 import 'group_model.dart';
 import 'group_transaction_model.dart';
-import '../auth/auth_provider.dart';
-import '../transactions/transaction_model.dart';
 
 final groupServiceProvider = Provider<GroupService>((ref) {
   return GroupService(Supabase.instance.client);
@@ -11,83 +11,93 @@ final groupServiceProvider = Provider<GroupService>((ref) {
 
 final groupDataRefreshProvider = StateProvider<int>((ref) => 0);
 
-final groupPaidOverridesProvider = StateNotifierProvider<
-  GroupPaidOverridesNotifier,
-  Map<String, Map<String, bool>>
->((ref) {
-  return GroupPaidOverridesNotifier();
-});
+final groupPaidOverridesProvider =
+    StateNotifierProvider<
+      GroupPaidOverridesNotifier,
+      Map<String, Map<String, bool>>
+    >((ref) {
+      return GroupPaidOverridesNotifier();
+    });
 
 final userGroupsProvider = FutureProvider<List<GroupModel>>((ref) async {
   final service = ref.watch(groupServiceProvider);
   final userId = ref.watch(currentUserIdProvider);
+
   if (userId == null) return [];
+
   return service.getUserGroups(userId);
 });
 
 final groupMembersProvider =
-    FutureProvider.family<List<GroupMemberModel>, String>((ref, groupId) async {
+    FutureProvider.family<List<GroupMemberModel>, String>((ref, groupId) {
       final service = ref.watch(groupServiceProvider);
       return service.getGroupMembers(groupId);
     });
 
 final groupTransactionsStreamProvider =
     StreamProvider.family<List<GroupTransactionModel>, String>((ref, groupId) {
-      final supabase = Supabase.instance.client;
-      return supabase
+      return Supabase.instance.client
           .from('group_transactions')
           .stream(primaryKey: ['id'])
           .eq('group_id', groupId)
           .order('created_at', ascending: false)
           .map(
-            (data) => data
-                .map((json) => GroupTransactionModel.fromJson(json))
+            (rows) => rows
+                .map(
+                  (row) => GroupTransactionModel.fromJson(
+                    Map<String, dynamic>.from(row),
+                  ),
+                )
                 .toList(),
           );
     });
 
+/// Only approved and payment-pending participant shares affect balances.
+/// Pending, rejected, and settled participant shares are excluded.
 final balanceEngineProvider = Provider.family<Map<String, double>, String>((
   ref,
   groupId,
 ) {
-  final transactionsAsync = ref.watch(groupTransactionsStreamProvider(groupId));
-  final paidOverrides = ref.watch(groupPaidOverridesProvider);
+  final transactions = ref.watch(groupTransactionsStreamProvider(groupId));
 
-  return transactionsAsync.maybeWhen(
-    data: (transactions) {
-      Map<String, double> balances = {};
+  return transactions.maybeWhen(
+    data: (items) {
+      final balances = <String, double>{};
 
-      for (var tx in transactions) {
-        tx.splitData.forEach((userId, owedAmount) {
-          if (userId == tx.payerId) {
-            return;
-          }
+      for (final transaction in items) {
+        transaction.splitData.forEach((participantId, rawValue) {
+          if (participantId == transaction.payerId) return;
 
-          if (owedAmount is! num && owedAmount is! Map) {
-            return;
-          }
-
-          final amount = owedAmount is Map
-              ? (owedAmount['amount'] as num?)?.toDouble() ?? 0.0
-              : (owedAmount as num).toDouble();
-
-          final paid = _isParticipantPaid(
-            tx,
-            userId,
-            paidOverrides,
+          final status = participantApprovalStatus(
+            transaction.splitData,
+            participantId,
+            transaction.payerId,
           );
 
-          if (paid) return;
+          if (!isDebtCountedStatus(status)) return;
 
-          balances[userId] = (balances[userId] ?? 0.0) - amount;
-          balances[tx.payerId] = (balances[tx.payerId] ?? 0.0) + amount;
+          final amount = _splitAmount(rawValue);
+          if (amount <= 0) return;
+
+          balances[participantId] = (balances[participantId] ?? 0) - amount;
+          balances[transaction.payerId] =
+              (balances[transaction.payerId] ?? 0) + amount;
         });
       }
+
       return balances;
     },
-    orElse: () => {},
+    orElse: () => <String, double>{},
   );
 });
+
+double _splitAmount(dynamic rawValue) {
+  if (rawValue is Map) {
+    return (rawValue['amount'] as num?)?.toDouble() ?? 0;
+  }
+
+  return (rawValue as num?)?.toDouble() ?? 0;
+}
 
 class GroupService {
   final SupabaseClient _supabase;
@@ -95,29 +105,30 @@ class GroupService {
   GroupService(this._supabase);
 
   Future<List<GroupModel>> getUserGroups(String userId) async {
-    final response = await _supabase
+    final rows = await _supabase
         .from('group_members')
         .select('groups (*)')
         .eq('user_id', userId);
 
-    return response
+    return rows
+        .where((row) => row['groups'] != null)
         .map(
-          (json) => GroupModel.fromJson(json['groups'] as Map<String, dynamic>),
+          (row) => GroupModel.fromJson(
+            Map<String, dynamic>.from(row['groups'] as Map),
+          ),
         )
         .toList();
   }
 
   Future<GroupModel> createGroup(String name, String userId) async {
-    // Insert Group
-    final groupResponse = await _supabase
+    final row = await _supabase
         .from('groups')
         .insert({'name': name, 'created_by': userId})
         .select()
         .single();
 
-    final group = GroupModel.fromJson(groupResponse);
+    final group = GroupModel.fromJson(Map<String, dynamic>.from(row));
 
-    // Add creator as member
     await _supabase.from('group_members').insert({
       'group_id': group.id,
       'user_id': userId,
@@ -126,34 +137,120 @@ class GroupService {
     return group;
   }
 
-  Future<void> addMemberToGroup(String groupId, String userId) async {
-    await _supabase.from('group_members').insert({
+  Future<void> addMemberToGroup(String groupId, String userId) {
+    return _supabase.from('group_members').insert({
       'group_id': groupId,
       'user_id': userId,
     });
   }
 
   Future<List<GroupMemberModel>> getGroupMembers(String groupId) async {
-    final response = await _supabase
+    final rows = await _supabase
         .from('group_members')
         .select('*, profiles(username, avatar_url)')
         .eq('group_id', groupId);
 
-    return response.map((json) => GroupMemberModel.fromJson(json)).toList();
+    return rows
+        .map((row) => GroupMemberModel.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
   }
 
-  Future<void> addGroupTransaction(GroupTransactionModel tx) async {
-    await _supabase.from('group_transactions').insert(tx.toJson());
-  }
-
-  Future<void> updateGroupTransactionSplitData(
-    String transactionId,
-    Map<String, dynamic> splitData,
-  ) async {
-    await _supabase
+  Future<void> addGroupTransaction(GroupTransactionModel transaction) async {
+    final insertedRow = await _supabase
         .from('group_transactions')
-        .update({'split_data': splitData})
-        .eq('id', transactionId);
+        .insert(transaction.toJson())
+        .select(
+          'id, group_id, payer_id, amount, description, split_type, '
+          'split_data, status, created_at',
+        )
+        .single();
+
+    final inserted = GroupTransactionModel.fromJson(
+      Map<String, dynamic>.from(insertedRow),
+    );
+
+    final recipientIds = inserted.splitData.keys
+        .where((userId) => userId != inserted.payerId)
+        .toSet()
+        .toList();
+
+    if (recipientIds.isEmpty) return;
+
+    await _supabase
+        .from('notifications')
+        .insert(
+          recipientIds
+              .map(
+                (recipientId) => {
+                  'recipient_id': recipientId,
+                  'sender_id': inserted.payerId,
+                  'group_id': inserted.groupId,
+                  'expense_id': inserted.id,
+                  'type': 'debt_request',
+                  'is_read': false,
+                },
+              )
+              .toList(),
+        );
+  }
+
+  /// Legacy generic participant update. Do not use this for lifecycle actions.
+  Future<void> updateOwnSplitEntry({
+    required String transactionId,
+    required bool paid,
+    required String status,
+  }) {
+    return _supabase.rpc(
+      'update_own_group_transaction_split',
+      params: {
+        'p_transaction_id': transactionId,
+        'p_paid': paid,
+        'p_status': status,
+      },
+    );
+  }
+
+  /// Debtor: pending -> approved.
+  Future<void> acknowledgeDebtParticipant(String transactionId) {
+    return _supabase.rpc(
+      'acknowledge_debt_participant',
+      params: {'p_transaction_id': transactionId},
+    );
+  }
+
+  /// Debtor: approved -> payment_pending.
+  Future<void> markPaymentSent(String transactionId) {
+    return _supabase.rpc(
+      'mark_payment_sent',
+      params: {'p_transaction_id': transactionId},
+    );
+  }
+
+  /// Creditor: payment_pending -> settled.
+  Future<void> confirmPaymentReceived({
+    required String transactionId,
+    required String participantId,
+  }) {
+    return _supabase.rpc(
+      'confirm_payment_received',
+      params: {
+        'p_transaction_id': transactionId,
+        'p_participant_id': participantId,
+      },
+    );
+  }
+
+  /// Kept because the current approvals screen still offers rejection.
+  Future<void> rejectDebtParticipant(String transactionId) {
+    return _supabase.rpc(
+      'reject_debt_participant',
+      params: {'p_transaction_id': transactionId},
+    );
+  }
+
+  /// Backward-compatible alias for any older callers.
+  Future<void> approveDebtParticipant(String transactionId) {
+    return acknowledgeDebtParticipant(transactionId);
   }
 }
 
@@ -162,32 +259,23 @@ class GroupPaidOverridesNotifier
   GroupPaidOverridesNotifier() : super(const {});
 
   void setPaid(String transactionId, String participantId, bool paid) {
-    final updated = Map<String, Map<String, bool>>.from(state);
+    final updatedState = Map<String, Map<String, bool>>.from(state);
     final transactionOverrides = Map<String, bool>.from(
-      updated[transactionId] ?? const {},
+      updatedState[transactionId] ?? const {},
     );
+
     transactionOverrides[participantId] = paid;
-    updated[transactionId] = transactionOverrides;
-    state = updated;
+    updatedState[transactionId] = transactionOverrides;
+    state = updatedState;
+  }
+
+  void clearTransaction(String transactionId) {
+    final updatedState = Map<String, Map<String, bool>>.from(state);
+    updatedState.remove(transactionId);
+    state = updatedState;
+  }
+
+  void clear() {
+    state = const {};
   }
 }
-
-bool _isParticipantPaid(
-  GroupTransactionModel tx,
-  String participantId,
-  Map<String, Map<String, bool>> overrides,
-) {
-  final transactionId = tx.id;
-  if (transactionId != null) {
-    final override = overrides[transactionId]?[participantId];
-    if (override != null) return override;
-  }
-
-  final rawValue = tx.splitData[participantId];
-  if (rawValue is Map) {
-    return (rawValue['paid'] as bool?) ?? (participantId == tx.payerId);
-  }
-
-  return participantId == tx.payerId;
-}
-
