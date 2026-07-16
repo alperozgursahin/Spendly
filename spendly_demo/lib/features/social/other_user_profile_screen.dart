@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 
@@ -62,10 +63,11 @@ class OtherUserProfileScreen extends ConsumerWidget {
     final relationAsync = ref.watch(otherUserRelationProvider(userId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Kullanıcı Profili')),
+      appBar: AppBar(title: Text(tr(ref, 'other_profile_title'))),
       body: profileAsync.when(
         data: (profile) {
-          final username = profile['username'] as String? ?? 'Bilinmiyor';
+          final username =
+              profile['username'] as String? ?? tr(ref, 'other_profile_unknown');
 
           return Center(
             child: Padding(
@@ -113,8 +115,17 @@ class OtherUserProfileScreen extends ConsumerWidget {
                                   const SizedBox(width: 8),
                                   Text(
                                     sharedGroupsCount == 0
-                                        ? 'Ortak grubunuz yok'
-                                        : 'Ortak $sharedGroupsCount grubunuz var',
+                                        ? tr(
+                                            ref,
+                                            'other_profile_no_shared_groups',
+                                          )
+                                        : tr(
+                                            ref,
+                                            'other_profile_shared_groups_count',
+                                          ).replaceFirst(
+                                            '%s',
+                                            '$sharedGroupsCount',
+                                          ),
                                   ),
                                 ],
                               ),
@@ -130,7 +141,7 @@ class OtherUserProfileScreen extends ConsumerWidget {
                                 );
                               },
                               icon: const Icon(Icons.message),
-                              label: const Text('Mesaj Gönder'),
+                              label: Text(tr(ref, 'other_profile_send_message')),
                             ),
                           ],
                         ],

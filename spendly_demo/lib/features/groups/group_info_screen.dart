@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import 'group_provider.dart';
 import '../auth/auth_provider.dart';
@@ -26,7 +27,7 @@ class GroupInfoScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Grup Bilgisi')),
+      appBar: AppBar(title: Text(tr(ref, 'group_info_title'))),
       body: Column(
         children: [
           const SizedBox(height: 24),
@@ -55,7 +56,7 @@ class GroupInfoScreen extends ConsumerWidget {
                     final m = members[index];
                     final isMe = m.userId == curUserId;
                     final memberLabel = isMe
-                        ? 'Sen'
+                        ? tr(ref, 'common_you')
                         : '@${m.username ?? m.userId.substring(0, 6)}';
 
                     return ListTile(
@@ -75,7 +76,7 @@ class GroupInfoScreen extends ConsumerWidget {
               child: ElevatedButton.icon(
                 onPressed: () => _showLeaveGroupDialog(context, ref),
                 icon: const Icon(Icons.exit_to_app),
-                label: const Text('Gruptan Ayrıl'),
+                label: Text(tr(ref, 'group_info_leave_button')),
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.red,
                   backgroundColor: Colors.red.shade50,
@@ -89,7 +90,7 @@ class GroupInfoScreen extends ConsumerWidget {
               child: ElevatedButton.icon(
                 onPressed: () => _showDeleteGroupDialog(context, ref),
                 icon: const Icon(Icons.delete_forever),
-                label: const Text('Grubu Sil'),
+                label: Text(tr(ref, 'group_info_delete_button')),
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
                   backgroundColor: Colors.red.shade700,
@@ -112,15 +113,14 @@ class GroupInfoScreen extends ConsumerWidget {
         return StatefulBuilder(
           builder: (ctx, setState) {
             return AlertDialog(
-              title: const Text('Gruptan Ayrıl'),
+              title: Text(tr(ref, 'group_info_leave_button')),
               content: Text(
-                '"$groupName" grubundan ayrılmak istediğinize emin misiniz? '
-                'Geçmiş harcamalarınız grupta kalır.',
+                tr(ref, 'group_info_leave_confirm').replaceFirst('%s', groupName),
               ),
               actions: [
                 TextButton(
                   onPressed: isLeaving ? null : () => Navigator.pop(ctx),
-                  child: const Text('İptal'),
+                  child: Text(tr(ref, 'common_cancel')),
                 ),
                 TextButton(
                   style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -152,7 +152,7 @@ class GroupInfoScreen extends ConsumerWidget {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Ayrıl'),
+                      : Text(tr(ref, 'group_info_leave_confirm_button')),
                 ),
               ],
             );
@@ -171,16 +171,14 @@ class GroupInfoScreen extends ConsumerWidget {
         return StatefulBuilder(
           builder: (ctx, setState) {
             return AlertDialog(
-              title: const Text('Grubu Sil'),
+              title: Text(tr(ref, 'group_info_delete_button')),
               content: Text(
-                '"$groupName" grubunu ve tüm harcama/üyelik verilerini '
-                'kalıcı olarak silmek istediğinize emin misiniz? Bu işlem '
-                'geri alınamaz.',
+                tr(ref, 'group_info_delete_confirm').replaceFirst('%s', groupName),
               ),
               actions: [
                 TextButton(
                   onPressed: isDeleting ? null : () => Navigator.pop(ctx),
-                  child: const Text('İptal'),
+                  child: Text(tr(ref, 'common_cancel')),
                 ),
                 TextButton(
                   style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -212,7 +210,7 @@ class GroupInfoScreen extends ConsumerWidget {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Sil'),
+                      : Text(tr(ref, 'common_delete')),
                 ),
               ],
             );

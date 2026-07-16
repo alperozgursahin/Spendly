@@ -1,7 +1,11 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Converts a caught error into a short, Turkish, non-technical message
-/// suitable for showing directly to end users (SnackBar, inline error text).
+import 'app_strings.dart';
+import 'locale_provider.dart';
+
+/// Converts a caught error into a short, non-technical message suitable for
+/// showing directly to end users (SnackBar, inline error text), translated
+/// via [currentAppLanguage] since this has no [WidgetRef] to read from.
 ///
 /// Deliberately-thrown `Exception('...')` messages inside this app's service
 /// classes are already written in plain Turkish, so those are unwrapped and
@@ -18,41 +22,44 @@ String friendlyErrorMessage(Object error) {
     return raw;
   }
 
-  return 'Bir şeyler ters gitti. Lütfen tekrar deneyin.';
+  return AppStrings.of('error_generic_short', currentAppLanguage);
 }
 
 String _friendlyAuthMessage(AuthException error) {
   final message = error.message.toLowerCase();
+  final language = currentAppLanguage;
 
   if (message.contains('invalid login credentials')) {
-    return 'Kullanıcı adı veya şifre hatalı.';
+    return AppStrings.of('error_invalid_credentials', language);
   }
   if (message.contains('email not confirmed')) {
-    return 'E-posta adresiniz henüz doğrulanmamış.';
+    return AppStrings.of('error_email_not_confirmed', language);
   }
   if (message.contains('already registered') ||
       message.contains('user already exists')) {
-    return 'Bu e-posta adresiyle zaten bir hesap var.';
+    return AppStrings.of('error_email_already_registered', language);
   }
   if (message.contains('password') && message.contains('least')) {
-    return 'Şifre çok kısa. Lütfen daha uzun bir şifre seçin.';
+    return AppStrings.of('error_password_too_short', language);
   }
   if (message.contains('rate limit')) {
-    return 'Çok fazla deneme yapıldı. Lütfen biraz sonra tekrar deneyin.';
+    return AppStrings.of('error_rate_limited', language);
   }
 
-  return 'Bir sorun oluştu. Lütfen tekrar deneyin.';
+  return AppStrings.of('error_auth_generic', language);
 }
 
 String _friendlyPostgrestMessage(PostgrestException error) {
+  final language = currentAppLanguage;
+
   switch (error.code) {
     case '23505':
-      return 'Bu kayıt zaten mevcut.';
+      return AppStrings.of('error_duplicate_record', language);
     case '42501':
-      return 'Bu işlemi yapma yetkiniz yok.';
+      return AppStrings.of('error_forbidden', language);
     case 'PGRST116':
-      return 'Kayıt bulunamadı.';
+      return AppStrings.of('error_not_found', language);
   }
 
-  return 'Sunucuyla iletişimde bir sorun oluştu. Lütfen tekrar deneyin.';
+  return AppStrings.of('error_server_generic', language);
 }

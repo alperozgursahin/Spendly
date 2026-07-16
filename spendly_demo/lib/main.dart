@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,6 +9,9 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/foundation.dart';
+import 'core/locale_provider.dart';
+import 'core/app_theme_provider.dart';
+import 'core/app_strings.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/forgot_password_screen.dart';
@@ -129,7 +133,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: ':id',
                 builder: (context, state) {
                   final groupId = state.pathParameters['id']!;
-                  final groupName = state.extra as String? ?? 'Grup Detayı';
+                  final groupName = state.extra as String? ??
+                      AppStrings.of('route_fallback_group_detail', currentAppLanguage);
                   return GroupDetailScreen(
                     groupId: groupId,
                     groupName: groupName,
@@ -140,8 +145,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'info',
                     builder: (context, state) {
                       final groupId = state.pathParameters['id']!;
-                      final groupName =
-                          state.extra as String? ?? 'Grup Bilgisi';
+                      final groupName = state.extra as String? ??
+                          AppStrings.of('route_fallback_group_info', currentAppLanguage);
                       return GroupInfoScreen(
                         groupId: groupId,
                         groupName: groupName,
@@ -152,7 +157,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'chat',
                     builder: (context, state) {
                       final groupId = state.pathParameters['id']!;
-                      final groupName = state.extra as String? ?? 'Grup';
+                      final groupName = state.extra as String? ??
+                          AppStrings.of('route_fallback_group', currentAppLanguage);
                       return GroupChatScreen(
                         groupId: groupId,
                         groupName: groupName,
@@ -171,7 +177,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'chat/:id',
                 builder: (context, state) {
                   final targetUserId = state.pathParameters['id']!;
-                  final username = state.extra as String? ?? 'Sohbet';
+                  final username = state.extra as String? ??
+                      AppStrings.of('route_fallback_chat', currentAppLanguage);
                   return ChatScreen(
                     targetUserId: targetUserId,
                     username: username,
@@ -223,80 +230,123 @@ class _MyAppState extends ConsumerState<MyApp> {
 
   static const _brandColor = Color(0xFF0F766E);
 
-  @override
-  Widget build(BuildContext context) {
-    final router = ref.watch(routerProvider);
+  // Dark surfaces stay in the same slate family as the light theme's
+  // secondary color (#1F2937) instead of pure black, so cards/inputs read as
+  // one tonal family with the brand teal in both modes.
+  static const _darkScaffold = Color(0xFF0F172A);
+  static const _darkSurface = Color(0xFF1E293B);
+  static const _darkBorder = Color(0xFF334155);
 
-    return MaterialApp.router(
-      title: 'Spendly',
-      theme: ThemeData(
-        useMaterial3: true,
-        textTheme: GoogleFonts.interTextTheme(),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: _brandColor,
-          primary: _brandColor,
-          secondary: const Color(0xFF1F2937),
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF7F8F7),
-        appBarTheme: AppBarTheme(
-          backgroundColor: const Color(0xFFF7F8F7),
-          elevation: 0.0,
-          centerTitle: true,
-          iconTheme: const IconThemeData(color: Colors.black87),
-          titleTextStyle: GoogleFonts.inter(
-            color: Colors.black87,
-            fontSize: 20.0,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        cardTheme: CardThemeData(
-          elevation: 2,
-          shadowColor: Colors.black12,
-          color: Colors.white,
-          margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14.0),
-            side: BorderSide(color: Colors.grey.shade200, width: 0.6),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: _brandColor, width: 1.5),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            elevation: 0,
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-            minimumSize: const Size(64, 48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+  ThemeData _buildTheme(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      textTheme: isDark
+          ? GoogleFonts.interTextTheme(ThemeData(brightness: Brightness.dark).textTheme)
+          : GoogleFonts.interTextTheme(),
+      // Only pin `primary`/`secondary` to the exact brand hex for light mode.
+      // Forcing that same (fairly dark) teal as `primary` in dark mode too
+      // was making primary-colored text/icons (e.g. the date-range button)
+      // low-contrast against the dark background — letting `fromSeed` derive
+      // its own lighter dark-mode tone from the same seed fixes that while
+      // keeping both modes visibly "the same brand".
+      colorScheme: isDark
+          ? ColorScheme.fromSeed(seedColor: _brandColor, brightness: brightness)
+          : ColorScheme.fromSeed(
+              seedColor: _brandColor,
+              brightness: brightness,
+              primary: _brandColor,
+              secondary: const Color(0xFF1F2937),
             ),
-            backgroundColor: _brandColor,
-            foregroundColor: Colors.white,
-            textStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              height: 1.0,
-            ),
+      scaffoldBackgroundColor: isDark ? _darkScaffold : const Color(0xFFF7F8F7),
+      appBarTheme: AppBarTheme(
+        backgroundColor: isDark ? _darkScaffold : const Color(0xFFF7F8F7),
+        elevation: 0.0,
+        centerTitle: true,
+        iconTheme: IconThemeData(color: isDark ? Colors.white70 : Colors.black87),
+        titleTextStyle: GoogleFonts.inter(
+          color: isDark ? Colors.white : Colors.black87,
+          fontSize: 20.0,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        elevation: isDark ? 0 : 2,
+        shadowColor: Colors.black12,
+        color: isDark ? _darkSurface : Colors.white,
+        margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14.0),
+          side: BorderSide(
+            color: isDark ? _darkBorder : Colors.grey.shade200,
+            width: 0.6,
           ),
         ),
       ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        // In dark mode this needs to read as a distinct field, not just
+        // match the card behind it (unlike light mode, where grey.shade100
+        // already contrasts against a white card) — so it uses the lighter
+        // `_darkBorder` tone instead of `_darkSurface`.
+        fillColor: isDark ? _darkBorder : Colors.grey.shade100,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: _brandColor, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          minimumSize: const Size(64, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          backgroundColor: _brandColor,
+          foregroundColor: Colors.white,
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            height: 1.0,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(appThemeModeProvider);
+    final language = ref.watch(appLanguageProvider);
+
+    return MaterialApp.router(
+      title: 'Spendly',
+      theme: _buildTheme(Brightness.light),
+      darkTheme: _buildTheme(Brightness.dark),
+      themeMode: themeMode,
+      locale: Locale(language == AppLanguage.en ? 'en' : 'tr'),
+      supportedLocales: const [Locale('tr'), Locale('en')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       routerConfig: router,
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import 'premium_provider.dart';
 
@@ -14,90 +15,205 @@ class PaywallScreen extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.primaryContainer,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.close, color: colorScheme.primary),
+          icon: const Icon(Icons.close),
           onPressed: () => context.pop(),
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 20),
-              Icon(Icons.workspace_premium, size: 80, color: colorScheme.primary),
-              const SizedBox(height: 24),
-              Text(
-                'Spendly Pro\'ya Geç',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.primary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Limitsiz grup oluşturun, tüm istatistiklere erişin ve finansal özgürlüğün tadını çıkarın!',
-                style: TextStyle(fontSize: 16, color: Colors.black87),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 40),
-              Expanded(
-                child: offeringsAsync.when(
-                  data: (offerings) {
-                    if (offerings == null ||
-                        offerings.current == null ||
-                        offerings.current!.availablePackages.isEmpty) {
-                      return const Center(
-                        child: Text('Şu an paket bulunmuyor.'),
-                      );
-                    }
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          children: [
+            _buildHero(context, ref),
+            const SizedBox(height: 24),
+            _buildBenefits(context, ref),
+            const SizedBox(height: 28),
+            offeringsAsync.when(
+              data: (offerings) {
+                final packages = offerings?.current?.availablePackages ?? [];
 
-                    return ListView.builder(
-                      itemCount: offerings.current!.availablePackages.length,
-                      itemBuilder: (context, index) {
-                        final package =
-                            offerings.current!.availablePackages[index];
-                        return _buildPackageCard(context, ref, package);
-                      },
-                    );
-                  },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
-                ),
+                if (packages.isEmpty) {
+                  return _buildNoPackages(context, ref);
+                }
+
+                return Column(
+                  children: packages
+                      .map((p) => _buildPackageCard(context, ref, p))
+                      .toList(),
+                );
+              },
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: Center(child: CircularProgressIndicator()),
               ),
-              TextButton(
+              error: (e, st) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                child: Center(child: Text(friendlyErrorMessage(e))),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: TextButton(
                 onPressed: () async {
                   final success = await ref
                       .read(premiumProvider.notifier)
                       .restorePurchases();
                   if (success && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Satın alımlar geri yüklendi!'),
+                      SnackBar(
+                        content: Text(tr(ref, 'paywall_restore_success')),
                       ),
                     );
                     context.pop();
                   }
                 },
                 child: Text(
-                  'Satın Alımları Geri Yükle',
+                  tr(ref, 'paywall_restore_purchases'),
                   style: TextStyle(
                     color: colorScheme.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 4),
+            Center(
+              child: Text(
+                tr(ref, 'paywall_footer_note'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHero(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [colorScheme.primary, colorScheme.primary.withValues(alpha: 0.75)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.workspace_premium,
+              size: 48,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            tr(ref, 'paywall_title'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            tr(ref, 'paywall_subtitle'),
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.9)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBenefits(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    Widget benefit(String text) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.check, size: 14, color: colorScheme.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(fontSize: 15, color: colorScheme.onSurface),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        benefit(tr(ref, 'paywall_benefit_unlimited_groups')),
+        benefit(tr(ref, 'paywall_benefit_statistics')),
+        benefit(tr(ref, 'paywall_benefit_freedom')),
+      ],
+    );
+  }
+
+  Widget _buildNoPackages(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.inventory_2_outlined,
+            size: 36,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            tr(ref, 'paywall_no_packages'),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            tr(ref, 'paywall_no_packages_hint'),
+            style: TextStyle(fontSize: 13, color: colorScheme.onSurfaceVariant),
+          ),
+        ],
       ),
     );
   }
@@ -107,10 +223,15 @@ class PaywallScreen extends ConsumerWidget {
     WidgetRef ref,
     Package package,
   ) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Card(
-      elevation: 4,
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colorScheme.primary.withValues(alpha: 0.3)),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () async {
@@ -124,12 +245,14 @@ class PaywallScreen extends ConsumerWidget {
             context: context,
             barrierDismissible: false,
             builder: (dialogContext) => AlertDialog(
-              content: const Row(
+              content: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(width: 20),
-                  Expanded(child: Text('Satın alma işleniyor...')),
+                  const CircularProgressIndicator(),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Text(tr(ref, 'paywall_processing_purchase')),
+                  ),
                 ],
               ),
               actions: [
@@ -138,7 +261,7 @@ class PaywallScreen extends ConsumerWidget {
                     cancelled = true;
                     Navigator.pop(dialogContext);
                   },
-                  child: const Text('İptal'),
+                  child: Text(tr(ref, 'common_cancel')),
                 ),
               ],
             ),
@@ -153,45 +276,52 @@ class PaywallScreen extends ConsumerWidget {
           Navigator.pop(context);
           if (success) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Spendly Pro\'ya hoş geldiniz!')),
+              SnackBar(content: Text(tr(ref, 'paywall_welcome_pro'))),
             );
             context.pop();
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('İşlem iptal edildi veya başarısız oldu.'),
+              SnackBar(
+                content: Text(tr(ref, 'paywall_purchase_failed')),
               ),
             );
           }
         },
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(18.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    package.storeProduct.title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      package.storeProduct.title,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    package.storeProduct.description,
-                    style: const TextStyle(color: Colors.black54),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      package.storeProduct.description,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 12),
               Text(
                 package.storeProduct.priceString,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: colorScheme.primary,
                 ),
               ),
             ],

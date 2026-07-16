@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import '../filters/filters_provider.dart';
@@ -27,19 +28,35 @@ class GroupDetailScreen extends ConsumerStatefulWidget {
   ConsumerState<GroupDetailScreen> createState() => _GroupDetailScreenState();
 }
 
-class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
+class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
+    with SingleTickerProviderStateMixin {
   String? _activeTransactionId;
   final Set<String> _processingActions = <String>{};
+  late final TabController _tabController;
+
+  static const _tabBuckets = [
+    ExpenseBucket.pendingApproval,
+    ExpenseBucket.active,
+    ExpenseBucket.archived,
+  ];
 
   @override
   void initState() {
     super.initState();
+
+    _tabController = TabController(length: _tabBuckets.length, vsync: this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.invalidate(groupTransactionsStreamProvider(widget.groupId));
       ref.invalidate(groupMembersProvider(widget.groupId));
       ref.invalidate(balanceEngineProvider(widget.groupId));
     });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
@@ -57,8 +74,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       groupTransactionsStreamProvider(widget.groupId),
     );
 
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
         titleSpacing: 0,
         title: InkWell(
@@ -94,19 +112,19 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                     ),
                     members.when(
                       data: (items) => Text(
-                        '${items.length} katılımcı',
-                        style: const TextStyle(
+                        '${items.length} ${tr(ref, 'groups_participants_suffix')}',
+                        style: TextStyle(
                           fontSize: 12,
-                          color: Colors.black54,
+                          color: colorScheme.onSurfaceVariant,
                         ),
                       ),
-                      loading: () => const Text(
-                        'Yükleniyor...',
-                        style: TextStyle(fontSize: 12, color: Colors.black54),
+                      loading: () => Text(
+                        tr(ref, 'common_loading'),
+                        style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
                       ),
-                      error: (_, __) => const Text(
-                        'Katılımcılar yüklenemedi',
-                        style: TextStyle(fontSize: 12, color: Colors.black54),
+                      error: (_, __) => Text(
+                        tr(ref, 'groups_participants_load_error'),
+                        style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
                       ),
                     ),
                   ],
@@ -117,7 +135,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Grup sohbeti',
+            tooltip: tr(ref, 'groups_chat_tooltip'),
             icon: Badge(
               isLabelVisible: unreadChatCount > 0,
               label: Text('$unreadChatCount'),
@@ -131,7 +149,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
             },
           ),
           IconButton(
-            tooltip: 'Arkadaş davet et',
+            tooltip: tr(ref, 'groups_invite_friend_tooltip'),
             icon: const Icon(Icons.person_add),
             onPressed: () {
               showModalBottomSheet(
@@ -150,6 +168,43 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
             exchanger: exchanger,
           ),
           _buildFilterCard(currentUserId),
+          transactions.when(
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+            data: (items) {
+              final filtered = _filteredTransactions(items);
+              final counts = {
+                for (final bucket in _tabBuckets)
+                  bucket: filtered
+                      .where((t) => computeExpenseBucket(t) == bucket)
+                      .length,
+              };
+
+              return Material(
+                color: Theme.of(context).cardTheme.color,
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: colorScheme.primary,
+                  unselectedLabelColor: colorScheme.onSurfaceVariant,
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                  tabs: [
+                    _buildTabLabel(
+                      tr(ref, 'groups_tab_pending'),
+                      counts[ExpenseBucket.pendingApproval]!,
+                    ),
+                    _buildTabLabel(
+                      tr(ref, 'groups_tab_active'),
+                      counts[ExpenseBucket.active]!,
+                    ),
+                    _buildTabLabel(
+                      tr(ref, 'groups_tab_archived'),
+                      counts[ExpenseBucket.archived]!,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           Expanded(
             child: transactions.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -159,25 +214,40 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                 final filtered = _filteredTransactions(items);
 
                 if (filtered.isEmpty) {
-                  return const Center(
-                    child: Text('Henüz işlem yok. İlk harcamayı ekleyin.'),
+                  return Center(
+                    child: Text(tr(ref, 'groups_no_transactions')),
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final transaction = filtered[index];
+                return TabBarView(
+                  controller: _tabController,
+                  children: _tabBuckets.map((bucket) {
+                    final bucketItems = filtered
+                        .where((t) => computeExpenseBucket(t) == bucket)
+                        .toList();
 
-                    return _buildTransactionCard(
-                      transaction: transaction,
-                      currentUserId: currentUserId,
-                      currency: currency,
-                      exchanger: exchanger,
-                      members: members,
+                    if (bucketItems.isEmpty) {
+                      return Center(
+                        child: Text(_emptyBucketMessage(bucket)),
+                      );
+                    }
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+                      itemCount: bucketItems.length,
+                      itemBuilder: (context, index) {
+                        final transaction = bucketItems[index];
+
+                        return _buildTransactionCard(
+                          transaction: transaction,
+                          currentUserId: currentUserId,
+                          currency: currency,
+                          exchanger: exchanger,
+                          members: members,
+                        );
+                      },
                     );
-                  },
+                  }).toList(),
                 );
               },
             ),
@@ -186,7 +256,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.receipt_long),
-        label: const Text('Harcama Ekle'),
+        label: Text(tr(ref, 'groups_add_expense')),
         onPressed: currentUserId.isEmpty
             ? null
             : () {
@@ -203,6 +273,26 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     );
   }
 
+  Widget _buildTabLabel(String label, int count) {
+    return Tab(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text('$label ($count)', maxLines: 1, softWrap: false),
+      ),
+    );
+  }
+
+  String _emptyBucketMessage(ExpenseBucket bucket) {
+    switch (bucket) {
+      case ExpenseBucket.pendingApproval:
+        return tr(ref, 'groups_empty_pending');
+      case ExpenseBucket.active:
+        return tr(ref, 'groups_empty_active');
+      case ExpenseBucket.archived:
+        return tr(ref, 'groups_empty_archived');
+    }
+  }
+
   Widget _buildTransactionCard({
     required GroupTransactionModel transaction,
     required String currentUserId,
@@ -213,7 +303,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     final transactionId = transaction.id ?? '';
     final isExpanded = _activeTransactionId == transactionId;
     final payerName = transaction.payerId == currentUserId
-        ? 'Sen'
+        ? tr(ref, 'common_you')
         : _memberName(members, transaction.payerId, currentUserId);
 
     return InkWell(
@@ -240,18 +330,33 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      '$payerName ödedi',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: transaction.payerId == currentUserId
-                            ? Colors.green.shade700
-                            : Colors.black87,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          transaction.description,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 17,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$payerName ${tr(ref, 'groups_paid_verb')}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: transaction.payerId == currentUserId
+                                ? Colors.green.shade700
+                                : Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
                     '$currency${exchanger.convertFromTRY(transaction.amount, currency).toStringAsFixed(2)}',
                     style: const TextStyle(
@@ -261,13 +366,14 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
-              Text(transaction.description),
               if (transaction.createdAt != null) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Text(
                   _formatDate(transaction.createdAt!),
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
               const Divider(height: 24),
@@ -286,6 +392,26 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                   );
                 }).toList(),
               ),
+              if (transactionId.isNotEmpty &&
+                  transaction.payerId == currentUserId &&
+                  transaction.archivedAt == null &&
+                  allParticipantsSettled(transaction)) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: _processingActions.contains('$transactionId:archive')
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : OutlinedButton.icon(
+                          onPressed: () => _archiveTransaction(transactionId),
+                          icon: const Icon(Icons.archive_outlined, size: 18),
+                          label: Text(tr(ref, 'groups_archive_all_button')),
+                        ),
+                ),
+              ],
             ],
           ),
         ),
@@ -306,7 +432,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     final isCurrentUser = participantId == currentUserId;
     final amount = _splitAmount(rawValue);
     final participantName = isCurrentUser
-        ? 'Sen'
+        ? tr(ref, 'common_you')
         : _memberName(members, participantId, currentUserId);
 
     final amountLabel =
@@ -316,7 +442,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       final primary = Theme.of(context).colorScheme.primary;
       return _statusChip(
         amountLabel: amountLabel,
-        label: 'Ödeyen',
+        label: tr(ref, 'groups_status_payer'),
         icon: Icons.account_balance_wallet_rounded,
         backgroundColor: Color.lerp(Colors.white, primary, 0.10)!,
         borderColor: Color.lerp(Colors.white, primary, 0.30)!,
@@ -340,7 +466,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
 
     if (transactionId != null && !isBusy) {
       if (status == DebtApprovalStatus.pending && isCurrentUser) {
-        actionLabel = 'Onayla';
+        actionLabel = tr(ref, 'groups_action_approve');
         actionIcon = Icons.check_rounded;
         onActionPressed = () => _runLifecycleAction(
           transactionId: transactionId,
@@ -348,7 +474,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           status: status,
         );
       } else if (status == DebtApprovalStatus.approved && isCurrentUser) {
-        actionLabel = 'Ödendi Olarak İşaretle';
+        actionLabel = tr(ref, 'groups_action_mark_paid');
         actionIcon = Icons.payments_rounded;
         onActionPressed = () => _runLifecycleAction(
           transactionId: transactionId,
@@ -357,7 +483,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         );
       } else if (status == DebtApprovalStatus.paymentPending &&
           transaction.payerId == currentUserId) {
-        actionLabel = 'Ödemeyi Onayla';
+        actionLabel = tr(ref, 'groups_action_confirm_payment');
         actionIcon = Icons.done_all_rounded;
         onActionPressed = () => _runLifecycleAction(
           transactionId: transactionId,
@@ -371,7 +497,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       case DebtApprovalStatus.pending:
         return _statusChip(
           amountLabel: amountLabel,
-          label: 'Onay bekliyor',
+          label: tr(ref, 'groups_status_pending'),
           icon: Icons.hourglass_top_rounded,
           backgroundColor: _tint(_statusWarning, 0.12),
           borderColor: _tint(_statusWarning, 0.35),
@@ -385,7 +511,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       case DebtApprovalStatus.approved:
         return _statusChip(
           amountLabel: amountLabel,
-          label: isCurrentUser ? 'Onaylandı' : 'Aktif borç',
+          label: isCurrentUser
+              ? tr(ref, 'groups_status_approved_self')
+              : tr(ref, 'groups_status_active_debt'),
           icon: Icons.verified_rounded,
           backgroundColor: _tint(_statusActive, 0.10),
           borderColor: _tint(_statusActive, 0.30),
@@ -403,8 +531,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         return _statusChip(
           amountLabel: amountLabel,
           label: transaction.payerId == currentUserId
-              ? 'Ödeme onayı bekleniyor'
-              : 'Ödeme bildirildi',
+              ? tr(ref, 'groups_status_payment_pending_payer')
+              : tr(ref, 'groups_status_payment_reported'),
           icon: Icons.schedule_send_rounded,
           backgroundColor: _tint(_statusActive, 0.14),
           borderColor: _tint(_statusActive, 0.38),
@@ -418,7 +546,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       case DebtApprovalStatus.settled:
         return _statusChip(
           amountLabel: amountLabel,
-          label: 'Ödendi',
+          label: tr(ref, 'groups_status_settled'),
           icon: Icons.verified_rounded,
           backgroundColor: _tint(_statusGood, 0.12),
           borderColor: _tint(_statusGood, 0.35),
@@ -428,7 +556,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       case DebtApprovalStatus.rejected:
         return _statusChip(
           amountLabel: amountLabel,
-          label: 'Reddedildi',
+          label: tr(ref, 'groups_status_rejected'),
           icon: Icons.block_rounded,
           backgroundColor: _tint(_statusCritical, 0.10),
           borderColor: _tint(_statusCritical, 0.30),
@@ -544,8 +672,36 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('İşlem gerçekleştirilemedi. Lütfen tekrar deneyin.'),
+          SnackBar(
+            content: Text(tr(ref, 'groups_action_failed')),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _processingActions.remove(actionKey));
+      }
+    }
+  }
+
+  Future<void> _archiveTransaction(String transactionId) async {
+    final actionKey = '$transactionId:archive';
+
+    if (_processingActions.contains(actionKey)) return;
+
+    setState(() => _processingActions.add(actionKey));
+
+    try {
+      final service = ref.read(groupServiceProvider);
+      await service.archiveGroupTransaction(transactionId);
+
+      ref.invalidate(groupTransactionsStreamProvider(widget.groupId));
+      ref.read(groupDataRefreshProvider.notifier).state++;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr(ref, 'groups_archive_failed')),
           ),
         );
       }
@@ -568,22 +724,27 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         balances.entries.where((entry) => entry.value.abs() > 0.0001).toList()
           ..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
 
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
-      color: Colors.white,
+      color: Theme.of(context).cardTheme.color,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Grup Bakiyesi',
-            style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+          Text(
+            tr(ref, 'groups_balance_title'),
+            style: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
           if (entries.isEmpty)
-            const Text(
-              'Aktif borç bulunmuyor.',
-              style: TextStyle(color: Colors.black54),
+            Text(
+              tr(ref, 'groups_no_active_debt'),
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
             )
           else
             SingleChildScrollView(
@@ -592,7 +753,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                 children: entries.map((entry) {
                   final isPositive = entry.value > 0;
                   final displayName = entry.key == currentUserId
-                      ? 'Sen'
+                      ? tr(ref, 'common_you')
                       : _memberName(members, entry.key, currentUserId);
 
                   final background = isPositive
@@ -617,7 +778,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                       border: Border.all(color: border),
                     ),
                     child: Text(
-                      '$displayName ${isPositive ? "Alacaklı" : "Borçlu"}: '
+                      '$displayName ${isPositive ? tr(ref, "groups_creditor_label") : tr(ref, "groups_debtor_label")}: '
                       '$currency${exchanger.convertFromTRY(entry.value.abs(), currency).toStringAsFixed(2)}',
                       style: TextStyle(
                         color: text,
@@ -642,7 +803,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     final members = ref.watch(groupMembersProvider(widget.groupId));
 
     return Card(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Padding(
         padding: const EdgeInsets.all(10),
         child: StatefulBuilder(
@@ -660,31 +821,39 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
             }
 
             return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 6),
+                  child: Text(
+                    tr(ref, 'groups_filter_payer_label'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
                 Row(
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         value: selectedPersonId,
                         isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Ödeyen kişi',
-                          isDense: true,
-                        ),
+                        decoration: const InputDecoration(isDense: true),
                         items: [
-                          const DropdownMenuItem(
+                          DropdownMenuItem(
                             value: '',
-                            child: Text('Tümü'),
+                            child: Text(tr(ref, 'common_all')),
                           ),
                           ...memberList.map(
                             (member) => DropdownMenuItem(
                               value: member.userId,
                               child: Text(
                                 member.userId == currentUserId
-                                    ? 'Sen'
+                                    ? tr(ref, 'common_you')
                                     : (member.username == null ||
                                               member.username!.isEmpty
-                                          ? 'Kullanıcı'
+                                          ? tr(ref, 'common_user')
                                           : '@${member.username}'),
                               ),
                             ),
@@ -717,7 +886,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                       },
                       child: Text(
                         selectedStart == null || selectedEnd == null
-                            ? 'Tarih'
+                            ? tr(ref, 'common_date')
                             : '${selectedStart!.day}.${selectedStart!.month} '
                                   '- ${selectedEnd!.day}.${selectedEnd!.month}',
                       ),
@@ -739,11 +908,11 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                           });
                           ref.read(transactionFilterProvider.notifier).clear();
                         },
-                        child: const Text('Sıfırla'),
+                        child: Text(tr(ref, 'common_reset')),
                       ),
                       ElevatedButton.icon(
                         icon: const Icon(Icons.filter_alt),
-                        label: const Text('Filtrele'),
+                        label: Text(tr(ref, 'common_filter')),
                         onPressed: () {
                           final notifier = ref.read(
                             transactionFilterProvider.notifier,
@@ -804,7 +973,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     String userId,
     String currentUserId,
   ) {
-    if (userId == currentUserId) return 'Sen';
+    if (userId == currentUserId) return tr(ref, 'common_you');
 
     return members.maybeWhen(
       data: (items) {
@@ -813,13 +982,13 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           final username = member.username?.trim();
 
           return username == null || username.isEmpty
-              ? 'Kullanıcı'
+              ? tr(ref, 'common_user')
               : '@$username';
         } catch (_) {
-          return 'Kullanıcı';
+          return tr(ref, 'common_user');
         }
       },
-      orElse: () => 'Kullanıcı',
+      orElse: () => tr(ref, 'common_user'),
     );
   }
 

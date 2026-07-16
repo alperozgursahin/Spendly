@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/friendly_error.dart';
+import '../../core/app_strings.dart';
 import 'auth_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -27,13 +28,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     setState(() {
       _usernameError = username.length < 3
-          ? 'Kullanıcı adı en az 3 karakter olmalı.'
+          ? tr(ref, 'register_username_too_short')
           : null;
       _emailError = email.contains('@') && email.contains('.')
           ? null
-          : 'Geçerli bir e-posta adresi girin.';
+          : tr(ref, 'register_email_invalid');
       _passwordError = password.length < 6
-          ? 'Şifre en az 6 karakter olmalı.'
+          ? tr(ref, 'register_password_too_short')
           : null;
     });
 
@@ -56,7 +57,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Kayıt başarılı! Lütfen giriş yapın.')),
+          SnackBar(content: Text(tr(ref, 'register_success'))),
         );
         context.go('/login');
       }
@@ -82,7 +83,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Spendly Kayıt Ol')),
+      appBar: AppBar(title: Text(tr(ref, 'register_title'))),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -92,7 +93,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             TextField(
               controller: _usernameController,
               decoration: InputDecoration(
-                labelText: 'Kullanıcı Adı (@username)',
+                labelText: tr(ref, 'login_username_label'),
                 prefixText: '@',
                 errorText: _usernameError,
               ),
@@ -107,7 +108,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             TextField(
               controller: _emailController,
               decoration: InputDecoration(
-                labelText: 'Email',
+                labelText: tr(ref, 'register_email_label'),
                 errorText: _emailError,
               ),
               keyboardType: TextInputType.emailAddress,
@@ -121,7 +122,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             TextField(
               controller: _passwordController,
               decoration: InputDecoration(
-                labelText: 'Şifre',
+                labelText: tr(ref, 'login_password_label'),
                 errorText: _passwordError,
               ),
               obscureText: true,
@@ -146,12 +147,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Kayıt Ol'),
+                  : Text(tr(ref, 'register_submit')),
             ),
             const SizedBox(height: 16),
             TextButton(
               onPressed: () => context.go('/login'),
-              child: const Text('Zaten hesabın var mı? Giriş Yap'),
+              child: Text(tr(ref, 'register_have_account')),
             ),
           ],
         ),

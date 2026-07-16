@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/friendly_error.dart';
+import '../../core/app_strings.dart';
 
 class UpdatePasswordScreen extends ConsumerStatefulWidget {
   const UpdatePasswordScreen({super.key});
@@ -22,7 +23,7 @@ class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
 
     setState(() {
       _passwordError = newPassword.length < 6
-          ? 'Şifre en az 6 karakter olmalıdır.'
+          ? tr(ref, 'update_password_too_short')
           : null;
     });
     if (_passwordError != null) return;
@@ -34,8 +35,8 @@ class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Şifreniz başarıyla güncellendi!'),
+          SnackBar(
+            content: Text(tr(ref, 'update_password_success')),
             backgroundColor: Colors.green,
           ),
         );
@@ -61,23 +62,23 @@ class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Yeni Şifre Belirle')),
+      appBar: AppBar(title: Text(tr(ref, 'update_password_title'))),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Lütfen hesabınız için yeni bir şifre belirleyin.',
+            Text(
+              tr(ref, 'update_password_prompt'),
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 24),
             TextField(
               controller: _passwordController,
               decoration: InputDecoration(
-                labelText: 'Yeni Şifre',
+                labelText: tr(ref, 'update_password_new_label'),
                 errorText: _passwordError,
               ),
               obscureText: true,
@@ -102,7 +103,7 @@ class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Şifreyi Güncelle'),
+                  : Text(tr(ref, 'update_password_submit')),
             ),
           ],
         ),

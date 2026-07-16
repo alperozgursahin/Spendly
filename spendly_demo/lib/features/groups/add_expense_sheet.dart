@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import 'group_provider.dart';
 import 'group_transaction_model.dart';
@@ -144,16 +145,16 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Harcama Ekle',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          Text(
+            tr(ref, 'groups_add_expense'),
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
           TextField(
             controller: _descController,
             decoration: InputDecoration(
-              labelText: 'Ne için?',
+              labelText: tr(ref, 'groups_expense_desc_label'),
               prefixIcon: const Icon(Icons.description),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -165,7 +166,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
-              labelText: 'Toplam Tutar ($currency)',
+              labelText: '${tr(ref, 'groups_total_amount_label')} ($currency)',
               prefixText: '$currency ',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -177,12 +178,18 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
           // Segmented Control for Split Type
           SegmentedButton<String>(
             segments: [
-              const ButtonSegment(value: 'equal', label: Text('Eşit (=)')),
-              const ButtonSegment(
-                value: 'percentage',
-                label: Text('Yüzde (%)'),
+              ButtonSegment(
+                value: 'equal',
+                label: Text(tr(ref, 'groups_split_equal')),
               ),
-              ButtonSegment(value: 'exact', label: Text('Tutar ($currency)')),
+              ButtonSegment(
+                value: 'percentage',
+                label: Text(tr(ref, 'groups_split_percentage')),
+              ),
+              ButtonSegment(
+                value: 'exact',
+                label: Text('${tr(ref, 'groups_split_exact')} ($currency)'),
+              ),
             ],
             selected: {_splitType},
             onSelectionChanged: (Set<String> newSelection) {
@@ -195,9 +202,9 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
           ),
 
           const SizedBox(height: 24),
-          const Text(
-            'Kimin için harcandı?',
-            style: TextStyle(fontWeight: FontWeight.bold),
+          Text(
+            tr(ref, 'groups_split_for_whom'),
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
 
@@ -235,9 +242,9 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text(
-              'Kaydet',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            child: Text(
+              tr(ref, 'common_save'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 24),
@@ -349,7 +356,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
               Flexible(
                 child: Text(
                   isMe
-                      ? 'Sen'
+                      ? tr(ref, 'common_you')
                       : '@${member.username ?? member.userId.substring(0, 4)}',
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -369,9 +376,9 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
                     color: Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text(
-                    'otomatik',
-                    style: TextStyle(fontSize: 11, color: Colors.black54),
+                  child: Text(
+                    tr(ref, 'groups_auto_badge'),
+                    style: const TextStyle(fontSize: 11, color: Colors.black54),
                   ),
                 ),
               ],
@@ -406,8 +413,8 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     final amount = _totalAmount;
     if (amount <= 0 || _descController.text.isEmpty || _selectedUsers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lütfen geçerli bilgiler girin ve en az 1 kişi seçin.'),
+        SnackBar(
+          content: Text(tr(ref, 'groups_expense_validation_generic')),
         ),
       );
       return;
@@ -446,10 +453,8 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         final value = _percentageValues[userId];
         if (value == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Yüzde alanlarında en fazla 1 kişi boş kalabilir ve toplam 100 olmalıdır.',
-              ),
+            SnackBar(
+              content: Text(tr(ref, 'groups_percentage_validation')),
             ),
           );
           return;
@@ -463,7 +468,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       );
       if ((totalPercentage - 100).abs() > 0.01) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Yüzdelerin toplamı 100 olmalıdır.')),
+          SnackBar(content: Text(tr(ref, 'groups_percentage_total_validation'))),
         );
         return;
       }
@@ -480,10 +485,8 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       final splitValues = _syncExactSplitValues(amount);
       if (splitValues == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Tutar alanlarında en fazla 1 kişi boş kalabilir ve toplam harcamaya eşit olmalıdır.',
-            ),
+          SnackBar(
+            content: Text(tr(ref, 'groups_exact_validation')),
           ),
         );
         return;

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
+import '../../core/locale_provider.dart';
 import '../auth/auth_provider.dart';
 import '../social/social_provider.dart';
 import 'currency_provider.dart';
@@ -36,7 +38,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final currency = ref.watch(currencyProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profil')),
+      appBar: AppBar(title: Text(tr(ref, 'profile_title'))),
       body: profileAsync.when(
         data: (profile) {
           final avatarUrl = profile['avatar_url'] as String?;
@@ -59,7 +61,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   profile['username'] != null &&
                           profile['username'].toString().isNotEmpty
                       ? '@${profile['username']}'
-                      : '@bilinmiyor',
+                      : tr(ref, 'profile_unknown_username'),
                   style: Theme.of(context).textTheme.headlineSmall,
                   textAlign: TextAlign.center,
                 ),
@@ -72,7 +74,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const SizedBox(height: 32),
                 ListTile(
                   leading: const Icon(Icons.edit),
-                  title: const Text('Profili Düzenle'),
+                  title: Text(tr(ref, 'profile_edit_tile')),
                   onTap: () {
                     _showEditProfileDialog(
                       context,
@@ -85,7 +87,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.attach_money),
-                  title: const Text('Para Birimi'),
+                  title: Text(tr(ref, 'profile_currency_tile')),
                   trailing: DropdownButton<String>(
                     value: currency,
                     underline: const SizedBox(),
@@ -105,14 +107,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.lock),
-                  title: const Text('Şifre Değiştir'),
+                  title: Text(tr(ref, 'profile_change_password_tile')),
                   onTap: () {
                     context.push('/update-password');
                   },
                 ),
                 ListTile(
                   leading: const Icon(Icons.picture_as_pdf),
-                  title: const Text('Aylık Raporu İndir (PDF)'),
+                  title: Text(tr(ref, 'profile_download_report_tile')),
                   onTap: () async {
                     try {
                       // Import transactions provider
@@ -129,13 +131,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       }).toList();
 
                       // Call service
+                      final language = ref.read(appLanguageProvider);
                       await PdfExportService.generateAndShareMonthlyReport(
                         currentMonthTransactions,
                         '${now.month}/${now.year}',
+                        language: language,
                       );
                     } catch (e) {
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('PDF Oluşturulamadı: $e')),
+                        SnackBar(
+                          content: Text(
+                            tr(ref, 'profile_pdf_error').replaceFirst(
+                              '%s',
+                              e.toString(),
+                            ),
+                          ),
+                        ),
                       );
                     }
                   },
@@ -148,11 +160,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     context.go('/login');
                   },
                   icon: const Icon(Icons.logout),
-                  label: const Text('Çıkış Yap'),
+                  label: Text(tr(ref, 'profile_logout')),
                 ),
                 const SizedBox(height: 32),
                 Text(
-                  'Tehlikeli bölge',
+                  tr(ref, 'profile_danger_zone'),
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey.shade600,
@@ -169,7 +181,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     _showDeleteAccountDialog(context, ref);
                   },
                   icon: const Icon(Icons.delete_forever),
-                  label: const Text('Hesabı ve Verileri Sil'),
+                  label: Text(tr(ref, 'profile_delete_account_data')),
                 ),
               ],
             ),
@@ -185,14 +197,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hesabı Sil'),
-        content: const Text(
-          'Hesabınızı ve tüm verilerini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
-        ),
+        title: Text(tr(ref, 'profile_delete_account_title')),
+        content: Text(tr(ref, 'profile_delete_account_confirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
+            child: Text(tr(ref, 'common_cancel')),
           ),
           TextButton(
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -202,7 +212,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               if (!context.mounted) return;
               context.go('/login');
             },
-            child: const Text('Sil'),
+            child: Text(tr(ref, 'common_delete')),
           ),
         ],
       ),
@@ -227,27 +237,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text('Profili Düzenle'),
+              title: Text(tr(ref, 'profile_edit_tile')),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextField(
                       controller: usernameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Kullanıcı Adı (@username)',
+                      decoration: InputDecoration(
+                        labelText: tr(ref, 'login_username_label'),
                       ),
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: emailController,
-                      decoration: const InputDecoration(labelText: 'Email'),
+                      decoration: InputDecoration(
+                        labelText: tr(ref, 'register_email_label'),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: avatarController,
-                      decoration: const InputDecoration(
-                        labelText: 'Avatar URL (Opsiyonel)',
+                      decoration: InputDecoration(
+                        labelText: tr(ref, 'profile_avatar_url_label'),
                       ),
                     ),
                   ],
@@ -256,7 +268,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               actions: [
                 TextButton(
                   onPressed: isLoading ? null : () => Navigator.pop(ctx),
-                  child: const Text('İptal'),
+                  child: Text(tr(ref, 'common_cancel')),
                 ),
                 ElevatedButton(
                   onPressed: isLoading
@@ -276,9 +288,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               Navigator.pop(ctx);
                               ref.invalidate(currentUserProfileProvider);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                                SnackBar(
                                   content: Text(
-                                    'Profil başarıyla güncellendi.',
+                                    tr(ref, 'profile_update_success'),
                                   ),
                                 ),
                               );
@@ -301,7 +313,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Kaydet'),
+                      : Text(tr(ref, 'common_save')),
                 ),
               ],
             );

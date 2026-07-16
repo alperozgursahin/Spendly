@@ -34,6 +34,48 @@ DebtApprovalStatus participantApprovalStatus(
   return DebtApprovalStatus.approved;
 }
 
+/// Which of the group detail screen's three tabs an expense belongs in.
+enum ExpenseBucket { pendingApproval, active, archived }
+
+/// True once every non-payer participant has settled their share, i.e. the
+/// only remaining step is the payer archiving the expense.
+bool allParticipantsSettled(GroupTransactionModel transaction) {
+  for (final participantId in transaction.splitData.keys) {
+    if (participantId == transaction.payerId) continue;
+
+    final status = participantApprovalStatus(
+      transaction.splitData,
+      participantId,
+      transaction.payerId,
+    );
+
+    if (status != DebtApprovalStatus.settled) return false;
+  }
+
+  return true;
+}
+
+ExpenseBucket computeExpenseBucket(GroupTransactionModel transaction) {
+  if (transaction.archivedAt != null) return ExpenseBucket.archived;
+
+  for (final participantId in transaction.splitData.keys) {
+    if (participantId == transaction.payerId) continue;
+
+    final status = participantApprovalStatus(
+      transaction.splitData,
+      participantId,
+      transaction.payerId,
+    );
+
+    if (status == DebtApprovalStatus.pending ||
+        status == DebtApprovalStatus.rejected) {
+      return ExpenseBucket.pendingApproval;
+    }
+  }
+
+  return ExpenseBucket.active;
+}
+
 class GroupTransactionModel {
   final String? id;
   final String groupId;
@@ -44,6 +86,7 @@ class GroupTransactionModel {
   final Map<String, dynamic> splitData;
   final String status;
   final DateTime? createdAt;
+  final DateTime? archivedAt;
 
   GroupTransactionModel({
     this.id,
@@ -55,6 +98,7 @@ class GroupTransactionModel {
     required this.splitData,
     this.status = 'pending',
     this.createdAt,
+    this.archivedAt,
   });
 
   factory GroupTransactionModel.fromJson(Map<String, dynamic> json) {
@@ -70,6 +114,9 @@ class GroupTransactionModel {
       createdAt: json['created_at'] == null
           ? null
           : DateTime.parse(json['created_at'] as String),
+      archivedAt: json['archived_at'] == null
+          ? null
+          : DateTime.parse(json['archived_at'] as String),
     );
   }
 
@@ -84,6 +131,7 @@ class GroupTransactionModel {
       'split_data': splitData,
       'status': status,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
+      if (archivedAt != null) 'archived_at': archivedAt!.toIso8601String(),
     };
   }
 }

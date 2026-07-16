@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/friendly_error.dart';
+import '../../core/app_strings.dart';
 import 'auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -23,8 +24,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final password = _passwordController.text.trim();
 
     setState(() {
-      _usernameError = username.isEmpty ? 'Kullanıcı adınızı girin.' : null;
-      _passwordError = password.isEmpty ? 'Şifrenizi girin.' : null;
+      _usernameError = username.isEmpty ? tr(ref, 'login_username_required') : null;
+      _passwordError = password.isEmpty ? tr(ref, 'login_password_required') : null;
     });
 
     return _usernameError == null && _passwordError == null;
@@ -62,7 +63,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Spendly Giriş')),
+      appBar: AppBar(title: Text(tr(ref, 'login_title'))),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -72,7 +73,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             TextField(
               controller: _usernameController,
               decoration: InputDecoration(
-                labelText: 'Kullanıcı Adı (@username)',
+                labelText: tr(ref, 'login_username_label'),
                 prefixText: '@',
                 errorText: _usernameError,
               ),
@@ -87,7 +88,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             TextField(
               controller: _passwordController,
               decoration: InputDecoration(
-                labelText: 'Şifre',
+                labelText: tr(ref, 'login_password_label'),
                 errorText: _passwordError,
               ),
               obscureText: true,
@@ -101,7 +102,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: () => context.push('/forgot-password'),
-                child: const Text('Şifremi Unuttum?'),
+                child: Text(tr(ref, 'login_forgot_password')),
               ),
             ),
             const SizedBox(height: 8),
@@ -119,12 +120,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Giriş Yap'),
+                  : Text(tr(ref, 'login_submit')),
             ),
             const SizedBox(height: 16),
             TextButton(
               onPressed: () => context.go('/register'),
-              child: const Text('Hesabın yok mu? Kayıt Ol'),
+              child: Text(tr(ref, 'login_no_account')),
             ),
           ],
         ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import 'notification_provider.dart';
@@ -38,9 +39,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         : ref.watch(userNotificationsProvider(userId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Bildirimler')),
+      appBar: AppBar(title: Text(tr(ref, 'dashboard_notifications'))),
       body: userId == null
-          ? const Center(child: Text('Bildirimleri görmek için giriş yapın.'))
+          ? Center(child: Text(tr(ref, 'notifications_login_required')))
           : notificationsAsync.when(
               data: (notifications) {
                 if (notifications.isEmpty) {
@@ -56,14 +57,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             color: Colors.grey.shade400,
                           ),
                           const SizedBox(height: 12),
-                          const Text(
-                            'Henüz bildiriminiz yok.',
-                            style: TextStyle(fontWeight: FontWeight.w600),
+                          Text(
+                            tr(ref, 'notifications_empty_title'),
+                            style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Gruplarınızdaki harcama ve onay güncellemeleri '
-                            'burada görünecek.',
+                            tr(ref, 'notifications_empty_subtitle'),
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.grey.shade600),
                           ),

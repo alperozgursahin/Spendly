@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import '../social/social_provider.dart';
@@ -42,9 +43,9 @@ class _InviteFriendModalState extends ConsumerState<InviteFriendModal> {
       });
       ref.invalidate(groupMembersProvider(widget.groupId));
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Davet edildi!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(ref, 'groups_invited_snackbar'))),
+        );
         Navigator.pop(context);
       }
     } catch (e) {
@@ -71,16 +72,17 @@ class _InviteFriendModalState extends ConsumerState<InviteFriendModal> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'Gruba Arkadaş Davet Et',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            tr(ref, 'groups_invite_modal_title'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _searchController,
-            decoration: const InputDecoration(
-              hintText: 'Arkadaşlarında ara',
-              prefixIcon: Icon(Icons.search),
+            decoration: InputDecoration(
+              hintText: tr(ref, 'groups_invite_search_hint'),
+              prefixIcon: const Icon(Icons.search),
+              contentPadding: const EdgeInsets.symmetric(vertical: 18),
             ),
           ),
           const SizedBox(height: 8),
@@ -111,10 +113,10 @@ class _InviteFriendModalState extends ConsumerState<InviteFriendModal> {
                             color: Colors.grey.shade400,
                           ),
                           const SizedBox(height: 8),
-                          const Text('Davet edebilecek arkadaşın yok.'),
+                          Text(tr(ref, 'groups_no_friends_to_invite')),
                           const SizedBox(height: 4),
                           Text(
-                            'Önce Sosyal sekmesinden arkadaş ekle.',
+                            tr(ref, 'groups_no_friends_hint'),
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey.shade600,
@@ -138,8 +140,8 @@ class _InviteFriendModalState extends ConsumerState<InviteFriendModal> {
                           .toList();
 
                 if (filtered.isEmpty) {
-                  return const Center(
-                    child: Text('Aramanla eşleşen arkadaş bulunamadı.'),
+                  return Center(
+                    child: Text(tr(ref, 'groups_no_search_match')),
                   );
                 }
 
@@ -152,7 +154,7 @@ class _InviteFriendModalState extends ConsumerState<InviteFriendModal> {
                       title: Text('@${f['username']}'),
                       trailing: ElevatedButton(
                         onPressed: () => _addFriend(f),
-                        child: const Text('Ekle'),
+                        child: Text(tr(ref, 'common_add')),
                       ),
                     );
                   },

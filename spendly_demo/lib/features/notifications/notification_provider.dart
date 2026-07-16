@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/app_strings.dart';
+import '../../core/locale_provider.dart';
 import 'notification_model.dart';
 
 String _cursorKeyFor(String userId) => 'notification_feature_cutoff_$userId';
@@ -13,7 +15,8 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
 final userNotificationsProvider =
     StreamProvider.family<List<AppNotificationModel>, String>((ref, userId) {
       final service = ref.watch(notificationServiceProvider);
-      return service.watchNotifications(userId);
+      final language = ref.watch(appLanguageProvider);
+      return service.watchNotifications(userId, language);
     });
 
 final unreadNotificationCountProvider = Provider.family<int, String>((
@@ -55,6 +58,7 @@ class NotificationCursorStorage {
 Future<List<AppNotificationModel>> _buildNotifications(
   List<Map<String, dynamic>> rows,
   String userId,
+  AppLanguage language,
 ) async {
   final supabase = Supabase.instance.client;
 
@@ -108,10 +112,14 @@ Future<List<AppNotificationModel>> _buildNotifications(
     if (row != null) expenses[row['id'] as String] = row;
   }
 
+  final defaultGroupName = AppStrings.of('notif_default_group', language);
+  final defaultUserName = AppStrings.of('notif_default_user', language);
+
   final groupNames = <String, String>{};
   for (final row in groupResults) {
     if (row != null) {
-      groupNames[row['id'] as String] = row['name'] as String? ?? 'Bir grup';
+      groupNames[row['id'] as String] =
+          row['name'] as String? ?? defaultGroupName;
     }
   }
 
@@ -121,7 +129,7 @@ Future<List<AppNotificationModel>> _buildNotifications(
 
     final username = (row['username'] as String?)?.trim();
     usernames[row['id'] as String] = username == null || username.isEmpty
-        ? 'Bir kullanıcı'
+        ? defaultUserName
         : username;
   }
 
@@ -135,35 +143,39 @@ Future<List<AppNotificationModel>> _buildNotifications(
     final senderId = row['sender_id'] as String;
     final type = (row['type'] as String?) ?? 'debt_request';
     final amount = (expense?['amount'] as num?)?.toDouble() ?? 0;
-    final description = expense?['description'] as String? ?? 'harcama';
+    final defaultDescription = AppStrings.of(
+      'notif_default_expense_desc',
+      language,
+    );
+    final description = expense?['description'] as String? ?? defaultDescription;
     final groupName = groupId == null
-        ? 'Bir grup'
-        : groupNames[groupId] ?? 'Bir grup';
-    final senderName = usernames[senderId] ?? 'Bir kullanıcı';
+        ? defaultGroupName
+        : groupNames[groupId] ?? defaultGroupName;
+    final senderName = usernames[senderId] ?? defaultUserName;
 
-    var title = 'Yeni harcama';
-    var message =
-        '$senderName sizi $groupName grubundaki "$description" harcamasına ekledi. '
-        'Tutar: ${amount.toStringAsFixed(2)} TL. Onayınızı bekliyor.';
+    String fillTemplate(String key) {
+      return AppStrings.of(key, language)
+          .replaceAll('{sender}', senderName)
+          .replaceAll('{group}', groupName)
+          .replaceAll('{desc}', description)
+          .replaceAll('{amount}', amount.toStringAsFixed(2));
+    }
+
+    var title = AppStrings.of('notif_new_expense_title', language);
+    var message = fillTemplate('notif_new_expense_message');
 
     if (type == 'payment_confirmation') {
-      title = 'Ödeme bildirildi';
-      message =
-          '$senderName, $groupName grubundaki "$description" için ödeme '
-          'bildirimi gönderdi.';
+      title = AppStrings.of('notif_payment_confirmation_title', language);
+      message = fillTemplate('notif_payment_confirmation_message');
     } else if (type == 'debt_approved') {
-      title = 'Borç onaylandı';
-      message =
-          '$senderName, $groupName grubundaki "$description" borcunu onayladı.';
+      title = AppStrings.of('notif_debt_approved_title', language);
+      message = fillTemplate('notif_debt_approved_message');
     } else if (type == 'debt_rejected') {
-      title = 'Borç reddedildi';
-      message =
-          '$senderName, $groupName grubundaki "$description" borcunu reddetti.';
+      title = AppStrings.of('notif_debt_rejected_title', language);
+      message = fillTemplate('notif_debt_rejected_message');
     } else if (type == 'debt_settled') {
-      title = 'Ödeme onaylandı';
-      message =
-          '$senderName, $groupName grubundaki "$description" için ödemenizi '
-          'onayladı. Borç kapandı.';
+      title = AppStrings.of('notif_debt_settled_title', language);
+      message = fillTemplate('notif_debt_settled_message');
     }
 
     return AppNotificationModel(
@@ -187,7 +199,10 @@ class NotificationService {
 
   NotificationService(this._supabase);
 
-  Stream<List<AppNotificationModel>> watchNotifications(String userId) {
+  Stream<List<AppNotificationModel>> watchNotifications(
+    String userId,
+    AppLanguage language,
+  ) {
     return _supabase
         .from('notifications')
         .stream(primaryKey: ['id'])
@@ -197,6 +212,7 @@ class NotificationService {
           (rows) => _buildNotifications(
             rows.map(Map<String, dynamic>.from).toList(),
             userId,
+            language,
           ),
         );
   }

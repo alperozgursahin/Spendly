@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'core/app_strings.dart';
 import 'features/social/social_provider.dart';
 
 class MainScaffold extends ConsumerStatefulWidget {
@@ -55,17 +56,17 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         currentIndex: _currentIndex,
         onTap: (index) => _onItemTapped(index, context),
         items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.dashboard),
+            label: tr(ref, 'nav_dashboard'),
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            label: 'Borçlar',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+            label: tr(ref, 'nav_debts'),
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.group),
-            label: 'Gruplar',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.group),
+            label: tr(ref, 'nav_groups'),
           ),
           BottomNavigationBarItem(
             icon: Badge(
@@ -73,11 +74,11 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
               label: Text('$pendingRequests'),
               child: const Icon(Icons.chat_bubble_outline),
             ),
-            label: 'Sosyal',
+            label: tr(ref, 'nav_social'),
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profil',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.person),
+            label: tr(ref, 'nav_profile'),
           ),
         ],
       ),

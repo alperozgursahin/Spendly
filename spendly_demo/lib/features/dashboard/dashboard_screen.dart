@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/friendly_error.dart';
+import '../../core/app_strings.dart';
+import '../../core/locale_provider.dart';
+import '../../core/app_theme_provider.dart';
 import '../auth/auth_provider.dart';
 import '../transactions/transaction_provider.dart';
 import '../transactions/transaction_model.dart';
@@ -27,11 +30,23 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        leadingWidth: 132,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildLanguageToggle(context, ref),
+              const SizedBox(width: 8),
+              _buildThemeToggle(context, ref),
+            ],
+          ),
+        ),
+        title: Text(tr(ref, 'dashboard_title')),
         actions: [
           IconButton(
             icon: const Icon(Icons.insights_outlined),
-            tooltip: 'İstatistikler',
+            tooltip: tr(ref, 'dashboard_statistics'),
             onPressed: () => context.push('/dashboard/statistics'),
           ),
           Badge(
@@ -39,7 +54,7 @@ class DashboardScreen extends ConsumerWidget {
             label: Text(unreadNotificationCount.toString()),
             child: IconButton(
               icon: const Icon(Icons.notifications_none),
-              tooltip: 'Bildirimler',
+              tooltip: tr(ref, 'dashboard_notifications'),
               onPressed: () => context.push('/notifications'),
             ),
           ),
@@ -61,16 +76,16 @@ class DashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 _buildNetBalanceCard(context, ref, netBalance, currency),
                 const SizedBox(height: 24),
-                const Text(
-                  'Aktivite Akışı',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  tr(ref, 'dashboard_activity_feed'),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                _buildActivityFeed(activityAsync),
+                _buildActivityFeed(ref, activityAsync),
                 const SizedBox(height: 24),
-                const Text(
-                  'Son İşlemler',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  tr(ref, 'dashboard_recent_transactions'),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 _buildDashboardFilterBar(context, ref, transactionsAsync),
@@ -79,6 +94,72 @@ class DashboardScreen extends ConsumerWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLanguageToggle(BuildContext context, WidgetRef ref) {
+    final language = ref.watch(appLanguageProvider);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    Widget option(String label, AppLanguage value) {
+      final isSelected = language == value;
+      return GestureDetector(
+        onTap: () => ref.read(appLanguageProvider.notifier).setLanguage(value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? colorScheme.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: isSelected ? Colors.white : colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          option('TR', AppLanguage.tr),
+          option('EN', AppLanguage.en),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThemeToggle(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(appThemeModeProvider);
+    final isDark = themeMode == ThemeMode.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return InkWell(
+      onTap: () => ref.read(appThemeModeProvider.notifier).toggle(),
+      customBorder: const CircleBorder(),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: colorScheme.surfaceContainerHighest,
+        ),
+        child: Icon(
+          isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+          size: 18,
+          color: colorScheme.onSurfaceVariant,
         ),
       ),
     );
@@ -102,7 +183,7 @@ class DashboardScreen extends ConsumerWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(10),
         child: StatefulBuilder(
           builder: (context, setLocalState) {
             if (selectedCategory.isNotEmpty &&
@@ -115,24 +196,35 @@ class DashboardScreen extends ConsumerWidget {
             }
 
             return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 6),
+                  child: Text(
+                    tr(ref, 'common_category'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
                 Row(
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         value: selectedCategory,
                         isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Kategori',
-                          isDense: true,
-                        ),
+                        decoration: const InputDecoration(isDense: true),
                         items: [
-                          const DropdownMenuItem(
+                          DropdownMenuItem(
                             value: '',
-                            child: Text('Hepsi'),
+                            child: Text(tr(ref, 'common_all')),
                           ),
                           ...cats.map(
-                            (c) => DropdownMenuItem(value: c, child: Text(c)),
+                            (c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(categoryLabel(ref, c)),
+                            ),
                           ),
                         ],
                         onChanged: (value) =>
@@ -146,10 +238,19 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: SegmentedButton<String>(
-                        segments: const [
-                          ButtonSegment(value: '', label: Text('Hepsi')),
-                          ButtonSegment(value: 'expense', label: Text('Gider')),
-                          ButtonSegment(value: 'income', label: Text('Gelir')),
+                        segments: [
+                          ButtonSegment(
+                            value: '',
+                            label: _fittedLabel(tr(ref, 'common_all')),
+                          ),
+                          ButtonSegment(
+                            value: 'expense',
+                            label: _fittedLabel(tr(ref, 'common_expense')),
+                          ),
+                          ButtonSegment(
+                            value: 'income',
+                            label: _fittedLabel(tr(ref, 'common_income')),
+                          ),
                         ],
                         selected: {selectedType},
                         onSelectionChanged: (newSelection) {
@@ -186,7 +287,7 @@ class DashboardScreen extends ConsumerWidget {
                         child: Text(
                           selectedStart != null && selectedEnd != null
                               ? '${selectedStart!.day}.${selectedStart!.month}.${selectedStart!.year} - ${selectedEnd!.day}.${selectedEnd!.month}.${selectedEnd!.year}'
-                              : 'Tarih seç',
+                              : tr(ref, 'dashboard_pick_date'),
                         ),
                       ),
                     ),
@@ -205,7 +306,7 @@ class DashboardScreen extends ConsumerWidget {
                       notifier.setDateRange(selectedStart, selectedEnd);
                     },
                     icon: const Icon(Icons.filter_alt),
-                    label: const Text('Filtrele'),
+                    label: Text(tr(ref, 'common_filter')),
                   ),
                 ),
               ],
@@ -232,11 +333,11 @@ class DashboardScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            const Text(
-              'Net Bakiye',
+            Text(
+              tr(ref, 'dashboard_net_balance'),
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.black54,
+                color: colorScheme.onPrimaryContainer.withValues(alpha: 0.75),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -246,7 +347,7 @@ class DashboardScreen extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 36,
                 fontWeight: FontWeight.w800,
-                color: colorScheme.primary,
+                color: colorScheme.onPrimaryContainer,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
@@ -256,16 +357,19 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildActivityFeed(AsyncValue<List<ActivityItem>> activityAsync) {
+  Widget _buildActivityFeed(
+    WidgetRef ref,
+    AsyncValue<List<ActivityItem>> activityAsync,
+  ) {
     return activityAsync.when(
       data: (activities) {
         if (activities.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(
               child: Text(
-                'Henüz sosyal aktivite yok.',
-                style: TextStyle(color: Colors.grey),
+                tr(ref, 'dashboard_no_activity'),
+                style: const TextStyle(color: Colors.grey),
               ),
             ),
           );
@@ -328,9 +432,9 @@ class DashboardScreen extends ConsumerWidget {
         }).toList();
 
         if (filtered.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(32.0),
-            child: Center(child: Text('Henüz işlem bulunmuyor.')),
+          return Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Center(child: Text(tr(ref, 'dashboard_no_transactions'))),
           );
         }
 
@@ -367,7 +471,7 @@ class DashboardScreen extends ConsumerWidget {
                           ),
                         ),
                         Text(
-                          _monthAbbr(t.date.month),
+                          _monthAbbr(ref, t.date.month),
                           style: const TextStyle(
                             fontSize: 12,
                             color: Colors.grey,
@@ -400,7 +504,7 @@ class DashboardScreen extends ConsumerWidget {
                           ),
                         ),
                         title: Text(
-                          t.category,
+                          categoryLabel(ref, t.category),
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         trailing: Text(
@@ -426,25 +530,36 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  String _monthAbbr(int month) {
-    const abbrs = [
-      'Oca',
-      'Şub',
-      'Mar',
-      'Nis',
-      'May',
-      'Haz',
-      'Tem',
-      'Ağu',
-      'Eyl',
-      'Eki',
-      'Kas',
-      'Ara',
-    ];
-    if (month >= 1 && month <= 12) return abbrs[month - 1];
+  String _monthAbbr(WidgetRef ref, int month) {
+    if (month >= 1 && month <= 12) return tr(ref, _monthKeys[month - 1]);
     return '';
   }
 }
+
+/// Shrinks a segmented-button label to fit instead of wrapping/overflowing —
+/// English translations ("Expense"/"Income") are noticeably wider than the
+/// Turkish originals ("Gider"/"Gelir") they were sized for.
+Widget _fittedLabel(String text) {
+  return FittedBox(
+    fit: BoxFit.scaleDown,
+    child: Text(text, maxLines: 1, softWrap: false),
+  );
+}
+
+const _monthKeys = [
+  'month_jan',
+  'month_feb',
+  'month_mar',
+  'month_apr',
+  'month_may',
+  'month_jun',
+  'month_jul',
+  'month_aug',
+  'month_sep',
+  'month_oct',
+  'month_nov',
+  'month_dec',
+];
 
 class QuickAddWidget extends ConsumerStatefulWidget {
   const QuickAddWidget({super.key});
@@ -500,14 +615,14 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
                 Expanded(
                   flex: 5,
                   child: SegmentedButton<String>(
-                    segments: const [
+                    segments: [
                       ButtonSegment(
                         value: 'expense',
-                        label: Text('Gider', style: TextStyle(fontSize: 12)),
+                        label: _fittedLabel(tr(ref, 'common_expense')),
                       ),
                       ButtonSegment(
                         value: 'income',
-                        label: Text('Gelir', style: TextStyle(fontSize: 12)),
+                        label: _fittedLabel(tr(ref, 'common_income')),
                       ),
                     ],
                     selected: {transactionType},
@@ -544,13 +659,13 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
                       fontWeight: FontWeight.bold,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Tutar',
+                      hintText: tr(ref, 'dashboard_amount_hint'),
                       isDense: true,
                       prefixText: '$currency ',
-                      prefixStyle: const TextStyle(
+                      prefixStyle: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -569,7 +684,7 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
                       ? TextField(
                           controller: customCategoryController,
                           decoration: InputDecoration(
-                            hintText: 'Özel kategori girin...',
+                            hintText: tr(ref, 'dashboard_custom_category_hint'),
                             isDense: true,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -587,7 +702,7 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
                       : Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
+                            color: Theme.of(context).inputDecorationTheme.fillColor,
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: DropdownButtonHideUnderline(
@@ -595,12 +710,16 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
                               value: selectedCategory,
                               isDense: true,
                               isExpanded: true,
+                              dropdownColor: Theme.of(context).cardTheme.color,
                               items: predefinedCategories.map((c) {
                                 return DropdownMenuItem(
                                   value: c,
                                   child: Text(
-                                    c,
-                                    style: const TextStyle(fontSize: 14),
+                                    categoryLabel(ref, c),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
                                   ),
                                 );
                               }).toList(),
@@ -669,8 +788,8 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('İşlem eklendi!'),
+          SnackBar(
+            content: Text(tr(ref, 'dashboard_transaction_added')),
             backgroundColor: Colors.green,
           ),
         );

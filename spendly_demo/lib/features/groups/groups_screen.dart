@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import '../subscriptions/premium_provider.dart';
@@ -32,7 +33,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
     final groupsAsync = ref.watch(userGroupsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Gruplar')),
+      appBar: AppBar(title: Text(tr(ref, 'groups_title'))),
       body: groupsAsync.when(
         data: (groups) {
           if (groups.isEmpty) {
@@ -48,14 +49,13 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
                       color: Colors.grey.shade400,
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'Henüz bir gruba dahil değilsiniz.',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                    Text(
+                      tr(ref, 'groups_empty_title'),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Sağ alttaki + butonuna dokunarak ilk grubunu '
-                      'oluşturabilirsin.',
+                      tr(ref, 'groups_empty_subtitle'),
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey.shade600),
                     ),
@@ -80,7 +80,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
                   ),
                 ),
                 title: Text(group.name),
-                subtitle: const Text('Grup Detayları için tıklayın'),
+                subtitle: Text(tr(ref, 'groups_tap_for_details')),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   context.push('/groups/${group.id}', extra: group.name);
@@ -103,7 +103,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
             _showCreateGroupDialog(context, ref);
           }
         },
-        tooltip: 'Yeni Grup Oluştur',
+        tooltip: tr(ref, 'groups_create_new_group'),
         child: const Icon(Icons.add),
       ),
     );
@@ -116,15 +116,15 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Yeni Grup Oluştur'),
+          title: Text(tr(ref, 'groups_create_new_group')),
           content: TextField(
             controller: nameController,
-            decoration: const InputDecoration(labelText: 'Grup Adı'),
+            decoration: InputDecoration(labelText: tr(ref, 'groups_name_label')),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('İptal'),
+              child: Text(tr(ref, 'common_cancel')),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -147,7 +147,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
                   }
                 }
               },
-              child: const Text('Oluştur'),
+              child: Text(tr(ref, 'groups_create_button')),
             ),
           ],
         );

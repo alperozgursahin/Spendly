@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_heatmap_calendar/flutter_heatmap_calendar.dart';
+import '../../core/app_strings.dart';
 import 'heatmap_provider.dart';
 
 class HeatmapCard extends ConsumerWidget {
@@ -27,7 +28,7 @@ class HeatmapCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Aktivasyon Isı Haritası', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(tr(ref, 'statistics_heatmap_title'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             HeatMapCalendar(
               datasets: data,
@@ -51,7 +52,7 @@ class HeatmapCard extends ConsumerWidget {
                         children: [
                           Text('${value.year}-${value.month.toString().padLeft(2,'0')}-${value.day.toString().padLeft(2,'0')}', style: const TextStyle(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
-                          Text('${data[value] ?? 0} aktivite'),
+                          Text('${data[value] ?? 0} ${tr(ref, 'statistics_heatmap_activity_count')}'),
                         ],
                       ),
                     ),

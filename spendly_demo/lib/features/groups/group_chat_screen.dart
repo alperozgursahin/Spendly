@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import 'group_provider.dart';
@@ -22,6 +23,10 @@ class GroupChatScreen extends ConsumerStatefulWidget {
 class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
   final _msgController = TextEditingController();
 
+  // Captured so `dispose` never has to touch `ref` (unsafe once the widget
+  // starts unmounting) to fire the exit-time read receipt.
+  String? _userId;
+
   @override
   void initState() {
     super.initState();
@@ -33,13 +38,24 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
       if (!mounted) return;
       ref.invalidate(groupMessagesStreamProvider(widget.groupId));
       ref.invalidate(groupMembersProvider(widget.groupId));
+      _userId = ref.read(currentUserIdProvider);
       _markRead();
     });
   }
 
   void _markRead() {
-    final userId = ref.read(currentUserIdProvider);
-    if (userId != null) markGroupChatRead(widget.groupId, userId);
+    final userId = _userId;
+    if (userId == null) return;
+
+    markGroupChatRead(widget.groupId, userId)
+        .then((_) {
+          if (mounted) {
+            ref.invalidate(groupChatReadStreamProvider(widget.groupId));
+          }
+        })
+        .catchError((error) {
+          debugPrint('markGroupChatRead failed: $error');
+        });
   }
 
   @override
@@ -75,20 +91,22 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
     final usernamesById = <String, String>{};
     membersAsync.whenData((members) {
       for (final m in members) {
-        usernamesById[m.userId] = m.username ?? 'Kullanıcı';
+        usernamesById[m.userId] = m.username ?? tr(ref, 'common_user');
       }
     });
 
     return Scaffold(
-      appBar: AppBar(title: Text('${widget.groupName} Sohbeti')),
+      appBar: AppBar(
+        title: Text('${widget.groupName} ${tr(ref, 'groups_chat_suffix')}'),
+      ),
       body: Column(
         children: [
           Expanded(
             child: msgsAsync.when(
               data: (msgs) {
                 if (msgs.isEmpty) {
-                  return const Center(
-                    child: Text('Henüz mesaj yok. İlk mesajı sen yaz!'),
+                  return Center(
+                    child: Text(tr(ref, 'groups_chat_empty')),
                   );
                 }
 
@@ -100,7 +118,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                     final m = msgs[index];
                     final senderId = m['sender_id'] as String;
                     final isMe = senderId == curUserId;
-                    final senderName = usernamesById[senderId] ?? 'Kullanıcı';
+                    final senderName =
+                        usernamesById[senderId] ?? tr(ref, 'common_user');
 
                     return Align(
                       alignment: isMe
@@ -115,7 +134,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                         decoration: BoxDecoration(
                           color: isMe
                               ? colorScheme.primaryContainer
-                              : Colors.grey.shade200,
+                              : colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Column(
@@ -134,7 +153,14 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                                   ),
                                 ),
                               ),
-                            Text(m['message'] as String),
+                            Text(
+                              m['message'] as String,
+                              style: TextStyle(
+                                color: isMe
+                                    ? colorScheme.onPrimaryContainer
+                                    : colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -155,9 +181,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                   Expanded(
                     child: TextField(
                       controller: _msgController,
-                      decoration: const InputDecoration(
-                        hintText: 'Mesaj yaz...',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        hintText: tr(ref, 'groups_chat_input_hint'),
+                        border: const OutlineInputBorder(),
                       ),
                       onSubmitted: (_) => _send(),
                     ),

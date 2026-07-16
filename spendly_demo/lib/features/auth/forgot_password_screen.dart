@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/friendly_error.dart';
+import '../../core/app_strings.dart';
 import 'auth_provider.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
@@ -22,7 +23,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     setState(() {
       _emailError = email.isEmpty || !email.contains('@')
-          ? 'Geçerli bir e-posta adresi girin.'
+          ? tr(ref, 'forgot_password_email_invalid')
           : null;
     });
     if (_emailError != null) return;
@@ -51,7 +52,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Şifremi Unuttum')),
+      appBar: AppBar(title: Text(tr(ref, 'forgot_password_title'))),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -65,30 +66,28 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     color: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Şifre sıfırlama linki e-postanıza gönderildi. '
-                    'Gelen kutunuzu kontrol edin.',
+                  Text(
+                    tr(ref, 'forgot_password_sent_message'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16),
+                    style: const TextStyle(fontSize: 16),
                   ),
                   const SizedBox(height: 24),
                   OutlinedButton(
                     onPressed: () => Navigator.of(context).maybePop(),
-                    child: const Text('Girişe Dön'),
+                    child: Text(tr(ref, 'forgot_password_back_to_login')),
                   ),
                 ]
               : [
-                  const Text(
-                    'Hesabınıza kayıtlı e-posta adresini girin, size bir '
-                    'şifre sıfırlama linki gönderelim.',
+                  Text(
+                    tr(ref, 'forgot_password_prompt'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16),
+                    style: const TextStyle(fontSize: 16),
                   ),
                   const SizedBox(height: 24),
                   TextField(
                     controller: _emailController,
                     decoration: InputDecoration(
-                      labelText: 'E-posta',
+                      labelText: tr(ref, 'forgot_password_email_label'),
                       errorText: _emailError,
                     ),
                     keyboardType: TextInputType.emailAddress,
@@ -113,7 +112,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                               color: Colors.white,
                             ),
                           )
-                        : const Text('Sıfırlama Linki Gönder'),
+                        : Text(tr(ref, 'forgot_password_send_link')),
                   ),
                 ],
         ),

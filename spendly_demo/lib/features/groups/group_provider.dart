@@ -110,11 +110,13 @@ final unreadGroupMessagesCountProvider = Provider.family<int, String>((
 });
 
 Future<void> markGroupChatRead(String groupId, String userId) {
-  return Supabase.instance.client.from('group_chat_reads').upsert({
-    'group_id': groupId,
-    'user_id': userId,
-    'last_read_at': DateTime.now().toUtc().toIso8601String(),
-  });
+  return Supabase.instance.client
+      .from('group_chat_reads')
+      .upsert({
+        'group_id': groupId,
+        'user_id': userId,
+        'last_read_at': DateTime.now().toUtc().toIso8601String(),
+      }, onConflict: 'group_id,user_id');
 }
 
 /// Only approved and payment-pending participant shares affect balances.
@@ -344,6 +346,15 @@ class GroupService {
   /// Backward-compatible alias for any older callers.
   Future<void> approveDebtParticipant(String transactionId) {
     return acknowledgeDebtParticipant(transactionId);
+  }
+
+  /// Payer: moves an expense to the archive tab once every participant has
+  /// settled. Rejected server-side if any share isn't settled yet.
+  Future<void> archiveGroupTransaction(String transactionId) {
+    return _supabase.rpc(
+      'archive_group_transaction',
+      params: {'p_transaction_id': transactionId},
+    );
   }
 }
 

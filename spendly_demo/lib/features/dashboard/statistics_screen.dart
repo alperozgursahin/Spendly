@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../core/friendly_error.dart';
+import '../../core/app_strings.dart';
 import '../transactions/transaction_provider.dart';
 import '../transactions/transaction_model.dart';
 import '../profile/currency_provider.dart';
@@ -19,15 +20,15 @@ class StatisticsScreen extends ConsumerWidget {
     final currency = ref.watch(currencyProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('İstatistikler')),
+      appBar: AppBar(title: Text(tr(ref, 'statistics_title'))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Kategori Dağılımı (Bu Ay)',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              tr(ref, 'statistics_category_distribution'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             _buildPieChart(ref, transactionsAsync, currency),
@@ -57,12 +58,12 @@ class StatisticsScreen extends ConsumerWidget {
             .toList();
 
         if (currentMonthExpenses.isEmpty) {
-          return const SizedBox(
+          return SizedBox(
             height: 150,
             child: Center(
               child: Text(
-                'Bu ay hiç harcamanız yok.',
-                style: TextStyle(color: Colors.grey),
+                tr(ref, 'statistics_no_expenses_this_month'),
+                style: const TextStyle(color: Colors.grey),
               ),
             ),
           );
@@ -137,7 +138,7 @@ class StatisticsScreen extends ConsumerWidget {
                   ),
                   Expanded(
                     child: Text(
-                      e.key,
+                      categoryLabel(ref, e.key),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w600),

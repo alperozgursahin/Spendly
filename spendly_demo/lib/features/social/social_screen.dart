@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import 'social_provider.dart';
@@ -89,9 +90,9 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
       setState(() {
         _searchResults.removeWhere((u) => u['id'] == userId);
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('İstek gönderildi!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr(ref, 'social_request_sent_snackbar'))),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -113,9 +114,9 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
     if (!_hasSearched) return const SizedBox.shrink();
 
     if (_searchResults.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(child: Text('Kullanıcı bulunamadı.')),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: Text(tr(ref, 'social_user_not_found'))),
       );
     }
 
@@ -126,7 +127,7 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
             child: Text(
-              'Arama Sonuçları',
+              tr(ref, 'social_search_results_header'),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.grey.shade700,
@@ -158,7 +159,7 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
                   )
                 : IconButton(
                     icon: const Icon(Icons.person_add),
-                    tooltip: 'Arkadaş ekle',
+                    tooltip: tr(ref, 'social_add_friend_tooltip'),
                     onPressed: () => _sendRequestTo(user),
                   ),
           );
@@ -173,7 +174,7 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
     final curUserId = ref.watch(currentUserProvider)?.id ?? '';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Sosyal')),
+      appBar: AppBar(title: Text(tr(ref, 'social_title'))),
       body: Column(
         children: [
           Padding(
@@ -185,16 +186,18 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
                     controller: _searchController,
                     textInputAction: TextInputAction.search,
                     onSubmitted: (_) => _search(),
-                    decoration: const InputDecoration(
-                      hintText: '@username ile kullanıcı ara',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                    decoration: InputDecoration(
+                      hintText: tr(ref, 'social_search_hint'),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.search),
-                  tooltip: 'Kullanıcı ara',
+                  tooltip: tr(ref, 'social_search_tooltip'),
                   onPressed: _isSearching ? null : _search,
                 ),
               ],
@@ -218,14 +221,13 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
                             color: Colors.grey.shade400,
                           ),
                           const SizedBox(height: 12),
-                          const Text(
-                            'Henüz arkadaşın yok.',
-                            style: TextStyle(fontWeight: FontWeight.w600),
+                          Text(
+                            tr(ref, 'social_no_friends_title'),
+                            style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Yukarıdaki arama kutusuyla kullanıcı adı arayıp '
-                            'arkadaşlık isteği gönderebilirsin.',
+                            tr(ref, 'social_no_friends_subtitle'),
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.grey.shade600),
                           ),
@@ -268,13 +270,23 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
                       if (isSender) {
                         return ListTile(
                           leading: getAvatar(),
-                          title: Text('İstek gönderildi: $username'),
-                          subtitle: const Text('Bekleniyor...'),
+                          title: Text(
+                            tr(
+                              ref,
+                              'social_request_sent_prefix',
+                            ).replaceFirst('%s', username),
+                          ),
+                          subtitle: Text(tr(ref, 'social_pending_status')),
                         );
                       } else {
                         return ListTile(
                           leading: getAvatar(),
-                          title: Text('Sana istek: $username'),
+                          title: Text(
+                            tr(
+                              ref,
+                              'social_incoming_request_prefix',
+                            ).replaceFirst('%s', username),
+                          ),
                           trailing: IconButton(
                             icon: const Icon(Icons.check, color: Colors.green),
                             onPressed: () => ref
@@ -314,13 +326,18 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
                           onTap: () => context.push('/social/user/$friendId'),
                           child: getAvatar(),
                         ),
-                        title: Text('Arkadaş: $username'),
+                        title: Text(
+                          tr(
+                            ref,
+                            'social_friend_prefix',
+                          ).replaceFirst('%s', username),
+                        ),
                         trailing: IconButton(
                           icon: const Icon(Icons.message),
                           onPressed: () {
                             context.push(
                               '/social/chat/$friendId',
-                              extra: 'Arkadaş',
+                              extra: tr(ref, 'social_default_chat_title'),
                             );
                           },
                         ),

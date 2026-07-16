@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 
@@ -106,10 +107,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         decoration: BoxDecoration(
                           color: isMe
                               ? Theme.of(context).colorScheme.primaryContainer
-                              : Colors.grey.shade200,
+                              : Theme.of(context).colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text(m['message']),
+                        child: Text(
+                          m['message'],
+                          style: TextStyle(
+                            color: isMe
+                                ? Theme.of(context).colorScheme.onPrimaryContainer
+                                : Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
                       ),
                     );
                   },
@@ -126,9 +134,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _msgController,
-                    decoration: const InputDecoration(
-                      hintText: 'Mesaj yaz...',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      hintText: tr(ref, 'groups_chat_input_hint'),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                 ),

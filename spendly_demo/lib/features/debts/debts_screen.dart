@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import '../filters/filters_provider.dart';
@@ -57,7 +58,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            tooltip: 'Geri',
+            tooltip: tr(ref, 'debts_back_tooltip'),
             onPressed: () {
               if (Navigator.of(context).canPop()) {
                 Navigator.of(context).pop();
@@ -66,14 +67,26 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
               }
             },
           ),
-          title: const Text('Borçlar'),
-          bottom: const TabBar(
+          title: Text(tr(ref, 'debts_title')),
+          bottom: TabBar(
             isScrollable: true,
             tabs: [
-              Tab(icon: Icon(Icons.arrow_upward), text: 'Borçlarım'),
-              Tab(icon: Icon(Icons.arrow_downward), text: 'Alacaklarım'),
-              Tab(icon: Icon(Icons.fact_check_outlined), text: 'Onaylar'),
-              Tab(icon: Icon(Icons.summarize_outlined), text: 'Özet'),
+              Tab(
+                icon: const Icon(Icons.arrow_upward),
+                text: tr(ref, 'debts_tab_mine'),
+              ),
+              Tab(
+                icon: const Icon(Icons.arrow_downward),
+                text: tr(ref, 'debts_tab_owed_to_me'),
+              ),
+              Tab(
+                icon: const Icon(Icons.fact_check_outlined),
+                text: tr(ref, 'debts_tab_approvals'),
+              ),
+              Tab(
+                icon: const Icon(Icons.summarize_outlined),
+                text: tr(ref, 'debts_tab_summary'),
+              ),
             ],
           ),
         ),
@@ -83,12 +96,14 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
               Center(child: Text(friendlyErrorMessage(error))),
           data: (groups) {
             if (currentUserId == null) {
-              return const Center(child: Text('Kullanıcı bilgisi alınamadı.'));
+              return Center(
+                child: Text(tr(ref, 'debts_user_info_unavailable')),
+              );
             }
 
             if (groups.isEmpty) {
-              return const Center(
-                child: Text('Henüz herhangi bir gruba dahil değilsiniz.'),
+              return Center(
+                child: Text(tr(ref, 'debts_not_in_any_group')),
               );
             }
 
@@ -211,8 +226,8 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                     child: _DebtRow(
                       title: line.title,
                       subtitle: isOurDebt
-                          ? 'Borçlu olunan kişi: ${line.counterpartyName}'
-                          : 'Bize borçlu: ${line.counterpartyName}',
+                          ? '${tr(ref, 'debts_owed_by_prefix')}: ${line.counterpartyName}'
+                          : '${tr(ref, 'debts_owed_to_me_prefix')}: ${line.counterpartyName}',
                       amountText:
                           '$currency${exchanger.convertFromTRY(line.amount, currency).toStringAsFixed(2)}',
                       date: line.date,
@@ -240,14 +255,16 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
             child: Center(
               child: Text(
                 isOurDebt
-                    ? 'Aktif borcunuz bulunmuyor.'
-                    : 'Size olan aktif borç bulunmuyor.',
+                    ? tr(ref, 'debts_no_active_debt')
+                    : tr(ref, 'debts_no_active_credit'),
               ),
             ),
           )
         else ...[
           _SummaryCard(
-            label: isOurDebt ? 'Toplam Borç' : 'Toplam Alacak',
+            label: isOurDebt
+                ? tr(ref, 'debts_total_debt_label')
+                : tr(ref, 'debts_total_credit_label'),
             value:
                 '$currency${exchanger.convertFromTRY(total, currency).toStringAsFixed(2)}',
             accentColor: color,
@@ -319,15 +336,15 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text(
-          'Onayınızı Bekleyenler',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        Text(
+          tr(ref, 'debts_awaiting_my_approval'),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         if (awaitingMe.isEmpty)
-          const Text(
-            'Onayınızı bekleyen borç bulunmuyor.',
-            style: TextStyle(color: Colors.black54),
+          Text(
+            tr(ref, 'debts_no_awaiting_my_approval'),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           )
         else
           ...awaitingMe.map(
@@ -350,13 +367,13 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            tooltip: 'Reddet',
+                            tooltip: tr(ref, 'debts_reject_tooltip'),
                             icon: const Icon(Icons.close_rounded),
                             color: Colors.red.shade700,
                             onPressed: () => _rejectDebt(item),
                           ),
                           IconButton(
-                            tooltip: 'Onayla',
+                            tooltip: tr(ref, 'groups_action_approve'),
                             icon: const Icon(Icons.check_rounded),
                             color: Colors.green.shade700,
                             onPressed: () => _acknowledgeDebt(item),
@@ -367,15 +384,15 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
             ),
           ),
         const SizedBox(height: 28),
-        const Text(
-          'Karşı Tarafın Onayını Bekleyenler',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        Text(
+          tr(ref, 'debts_awaiting_other_approval'),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         if (awaitingOthers.isEmpty)
-          const Text(
-            'Karşı tarafın onayını bekleyen borç bulunmuyor.',
-            style: TextStyle(color: Colors.black54),
+          Text(
+            tr(ref, 'debts_no_awaiting_other_approval'),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           )
         else
           ...awaitingOthers.map(
@@ -441,7 +458,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Toplam: $currency${exchanger.convertFromTRY(total, currency).toStringAsFixed(2)}',
+                  '${tr(ref, 'debts_total_prefix')}: $currency${exchanger.convertFromTRY(total, currency).toStringAsFixed(2)}',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.w700,
@@ -451,7 +468,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                 ...settlements.map(
                   (item) => _DebtRow(
                     title: '${item.fromName} → ${item.toName}',
-                    subtitle: 'Netleştirilmiş borç',
+                    subtitle: tr(ref, 'debts_settled_debt_subtitle'),
                     amountText:
                         '$currency${exchanger.convertFromTRY(item.amount, currency).toStringAsFixed(2)}',
                     accentColor: Theme.of(context).colorScheme.primary,
@@ -470,9 +487,9 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
         _buildFilterCard(groups),
         const SizedBox(height: 12),
         if (sections.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(top: 56),
-            child: Center(child: Text('Netleştirilecek borç bulunmuyor.')),
+          Padding(
+            padding: const EdgeInsets.only(top: 56),
+            child: Center(child: Text(tr(ref, 'debts_no_settlement'))),
           )
         else
           ...sections,
@@ -492,15 +509,26 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
         child: StatefulBuilder(
           builder: (context, setLocalState) {
             return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 6),
+                  child: Text(
+                    tr(ref, 'debts_filter_group_label'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
                 DropdownButtonFormField<String>(
                   value: groupId,
-                  decoration: const InputDecoration(
-                    labelText: 'Grup',
-                    isDense: true,
-                  ),
+                  decoration: const InputDecoration(isDense: true),
                   items: [
-                    const DropdownMenuItem(value: '', child: Text('Tümü')),
+                    DropdownMenuItem(
+                      value: '',
+                      child: Text(tr(ref, 'common_all')),
+                    ),
                     ...groups
                         .where((group) => group.id != null)
                         .map(
@@ -539,7 +567,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                         },
                         child: Text(
                           start == null || end == null
-                              ? 'Tarih seç'
+                              ? tr(ref, 'dashboard_pick_date')
                               : '${start!.day}.${start!.month}.${start!.year} - '
                                     '${end!.day}.${end!.month}.${end!.year}',
                         ),
@@ -547,7 +575,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      tooltip: 'Filtreleri temizle',
+                      tooltip: tr(ref, 'debts_clear_filters_tooltip'),
                       icon: const Icon(Icons.filter_alt_off),
                       onPressed: () {
                         setLocalState(() {
@@ -565,7 +593,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                   alignment: Alignment.centerRight,
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.filter_alt),
-                    label: const Text('Filtrele'),
+                    label: Text(tr(ref, 'common_filter')),
                     onPressed: () {
                       final notifier = ref.read(
                         transactionFilterProvider.notifier,
@@ -622,8 +650,8 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('İşlem gerçekleştirilemedi. Lütfen tekrar deneyin.'),
+          SnackBar(
+            content: Text(tr(ref, 'groups_action_failed')),
           ),
         );
       }
@@ -820,11 +848,11 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     String userId,
     String currentUserId,
   ) {
-    if (userId == currentUserId) return 'Sen';
+    if (userId == currentUserId) return tr(ref, 'common_you');
 
     return members.maybeWhen(
       data: (items) => _displayName(items, userId, currentUserId),
-      orElse: () => 'Kullanıcı',
+      orElse: () => tr(ref, 'common_user'),
     );
   }
 
@@ -833,15 +861,17 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     String userId,
     String currentUserId,
   ) {
-    if (userId == currentUserId) return 'Sen';
+    if (userId == currentUserId) return tr(ref, 'common_you');
 
     try {
       final member = members.firstWhere((item) => item.userId == userId);
       final username = member.username?.trim();
 
-      return username == null || username.isEmpty ? 'Kullanıcı' : '@$username';
+      return username == null || username.isEmpty
+          ? tr(ref, 'common_user')
+          : '@$username';
     } catch (_) {
-      return 'Kullanıcı';
+      return tr(ref, 'common_user');
     }
   }
 }
@@ -874,14 +904,20 @@ class _DebtRow extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               if (date != null) ...[
                 const SizedBox(height: 2),
                 Text(
                   '${date!.day.toString().padLeft(2, '0')}.'
                   '${date!.month.toString().padLeft(2, '0')}.${date!.year}',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ],
@@ -914,14 +950,23 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A flat 8% tint reads fine on a light scaffold but nearly disappears
+    // against a dark one, so dark mode uses a stronger tint to stay visible.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Card(
-      color: accentColor.withValues(alpha: 0.08),
+      color: accentColor.withValues(alpha: isDark ? 0.20 : 0.08),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(color: Colors.black54)),
+            Text(
+              label,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 6),
             Text(
               value,
