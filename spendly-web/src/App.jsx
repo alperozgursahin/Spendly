@@ -585,7 +585,9 @@ function Hero({ t }) {
 
       <div className="mx-auto max-w-6xl">
         <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
-          <div className="order-2 lg:order-1">
+          
+          {/* 1. YAZI KISMI - 'order-2 lg:order-1' yerine sadece 'order-1' yapıyoruz */}
+          <div className="order-1">
             <MountReveal delay={0}>
               <SectionEyebrow>{t.hero.eyebrow}</SectionEyebrow>
             </MountReveal>
@@ -619,7 +621,6 @@ function Hero({ t }) {
               </div>
             </MountReveal>
             
-            {/* GÜVEN İŞARETLERİ EKLENDİ (ESKİ SAHTE VERİLER YERİNE) */}
             <MountReveal delay={0.4}>
               <div className="mt-14 flex flex-wrap items-center gap-x-10 gap-y-4 border-t border-slate-200 pt-8 dark:border-white/5">
                 {t.hero.stats.map(([number, label]) => (
@@ -634,17 +635,18 @@ function Hero({ t }) {
                 ))}
               </div>
             </MountReveal>
-
           </div>
 
+          {/* 2. TELEFON KISMI - 'order-1 lg:order-2' yerine sadece 'order-2' yapıyoruz */}
           <motion.div
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: "easeOut", delay: 0.2 }}
-            className="order-1 flex justify-center lg:order-2 lg:justify-end"
+            className="order-2 flex justify-center lg:justify-end"
           >
             <PhoneMockup src="/dashboard-ss.png" alt="Splixa dashboard screen" />
           </motion.div>
+          
         </div>
       </div>
     </section>
