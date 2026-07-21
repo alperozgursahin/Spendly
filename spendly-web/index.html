@@ -1,80 +1,91 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "SoftwareApplication",
-      "name": "Splixa",
-      "operatingSystem": "Android, iOS",
-      "applicationCategory": "FinanceApplication",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      },
-      "description": "A modern mobile finance app for tracking and splitting shared group expenses, utilizing multiple currencies.",
-      "publisher": {
-        "@id": "https://splixa.net/#organization"
-      }
-    },
-    {
-      "@type": "Organization",
-      "@id": "https://splixa.net/#organization",
-      "name": "Splixa Labs",
-      "url": "https://splixa.net",
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "email": "splixa.support@gmail.com",
-        "contactType": "customer support"
-      }
-    },
-    {
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "Is my financial data secure?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. Every transaction is protected with bank-level 256 bit encryption. Splixa never stores your banking credentials on our servers."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How does group splitting work?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Create a group, add the people involved and log an expense. Splixa automatically calculates a Net Summary showing exactly who owes whom."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is Splixa free to use?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. Core splitting, the dashboard and basic analytics are free forever."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I use Splixa while traveling internationally?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Absolutely. Splixa supports multiple currencies within a single group, so shared travel expenses convert and split cleanly."
-          }
-        }
-      ]
-    }
-  ]
-}
-</script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- GOOGLE ARAMA SONUÇLARI İÇİN KRİTİK SEO ETİKETLERİ -->
     <title>Splixa</title>
+    <meta name="description" content="Splixa tracks shared expenses for trips, roommates and squads. Calculate exact debts and settle shared money instantly." />
+    
+    <!-- OpenGraph (WhatsApp, Twitter vb. paylaşımlar için) -->
+    <meta property="og:title" content="Splixa — Split the bill, not the friendship" />
+    <meta property="og:description" content="Track shared expenses, split bills fairly, and settle debts instantly with friends." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://splixa.net" />
+
+    <!-- JSON-LD Şemamız (Aynen kalıyor) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "name": "Splixa",
+          "operatingSystem": "Android, iOS",
+          "applicationCategory": "FinanceApplication",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "description": "A modern mobile finance app for tracking and splitting shared group expenses, utilizing multiple currencies.",
+          "publisher": {
+            "@id": "https://splixa.net/#organization"
+          }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://splixa.net/#organization",
+          "name": "Splixa Labs",
+          "url": "https://splixa.net",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "email": "splixa.support@gmail.com",
+            "contactType": "customer support"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Is my financial data secure?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Every transaction is protected with bank-level 256 bit encryption. Splixa never stores your banking credentials on our servers."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How does group splitting work?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Create a group, add the people involved and log an expense. Splixa automatically calculates a Net Summary showing exactly who owes whom."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is Splixa free to use?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Core splitting, the dashboard and basic analytics are free forever."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I use Splixa while traveling internationally?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Absolutely. Splixa supports multiple currencies within a single group, so shared travel expenses convert and split cleanly."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
