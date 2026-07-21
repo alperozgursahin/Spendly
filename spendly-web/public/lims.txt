@@ -1,0 +1,26 @@
+# Splixa - Social Finance & Expense Splitting App
+
+> Splixa is a modern mobile finance application designed to help friends, roommates, and groups track and split shared expenses effortlessly.
+
+## Core Utility
+- **Group Splitting:** Create groups for trips or apartments, log shared expenses, and instantly calculate exact debts.
+- **Multi-Currency Support:** Convert and split shared travel expenses seamlessly across different global currencies.
+- **Visual Analytics:** View monthly category breakdowns and interactive spending charts.
+- **Fair Debts:** Net Summary calculations eliminate awkward money conversations by providing exact settlement figures.
+
+## Target Audience
+- Roommates sharing rent, groceries, and utilities.
+- Friends organizing group trips and holidays.
+- Expat communities and international travelers.
+
+## Security & Privacy
+- Bank-level 256-bit AES encryption.
+- Zero hidden fees.
+- 100% data control with explicit account deletion capabilities.
+
+## Official Links
+- **Website:** [https://splixa.net](https://splixa.net)
+- **Privacy Policy:** [https://splixa.net/privacy](https://splixa.net/privacy)
+- **Terms of Service:** [https://splixa.net/terms](https://splixa.net/terms)
+- **Contact:** splixa.support@gmail.com
+- **Publisher:** Splixa Labs
