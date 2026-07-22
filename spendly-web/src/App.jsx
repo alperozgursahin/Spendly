@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Analytics } from "@vercel/analytics/react";
 import {
@@ -31,6 +31,7 @@ const translations = {
       button: "Join the Waitlist",
       submitting: "Joining...",
       success: "You're on the list!",
+      error: "We couldn't add you right now. Please try again.",
       close: "Close waitlist modal",
       emailLabel: "Email address",
     },
@@ -196,6 +197,7 @@ If you have any questions about these Terms, please contact us at splixa.support
       button: "Bekleme Listesine Katıl",
       submitting: "Kaydediliyor...",
       success: "Listeye katıldın!",
+      error: "\u015eu anda kayd\u0131n\u0131 olu\u015fturamad\u0131k. L\u00fctfen tekrar dene.",
       close: "Bekleme listesi penceresini kapat",
       emailLabel: "E-posta adresi",
     },
@@ -486,13 +488,13 @@ function WaitlistModal({ isOpen, onClose, t }) {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccessful, setIsSuccessful] = useState(false);
-  const timeoutRef = useRef(null);
+  const [submitError, setSubmitError] = useState("");
 
   const handleClose = useCallback(() => {
-    window.clearTimeout(timeoutRef.current);
     setEmail("");
     setIsSubmitting(false);
     setIsSuccessful(false);
+    setSubmitError("");
     onClose();
   }, [onClose]);
 
@@ -516,22 +518,36 @@ function WaitlistModal({ isOpen, onClose, t }) {
     };
   }, [handleClose, isOpen]);
 
-  useEffect(() => {
-    return () => {
-      window.clearTimeout(timeoutRef.current);
-    };
-  }, []);
-
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-
     setIsSubmitting(true);
+    setSubmitError("");
 
-    timeoutRef.current = window.setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const response = await fetch("https://formspree.io/f/maqryybk", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          source: "Splixa landing page waitlist",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Formspree request failed: ${response.status}`);
+      }
+
       setIsSuccessful(true);
       setEmail("");
-    }, 1000);
+    } catch (error) {
+      console.error("Waitlist submission failed", error);
+      setSubmitError(t.waitlist.error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -569,9 +585,9 @@ function WaitlistModal({ isOpen, onClose, t }) {
 
             <div className="relative">
               <img
-                src="/splixa_logo.svg"
+                src="/splixa_logo.png"
                 alt="Splixa logo"
-                className="mb-6 h-12 w-12 object-contain"
+                className="mb-6 h-12 w-12 rounded-xl object-cover"
               />
 
               <SectionEyebrow>{t.waitlist.eyebrow}</SectionEyebrow>
@@ -603,7 +619,7 @@ function WaitlistModal({ isOpen, onClose, t }) {
               ) : (
                 <form
                   onSubmit={handleSubmit}
-                  className="mt-7 flex flex-col gap-3 sm:flex-row"
+                  className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap"
                 >
                   <label htmlFor="waitlist-email" className="sr-only">
                     {t.waitlist.emailLabel}
@@ -632,6 +648,15 @@ function WaitlistModal({ isOpen, onClose, t }) {
                     {isSubmitting
                       ? t.waitlist.submitting
                       : t.waitlist.button}
+
+                  {submitError && (
+                    <p
+                      role="alert"
+                      className="text-sm text-rose-600 dark:text-rose-400 sm:basis-full"
+                    >
+                      {submitError}
+                    </p>
+                  )}
                   </motion.button>
                 </form>
               )}
@@ -790,9 +815,9 @@ function Nav({ t, lang, setLang, theme, setTheme, navigate }) {
           className="flex cursor-pointer items-center gap-2"
         >
           <img
-            src="/splixa_logo.svg"
+            src="/splixa_logo.png"
             alt="Splixa logo"
-            className="h-8 w-8 object-contain"
+            className="h-9 w-9 rounded-lg object-cover"
           />
 
           <span className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">
@@ -1222,9 +1247,9 @@ function Footer({ t }) {
         <div className="flex flex-col items-center justify-between gap-5 sm:flex-row">
           <div className="flex items-center gap-2">
             <img
-              src="/splixa_logo.svg"
+              src="/splixa_logo.png"
               alt="Splixa logo"
-              className="h-8 w-8 object-contain"
+              className="h-9 w-9 rounded-lg object-cover"
             />
 
             <span className="text-sm font-medium text-slate-900 dark:text-slate-200">
@@ -1293,7 +1318,11 @@ function LegalPageTemplate({ title, content, t, navigate }) {
 
 export default function SplixaApp() {
   const [lang, setLang] = useState("en");
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState(() =>
+    window.matchMedia?.("(prefers-color-scheme: light)").matches
+      ? "light"
+      : "dark",
+  );
   const [currentPath, setCurrentPath] = useState(
     window.location.pathname,
   );
@@ -1340,14 +1369,6 @@ export default function SplixaApp() {
     }
   }, [theme]);
 
-  useEffect(() => {
-    if (
-      window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: light)").matches
-    ) {
-      setTheme("light");
-    }
-  }, []);
 
   let content;
 
