@@ -60,7 +60,10 @@ class AppStrings {
     'common_send': {AppLanguage.tr: 'Gönder', AppLanguage.en: 'Send'},
     'common_you': {AppLanguage.tr: 'Sen', AppLanguage.en: 'You'},
     'common_user': {AppLanguage.tr: 'Kullanıcı', AppLanguage.en: 'User'},
-    'common_loading': {AppLanguage.tr: 'Yükleniyor...', AppLanguage.en: 'Loading...'},
+    'common_loading': {
+      AppLanguage.tr: 'Yükleniyor...',
+      AppLanguage.en: 'Loading...',
+    },
     'common_error_generic': {
       AppLanguage.tr: 'Bir şeyler ters gitti. Lütfen tekrar deneyin.',
       AppLanguage.en: 'Something went wrong. Please try again.',
@@ -73,7 +76,10 @@ class AppStrings {
     // --- Category names (shared across dashboard, statistics, add-expense) ---
     'category_market': {AppLanguage.tr: 'Market', AppLanguage.en: 'Groceries'},
     'category_food': {AppLanguage.tr: 'Yemek', AppLanguage.en: 'Food'},
-    'category_transport': {AppLanguage.tr: 'Ulaşım', AppLanguage.en: 'Transport'},
+    'category_transport': {
+      AppLanguage.tr: 'Ulaşım',
+      AppLanguage.en: 'Transport',
+    },
     'category_entertainment': {
       AppLanguage.tr: 'Eğlence',
       AppLanguage.en: 'Entertainment',
@@ -98,7 +104,10 @@ class AppStrings {
     'month_dec': {AppLanguage.tr: 'Ara', AppLanguage.en: 'Dec'},
 
     // --- Dashboard ---
-    'dashboard_title': {AppLanguage.tr: 'Dashboard', AppLanguage.en: 'Dashboard'},
+    'dashboard_title': {
+      AppLanguage.tr: 'Dashboard',
+      AppLanguage.en: 'Dashboard',
+    },
     'dashboard_statistics': {
       AppLanguage.tr: 'İstatistikler',
       AppLanguage.en: 'Statistics',
@@ -120,22 +129,123 @@ class AppStrings {
       AppLanguage.en: 'No social activity yet.',
     },
     'dashboard_no_transactions': {
-      AppLanguage.tr: 'Henüz işlem bulunmuyor.',
-      AppLanguage.en: 'No transactions yet.',
+      AppLanguage.tr:
+          'Henüz işlem yok. İlk işlemini eklemek için + düğmesine dokun!',
+      AppLanguage.en:
+          'No recent transactions yet. Tap + to add your first one!',
     },
     'dashboard_net_balance': {
       AppLanguage.tr: 'Net Bakiye',
       AppLanguage.en: 'Net Balance',
     },
-    'dashboard_amount_hint': {AppLanguage.tr: 'Tutar', AppLanguage.en: 'Amount'},
+    'dashboard_amount_hint': {
+      AppLanguage.tr: 'Tutar',
+      AppLanguage.en: 'Amount',
+    },
     'dashboard_custom_category_hint': {
       AppLanguage.tr: 'Özel kategori girin...',
       AppLanguage.en: 'Enter custom category...',
     },
-    'dashboard_pick_date': {AppLanguage.tr: 'Tarih seç', AppLanguage.en: 'Pick date'},
+    'dashboard_pick_date': {
+      AppLanguage.tr: 'Tarih seç',
+      AppLanguage.en: 'Pick date',
+    },
     'dashboard_transaction_added': {
       AppLanguage.tr: 'İşlem eklendi!',
       AppLanguage.en: 'Transaction added!',
+    },
+    'home_welcome': {
+      AppLanguage.tr: 'Hoş geldin, {name}',
+      AppLanguage.en: 'Welcome, {name}',
+    },
+    'home_default_name': {AppLanguage.tr: 'arkadaşım', AppLanguage.en: 'there'},
+    'home_subtitle': {
+      AppLanguage.tr: 'Bugün finansını birlikte düzenleyelim.',
+      AppLanguage.en: 'Let’s organize your finances today.',
+    },
+    'home_new_group': {AppLanguage.tr: 'Yeni', AppLanguage.en: 'New'},
+    'home_group_name_hint': {
+      AppLanguage.tr: 'Örn. Yaz tatili',
+      AppLanguage.en: 'e.g. Summer trip',
+    },
+    'home_groups_empty': {
+      AppLanguage.tr:
+          'Henüz grubun yok. Bölüşmeye başlamak için + Yeni’ye dokun!',
+      AppLanguage.en: 'No groups yet. Tap + New to start splitting!',
+    },
+    'home_members_loading': {
+      AppLanguage.tr: 'Üyeler yükleniyor…',
+      AppLanguage.en: 'Loading members…',
+    },
+    'home_members_count': {
+      AppLanguage.tr: '{count} üye',
+      AppLanguage.en: '{count} members',
+    },
+    'home_quick_add': {
+      AppLanguage.tr: 'İşlem ekle',
+      AppLanguage.en: 'Add transaction',
+    },
+    'home_switch_to_light': {
+      AppLanguage.tr: 'Açık temaya geç',
+      AppLanguage.en: 'Switch to light theme',
+    },
+    'home_switch_to_dark': {
+      AppLanguage.tr: 'Koyu temaya geç',
+      AppLanguage.en: 'Switch to dark theme',
+    },
+    'home_switch_language': {
+      AppLanguage.tr: 'Dili değiştir',
+      AppLanguage.en: 'Switch language',
+    },
+    'home_minimize_title': {
+      AppLanguage.tr: 'İşlemleri Azalt',
+      AppLanguage.en: 'Minimize Transactions',
+    },
+    'home_minimize_description': {
+      AppLanguage.tr:
+          'Splixa, herkesin en az sayıda ödeme ile hesaplaşabilmesi için grup bakiyelerini sadeleştirir.',
+      AppLanguage.en:
+          'Splixa simplifies group balances so everyone can settle with the fewest possible payments.',
+    },
+    'minimize_without_title': {
+      AppLanguage.tr: 'İşlemleri Azaltmadan',
+      AppLanguage.en: 'Without Minimizing Transactions',
+    },
+    'minimize_without_description': {
+      AppLanguage.tr:
+          'İki ayrı ödeme gerekir. B Kişisi parayı yalnızca aynı tutarı C Kişisine aktarmak için alır.',
+      AppLanguage.en:
+          'Two separate payments are required. Person B receives money only to pass the same amount on to Person C.',
+    },
+    'minimize_with_title': {
+      AppLanguage.tr: 'İşlemleri Azaltarak',
+      AppLanguage.en: 'With Minimizing Transactions',
+    },
+    'minimize_with_description': {
+      AppLanguage.tr:
+          'Splixa aradaki kişiyi ortadan kaldırır. A Kişisi C Kişisine doğrudan ödeme yapar ve aynı bakiyeler tek işlemle kapanır.',
+      AppLanguage.en:
+          'Splixa eliminates the middleman. Person A pays Person C directly, settling the same balances with one payment.',
+    },
+    'minimize_person_a': {
+      AppLanguage.tr: 'A Kişisi',
+      AppLanguage.en: 'Person A',
+    },
+    'minimize_person_b': {
+      AppLanguage.tr: 'B Kişisi',
+      AppLanguage.en: 'Person B',
+    },
+    'minimize_person_c': {
+      AppLanguage.tr: 'C Kişisi',
+      AppLanguage.en: 'Person C',
+    },
+    'minimize_pays_100': {
+      AppLanguage.tr: '100 öder',
+      AppLanguage.en: 'Pays 100',
+    },
+    'minimize_one_fewer': {
+      AppLanguage.tr: '1 işlem daha az',
+      AppLanguage.en: '1 fewer transaction',
     },
 
     // --- Statistics ---
@@ -161,7 +271,10 @@ class AppStrings {
     },
 
     // --- Auth: login ---
-    'login_title': {AppLanguage.tr: 'Spendly Giriş', AppLanguage.en: 'Spendly Login'},
+    'login_title': {
+      AppLanguage.tr: 'Spendly Giriş',
+      AppLanguage.en: 'Spendly Login',
+    },
     'login_username_required': {
       AppLanguage.tr: 'Kullanıcı adınızı girin.',
       AppLanguage.en: 'Enter your username.',
@@ -174,7 +287,10 @@ class AppStrings {
       AppLanguage.tr: 'Kullanıcı Adı (@username)',
       AppLanguage.en: 'Username (@username)',
     },
-    'login_password_label': {AppLanguage.tr: 'Şifre', AppLanguage.en: 'Password'},
+    'login_password_label': {
+      AppLanguage.tr: 'Şifre',
+      AppLanguage.en: 'Password',
+    },
     'login_forgot_password': {
       AppLanguage.tr: 'Şifremi Unuttum?',
       AppLanguage.en: 'Forgot password?',
@@ -291,8 +407,14 @@ class AppStrings {
       AppLanguage.tr: 'Yeni Grup Oluştur',
       AppLanguage.en: 'Create New Group',
     },
-    'groups_name_label': {AppLanguage.tr: 'Grup Adı', AppLanguage.en: 'Group Name'},
-    'groups_create_button': {AppLanguage.tr: 'Oluştur', AppLanguage.en: 'Create'},
+    'groups_name_label': {
+      AppLanguage.tr: 'Grup Adı',
+      AppLanguage.en: 'Group Name',
+    },
+    'groups_create_button': {
+      AppLanguage.tr: 'Oluştur',
+      AppLanguage.en: 'Create',
+    },
 
     // --- Groups: detail screen ---
     'groups_participants_suffix': {
@@ -312,7 +434,10 @@ class AppStrings {
       AppLanguage.en: 'Invite friend',
     },
     'groups_paid_verb': {AppLanguage.tr: 'ödedi', AppLanguage.en: 'paid'},
-    'groups_tab_pending': {AppLanguage.tr: 'Bekleyen', AppLanguage.en: 'Pending'},
+    'groups_tab_pending': {
+      AppLanguage.tr: 'Bekleyen',
+      AppLanguage.en: 'Pending',
+    },
     'groups_tab_active': {AppLanguage.tr: 'Aktif', AppLanguage.en: 'Active'},
     'groups_tab_archived': {AppLanguage.tr: 'Arşiv', AppLanguage.en: 'Archive'},
     'groups_no_transactions': {
@@ -373,7 +498,10 @@ class AppStrings {
       AppLanguage.tr: 'Reddedildi',
       AppLanguage.en: 'Rejected',
     },
-    'groups_action_approve': {AppLanguage.tr: 'Onayla', AppLanguage.en: 'Approve'},
+    'groups_action_approve': {
+      AppLanguage.tr: 'Onayla',
+      AppLanguage.en: 'Approve',
+    },
     'groups_action_mark_paid': {
       AppLanguage.tr: 'Ödendi Olarak İşaretle',
       AppLanguage.en: 'Mark as Paid',
@@ -450,7 +578,10 @@ class AppStrings {
       AppLanguage.tr: 'Toplam Tutar',
       AppLanguage.en: 'Total Amount',
     },
-    'groups_split_equal': {AppLanguage.tr: 'Eşit (=)', AppLanguage.en: 'Equal (=)'},
+    'groups_split_equal': {
+      AppLanguage.tr: 'Eşit (=)',
+      AppLanguage.en: 'Equal (=)',
+    },
     'groups_split_percentage': {
       AppLanguage.tr: 'Yüzde (%)',
       AppLanguage.en: 'Percentage (%)',
@@ -463,7 +594,8 @@ class AppStrings {
     'groups_auto_badge': {AppLanguage.tr: 'otomatik', AppLanguage.en: 'auto'},
     'groups_expense_validation_generic': {
       AppLanguage.tr: 'Lütfen geçerli bilgiler girin ve en az 1 kişi seçin.',
-      AppLanguage.en: 'Please enter valid information and select at least 1 person.',
+      AppLanguage.en:
+          'Please enter valid information and select at least 1 person.',
     },
     'groups_percentage_validation': {
       AppLanguage.tr:
@@ -569,7 +701,10 @@ class AppStrings {
       AppLanguage.tr: 'Karşı tarafın onayını bekleyen borç bulunmuyor.',
       AppLanguage.en: "No debts awaiting the other party's approval.",
     },
-    'debts_reject_tooltip': {AppLanguage.tr: 'Reddet', AppLanguage.en: 'Reject'},
+    'debts_reject_tooltip': {
+      AppLanguage.tr: 'Reddet',
+      AppLanguage.en: 'Reject',
+    },
     'debts_no_settlement': {
       AppLanguage.tr: 'Netleştirilecek borç bulunmuyor.',
       AppLanguage.en: 'No debt to settle.',
@@ -632,8 +767,7 @@ class AppStrings {
       AppLanguage.en: 'Debt approved',
     },
     'notif_debt_approved_message': {
-      AppLanguage.tr:
-          '{sender}, {group} grubundaki "{desc}" borcunu onayladı.',
+      AppLanguage.tr: '{sender}, {group} grubundaki "{desc}" borcunu onayladı.',
       AppLanguage.en:
           '{sender} approved the debt for "{desc}" in the {group} group.',
     },
@@ -642,8 +776,7 @@ class AppStrings {
       AppLanguage.en: 'Debt rejected',
     },
     'notif_debt_rejected_message': {
-      AppLanguage.tr:
-          '{sender}, {group} grubundaki "{desc}" borcunu reddetti.',
+      AppLanguage.tr: '{sender}, {group} grubundaki "{desc}" borcunu reddetti.',
       AppLanguage.en:
           '{sender} rejected the debt for "{desc}" in the {group} group.',
     },
@@ -920,7 +1053,8 @@ class AppStrings {
       AppLanguage.en: 'Password is too short. Please choose a longer one.',
     },
     'error_rate_limited': {
-      AppLanguage.tr: 'Çok fazla deneme yapıldı. Lütfen biraz sonra tekrar deneyin.',
+      AppLanguage.tr:
+          'Çok fazla deneme yapıldı. Lütfen biraz sonra tekrar deneyin.',
       AppLanguage.en: 'Too many attempts. Please try again in a bit.',
     },
     'error_duplicate_record': {
@@ -936,8 +1070,10 @@ class AppStrings {
       AppLanguage.en: 'Record not found.',
     },
     'error_server_generic': {
-      AppLanguage.tr: 'Sunucuyla iletişimde bir sorun oluştu. Lütfen tekrar deneyin.',
-      AppLanguage.en: 'There was a problem communicating with the server. Please try again.',
+      AppLanguage.tr:
+          'Sunucuyla iletişimde bir sorun oluştu. Lütfen tekrar deneyin.',
+      AppLanguage.en:
+          'There was a problem communicating with the server. Please try again.',
     },
 
     // --- Main scaffold (bottom nav) ---

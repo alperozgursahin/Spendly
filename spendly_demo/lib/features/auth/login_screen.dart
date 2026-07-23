@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../core/friendly_error.dart';
-import '../../core/app_strings.dart';
+import '../../core/splixa_design.dart';
 import 'auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -13,40 +14,50 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _otpController = TextEditingController();
   bool _isLoading = false;
-  String? _usernameError;
-  String? _passwordError;
+  bool _otpRequested = false;
+  String? _emailError;
 
-  bool _validate() {
-    final username = _usernameController.text.trim();
-    final password = _passwordController.text.trim();
+  String get _email => _emailController.text.trim().toLowerCase();
 
+  Future<void> _requestOtp() async {
+    final isValidEmail = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(_email);
+    if (!isValidEmail) {
+      setState(() => _emailError = 'Enter a valid email address.');
+      return;
+    }
     setState(() {
-      _usernameError = username.isEmpty ? tr(ref, 'login_username_required') : null;
-      _passwordError = password.isEmpty ? tr(ref, 'login_password_required') : null;
+      _emailError = null;
+      _isLoading = true;
     });
-
-    return _usernameError == null && _passwordError == null;
+    try {
+      await ref.read(authControllerProvider).requestEmailOtp(_email);
+      if (mounted) setState(() => _otpRequested = true);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(error))));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
-  Future<void> _login() async {
-    if (!_validate()) return;
-
+  Future<void> _verifyOtp() async {
+    if (_otpController.text.trim().length < 8) return;
     setState(() => _isLoading = true);
     try {
       await ref
           .read(authControllerProvider)
-          .signInWithUsername(
-            username: _usernameController.text.trim(),
-            password: _passwordController.text.trim(),
-          );
-    } catch (e) {
+          .verifyEmailOtp(email: _email, token: _otpController.text.trim());
+    } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(e))));
+        ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(error))));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -55,81 +66,122 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
+    _emailController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(tr(ref, 'login_title'))),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _usernameController,
-              decoration: InputDecoration(
-                labelText: tr(ref, 'login_username_label'),
-                prefixText: '@',
-                errorText: _usernameError,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  IconButton.filledTonal(
+                    onPressed: () => context.canPop()
+                        ? context.pop()
+                        : context.go('/onboarding'),
+                    icon: const Icon(Icons.arrow_back_rounded),
+                  ),
+                  const Spacer(),
+                  const SplixaLogo(compact: true),
+                  const Spacer(),
+                  const SizedBox(width: 48),
+                ],
               ),
-              keyboardType: TextInputType.text,
-              onChanged: (_) {
-                if (_usernameError != null) {
-                  setState(() => _usernameError = null);
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passwordController,
-              decoration: InputDecoration(
-                labelText: tr(ref, 'login_password_label'),
-                errorText: _passwordError,
+              const Spacer(flex: 2),
+              Text(
+                _otpRequested ? 'Check your email' : 'Welcome to Splixa',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.8,
+                ),
               ),
-              obscureText: true,
-              onChanged: (_) {
-                if (_passwordError != null) {
-                  setState(() => _passwordError = null);
-                }
-              },
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => context.push('/forgot-password'),
-                child: Text(tr(ref, 'login_forgot_password')),
+              const SizedBox(height: 10),
+              Text(
+                _otpRequested
+                    ? 'Enter the 8-digit code sent to $_email.'
+                    : 'Use your email to securely sign in or create your account.',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  height: 1.5,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _login,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
+              const SizedBox(height: 32),
+              if (!_otpRequested) _emailField() else _otpField(),
+              const SizedBox(height: 18),
+              SplixaPrimaryButton(
+                label: _otpRequested ? 'Verify & Continue' : 'Request OTP',
+                icon: _otpRequested
+                    ? Icons.verified_user_outlined
+                    : Icons.sms_outlined,
+                loading: _isLoading,
+                onPressed: _otpRequested ? _verifyOtp : _requestOtp,
               ),
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Text(tr(ref, 'login_submit')),
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () => context.go('/register'),
-              child: Text(tr(ref, 'login_no_account')),
-            ),
-          ],
+              if (_otpRequested) ...[
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: _isLoading
+                      ? null
+                      : () => setState(() {
+                          _otpRequested = false;
+                          _otpController.clear();
+                        }),
+                  child: const Text('Change email address'),
+                ),
+              ],
+              const Spacer(flex: 3),
+              Text(
+                'By continuing, you agree to Splixa’s Terms and Privacy Policy.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _emailField() {
+    return TextField(
+      controller: _emailController,
+      keyboardType: TextInputType.emailAddress,
+      textInputAction: TextInputAction.done,
+      autofillHints: const [AutofillHints.email],
+      autocorrect: false,
+      enableSuggestions: false,
+      onSubmitted: (_) => _requestOtp(),
+      onChanged: (_) {
+        if (_emailError != null) setState(() => _emailError = null);
+      },
+      decoration: InputDecoration(
+        hintText: 'you@example.com',
+        errorText: _emailError,
+        prefixIcon: const Icon(Icons.email_outlined),
+      ),
+    );
+  }
+
+  Widget _otpField() {
+    return TextField(
+      controller: _otpController,
+      keyboardType: TextInputType.number,
+      maxLength: 8,
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 7,
+      ),
+      decoration: const InputDecoration(hintText: '00000000', counterText: ''),
     );
   }
 }

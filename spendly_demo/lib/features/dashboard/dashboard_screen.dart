@@ -15,7 +15,24 @@ import '../filters/filters_provider.dart';
 import '../notifications/notification_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({
+    super.key,
+    this.embedded = false,
+    this.includeQuickAdd = true,
+    this.showEmbeddedTools = true,
+    this.showBalance = true,
+    this.showActivity = true,
+    this.showRecentTransactions = true,
+  });
+
+  /// Renders the legacy data-rich dashboard sections without a nested
+  /// Scaffold/scroll view so the modern Splixa home can compose them safely.
+  final bool embedded;
+  final bool includeQuickAdd;
+  final bool showEmbeddedTools;
+  final bool showBalance;
+  final bool showActivity;
+  final bool showRecentTransactions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -27,6 +44,63 @@ class DashboardScreen extends ConsumerWidget {
     final unreadNotificationCount = userId == null
         ? 0
         : ref.watch(unreadNotificationCountProvider(userId));
+
+    final dashboardContent = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (embedded && showEmbeddedTools) ...[
+          Row(
+            children: [
+              Text(
+                tr(ref, 'dashboard_title'),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const Spacer(),
+              _buildLanguageToggle(context, ref),
+              const SizedBox(width: 8),
+              _buildThemeToggle(context, ref),
+              IconButton(
+                icon: const Icon(Icons.insights_outlined),
+                tooltip: tr(ref, 'dashboard_statistics'),
+                onPressed: () => context.push('/dashboard/statistics'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (includeQuickAdd) ...[
+          const QuickAddWidget(),
+          const SizedBox(height: 16),
+        ],
+        if (showBalance)
+          _buildNetBalanceCard(context, ref, netBalance, currency),
+        if (showActivity) ...[
+          if (showBalance || includeQuickAdd) const SizedBox(height: 24),
+          Text(
+            tr(ref, 'dashboard_activity_feed'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          _buildActivityFeed(ref, activityAsync),
+        ],
+        if (showRecentTransactions) ...[
+          if (showBalance || showActivity || includeQuickAdd)
+            const SizedBox(height: 24),
+          Text(
+            tr(ref, 'dashboard_recent_transactions'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          _buildDashboardFilterBar(context, ref, transactionsAsync),
+          const SizedBox(height: 8),
+          _buildStaticDateTransactions(ref, transactionsAsync, currency),
+        ],
+      ],
+    );
+
+    if (embedded) return dashboardContent;
 
     return Scaffold(
       appBar: AppBar(
@@ -69,30 +143,7 @@ class DashboardScreen extends ConsumerWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const QuickAddWidget(),
-                const SizedBox(height: 16),
-                _buildNetBalanceCard(context, ref, netBalance, currency),
-                const SizedBox(height: 24),
-                Text(
-                  tr(ref, 'dashboard_activity_feed'),
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                _buildActivityFeed(ref, activityAsync),
-                const SizedBox(height: 24),
-                Text(
-                  tr(ref, 'dashboard_recent_transactions'),
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                _buildDashboardFilterBar(context, ref, transactionsAsync),
-                const SizedBox(height: 8),
-                _buildStaticDateTransactions(ref, transactionsAsync, currency),
-              ],
-            ),
+            child: dashboardContent,
           ),
         ),
       ),
@@ -133,10 +184,7 @@ class DashboardScreen extends ConsumerWidget {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          option('TR', AppLanguage.tr),
-          option('EN', AppLanguage.en),
-        ],
+        children: [option('TR', AppLanguage.tr), option('EN', AppLanguage.en)],
       ),
     );
   }
@@ -702,7 +750,9 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
                       : Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).inputDecorationTheme.fillColor,
+                            color: Theme.of(
+                              context,
+                            ).inputDecorationTheme.fillColor,
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: DropdownButtonHideUnderline(
@@ -718,7 +768,9 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
                                     categoryLabel(ref, c),
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: Theme.of(context).colorScheme.onSurface,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
                                     ),
                                   ),
                                 );

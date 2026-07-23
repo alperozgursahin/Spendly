@@ -62,6 +62,18 @@ class AuthController {
 
   AuthController(this._client, this._ref);
 
+  Future<void> requestEmailOtp(String email) {
+    return _client.auth.signInWithOtp(email: email);
+  }
+
+  Future<void> verifyEmailOtp({required String email, required String token}) {
+    return _client.auth.verifyOTP(
+      email: email,
+      token: token,
+      type: OtpType.email,
+    );
+  }
+
   Future<void> signInWithUsername({
     required String username,
     required String password,

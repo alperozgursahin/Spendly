@@ -2,12 +2,14 @@ class GroupModel {
   final String? id;
   final String name;
   final String createdBy;
+  final String? avatarUrl;
   final DateTime? createdAt;
 
   GroupModel({
     this.id,
     required this.name,
     required this.createdBy,
+    this.avatarUrl,
     this.createdAt,
   });
 
@@ -16,6 +18,7 @@ class GroupModel {
       id: json['id'] as String?,
       name: json['name'] as String,
       createdBy: json['created_by'] as String,
+      avatarUrl: json['avatar_url'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,
@@ -27,6 +30,7 @@ class GroupModel {
       if (id != null) 'id': id,
       'name': name,
       'created_by': createdBy,
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
       if (createdAt != null) 'created_at': createdAt?.toIso8601String(),
     };
   }

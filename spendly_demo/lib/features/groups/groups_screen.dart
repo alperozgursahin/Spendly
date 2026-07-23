@@ -74,10 +74,15 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
                   backgroundColor: Theme.of(
                     context,
                   ).colorScheme.primaryContainer,
-                  child: Icon(
-                    Icons.group,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                  foregroundImage: group.avatarUrl?.isNotEmpty == true
+                      ? NetworkImage(group.avatarUrl!)
+                      : null,
+                  child: group.avatarUrl?.isNotEmpty == true
+                      ? null
+                      : Icon(
+                          Icons.group,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                 ),
                 title: Text(group.name),
                 subtitle: Text(tr(ref, 'groups_tap_for_details')),
@@ -119,7 +124,9 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
           title: Text(tr(ref, 'groups_create_new_group')),
           content: TextField(
             controller: nameController,
-            decoration: InputDecoration(labelText: tr(ref, 'groups_name_label')),
+            decoration: InputDecoration(
+              labelText: tr(ref, 'groups_name_label'),
+            ),
           ),
           actions: [
             TextButton(

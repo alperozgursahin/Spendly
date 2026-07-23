@@ -50,6 +50,8 @@ dependencies:
   # Fonts (Inter is set as the app font in main.dart's ThemeData but was
   # never actually bundled/loaded — google_fonts fetches and caches it)
   google_fonts: ^6.2.1
+  image_picker: 1.2.3
+  url_launcher: 6.3.2
 
 dev_dependencies:
   flutter_test:
@@ -60,3 +62,4 @@ flutter:
   uses-material-design: true
   assets:
     - .env
+    - assets/images/

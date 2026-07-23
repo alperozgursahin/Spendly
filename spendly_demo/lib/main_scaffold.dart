@@ -1,84 +1,58 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'core/app_strings.dart';
-import 'features/social/social_provider.dart';
 
-class MainScaffold extends ConsumerStatefulWidget {
-  final Widget child;
+class MainScaffold extends StatelessWidget {
   const MainScaffold({super.key, required this.child});
 
-  @override
-  ConsumerState<MainScaffold> createState() => _MainScaffoldState();
-}
+  final Widget child;
 
-class _MainScaffoldState extends ConsumerState<MainScaffold> {
-  int _currentIndex = 0;
-
-  void _onItemTapped(int index, BuildContext context) {
-    setState(() {
-      _currentIndex = index;
-    });
-    switch (index) {
-      case 0:
-        context.go('/dashboard');
-        break;
-      case 1:
-        context.go('/debts');
-        break;
-      case 2:
-        context.go('/groups');
-        break;
-      case 3:
-        context.go('/social');
-        break;
-      case 4:
-        context.go('/profile');
-        break;
-    }
+  int _selectedIndex(String location) {
+    if (location.startsWith('/social')) return 1;
+    if (location.startsWith('/debts')) return 2;
+    if (location.startsWith('/profile')) return 3;
+    return 0;
   }
 
   @override
   Widget build(BuildContext context) {
-    final String location = GoRouterState.of(context).uri.toString();
-    if (location.startsWith('/dashboard')) _currentIndex = 0;
-    if (location.startsWith('/debts')) _currentIndex = 1;
-    if (location.startsWith('/groups')) _currentIndex = 2;
-    if (location.startsWith('/social')) _currentIndex = 3;
-    if (location.startsWith('/profile')) _currentIndex = 4;
-
-    final pendingRequests = ref.watch(pendingFriendRequestCountProvider);
-
+    final location = GoRouterState.of(context).uri.toString();
     return Scaffold(
-      body: widget.child,
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _currentIndex,
-        onTap: (index) => _onItemTapped(index, context),
-        items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.dashboard),
-            label: tr(ref, 'nav_dashboard'),
+      body: child,
+      bottomNavigationBar: NavigationBar(
+        height: 72,
+        selectedIndex: _selectedIndex(location),
+        onDestinationSelected: (index) {
+          switch (index) {
+            case 0:
+              context.go('/dashboard');
+            case 1:
+              context.go('/social');
+            case 2:
+              context.go('/debts');
+            case 3:
+              context.go('/profile');
+          }
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Home',
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.account_balance_wallet_outlined),
-            label: tr(ref, 'nav_debts'),
+          NavigationDestination(
+            icon: Icon(Icons.people_outline_rounded),
+            selectedIcon: Icon(Icons.people_rounded),
+            label: 'Friends',
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.group),
-            label: tr(ref, 'nav_groups'),
+          NavigationDestination(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+            label: 'Debts',
           ),
-          BottomNavigationBarItem(
-            icon: Badge(
-              isLabelVisible: pendingRequests > 0,
-              label: Text('$pendingRequests'),
-              child: const Icon(Icons.chat_bubble_outline),
-            ),
-            label: tr(ref, 'nav_social'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.person),
-            label: tr(ref, 'nav_profile'),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded),
+            label: 'Profile',
           ),
         ],
       ),

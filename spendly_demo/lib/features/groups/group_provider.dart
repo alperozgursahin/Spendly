@@ -72,18 +72,20 @@ final groupMessagesStreamProvider =
 
 /// Each user has at most one row per group (RLS only exposes the caller's
 /// own row), so this is null until they've opened that group's chat once.
-final groupChatReadStreamProvider =
-    StreamProvider.family<DateTime?, String>((ref, groupId) {
-      return Supabase.instance.client
-          .from('group_chat_reads')
-          .stream(primaryKey: ['group_id', 'user_id'])
-          .eq('group_id', groupId)
-          .map((rows) {
-            if (rows.isEmpty) return null;
-            final value = rows.first['last_read_at'] as String?;
-            return value == null ? null : DateTime.parse(value).toUtc();
-          });
-    });
+final groupChatReadStreamProvider = StreamProvider.family<DateTime?, String>((
+  ref,
+  groupId,
+) {
+  return Supabase.instance.client
+      .from('group_chat_reads')
+      .stream(primaryKey: ['group_id', 'user_id'])
+      .eq('group_id', groupId)
+      .map((rows) {
+        if (rows.isEmpty) return null;
+        final value = rows.first['last_read_at'] as String?;
+        return value == null ? null : DateTime.parse(value).toUtc();
+      });
+});
 
 /// Messages from other members created after the caller's last-read cutoff.
 final unreadGroupMessagesCountProvider = Provider.family<int, String>((
@@ -102,7 +104,9 @@ final unreadGroupMessagesCountProvider = Provider.family<int, String>((
       return msgs.where((m) {
         if (m['sender_id'] == userId) return false;
         if (cutoff == null) return true;
-        return DateTime.parse(m['created_at'] as String).toUtc().isAfter(cutoff);
+        return DateTime.parse(
+          m['created_at'] as String,
+        ).toUtc().isAfter(cutoff);
       }).length;
     },
     orElse: () => 0,
@@ -110,13 +114,11 @@ final unreadGroupMessagesCountProvider = Provider.family<int, String>((
 });
 
 Future<void> markGroupChatRead(String groupId, String userId) {
-  return Supabase.instance.client
-      .from('group_chat_reads')
-      .upsert({
-        'group_id': groupId,
-        'user_id': userId,
-        'last_read_at': DateTime.now().toUtc().toIso8601String(),
-      }, onConflict: 'group_id,user_id');
+  return Supabase.instance.client.from('group_chat_reads').upsert({
+    'group_id': groupId,
+    'user_id': userId,
+    'last_read_at': DateTime.now().toUtc().toIso8601String(),
+  }, onConflict: 'group_id,user_id');
 }
 
 /// Only approved and payment-pending participant shares affect balances.
@@ -237,6 +239,54 @@ class GroupService {
       'group_id': groupId,
       'user_id': userId,
     });
+  }
+
+  Future<void> addMemberAsAdmin({
+    required String groupId,
+    required String memberId,
+    required String actorId,
+  }) async {
+    await _assertGroupAdmin(groupId, actorId);
+    await _supabase.from('group_members').insert({
+      'group_id': groupId,
+      'user_id': memberId,
+    });
+  }
+
+  Future<void> removeMemberAsAdmin({
+    required String groupId,
+    required String memberId,
+    required String actorId,
+  }) async {
+    await _assertGroupAdmin(groupId, actorId);
+    await _supabase
+        .from('group_members')
+        .delete()
+        .eq('group_id', groupId)
+        .eq('user_id', memberId);
+  }
+
+  Future<void> updateGroupAvatar({
+    required String groupId,
+    required String actorId,
+    required String avatarUrl,
+  }) async {
+    await _assertGroupAdmin(groupId, actorId);
+    await _supabase
+        .from('groups')
+        .update({'avatar_url': avatarUrl})
+        .eq('id', groupId);
+  }
+
+  Future<void> _assertGroupAdmin(String groupId, String actorId) async {
+    final group = await _supabase
+        .from('groups')
+        .select('created_by')
+        .eq('id', groupId)
+        .maybeSingle();
+    if (group == null || group['created_by'] != actorId) {
+      throw Exception('Only the group admin can perform this action.');
+    }
   }
 
   Future<List<GroupMemberModel>> getGroupMembers(String groupId) async {

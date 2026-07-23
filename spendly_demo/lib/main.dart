@@ -15,7 +15,6 @@ import 'core/app_strings.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/forgot_password_screen.dart';
-import 'features/dashboard/dashboard_screen.dart';
 import 'features/dashboard/statistics_screen.dart';
 import 'features/notifications/notifications_screen.dart';
 import 'features/debts/debts_screen.dart';
@@ -27,8 +26,10 @@ import 'features/subscriptions/paywall_screen.dart';
 import 'features/social/social_screen.dart';
 import 'features/social/chat_screen.dart';
 import 'features/social/other_user_profile_screen.dart';
-import 'features/profile/profile_screen.dart';
 import 'features/auth/update_password_screen.dart';
+import 'features/onboarding/onboarding_screen.dart';
+import 'features/dashboard/splixa_home_screen.dart';
+import 'features/profile/splixa_profile_screen.dart';
 import 'main_scaffold.dart';
 
 import 'features/subscriptions/revenuecat_config.dart';
@@ -72,7 +73,7 @@ void main() async {
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/onboarding',
     refreshListenable: GoRouterRefreshStream(
       Supabase.instance.client.auth.onAuthStateChange,
     ),
@@ -80,6 +81,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final session = Supabase.instance.client.auth.currentSession;
       final isAuth = session != null;
       final isLoggingIn =
+          state.uri.toString() == '/onboarding' ||
           state.uri.toString() == '/login' ||
           state.uri.toString() == '/register' ||
           state.uri.toString() == '/forgot-password';
@@ -89,6 +91,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => const OnboardingScreen(),
+      ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/register',
@@ -109,7 +115,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/dashboard',
-            builder: (context, state) => const DashboardScreen(),
+            builder: (context, state) => const SplixaHomeScreen(),
             routes: [
               GoRoute(
                 path: 'statistics',
@@ -133,8 +139,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: ':id',
                 builder: (context, state) {
                   final groupId = state.pathParameters['id']!;
-                  final groupName = state.extra as String? ??
-                      AppStrings.of('route_fallback_group_detail', currentAppLanguage);
+                  final groupName =
+                      state.extra as String? ??
+                      AppStrings.of(
+                        'route_fallback_group_detail',
+                        currentAppLanguage,
+                      );
                   return GroupDetailScreen(
                     groupId: groupId,
                     groupName: groupName,
@@ -145,8 +155,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'info',
                     builder: (context, state) {
                       final groupId = state.pathParameters['id']!;
-                      final groupName = state.extra as String? ??
-                          AppStrings.of('route_fallback_group_info', currentAppLanguage);
+                      final groupName =
+                          state.extra as String? ??
+                          AppStrings.of(
+                            'route_fallback_group_info',
+                            currentAppLanguage,
+                          );
                       return GroupInfoScreen(
                         groupId: groupId,
                         groupName: groupName,
@@ -157,8 +171,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'chat',
                     builder: (context, state) {
                       final groupId = state.pathParameters['id']!;
-                      final groupName = state.extra as String? ??
-                          AppStrings.of('route_fallback_group', currentAppLanguage);
+                      final groupName =
+                          state.extra as String? ??
+                          AppStrings.of(
+                            'route_fallback_group',
+                            currentAppLanguage,
+                          );
                       return GroupChatScreen(
                         groupId: groupId,
                         groupName: groupName,
@@ -177,7 +195,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'chat/:id',
                 builder: (context, state) {
                   final targetUserId = state.pathParameters['id']!;
-                  final username = state.extra as String? ??
+                  final username =
+                      state.extra as String? ??
                       AppStrings.of('route_fallback_chat', currentAppLanguage);
                   return ChatScreen(
                     targetUserId: targetUserId,
@@ -197,7 +216,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/profile',
-            builder: (context, state) => const ProfileScreen(),
+            builder: (context, state) => const SplixaProfileScreen(),
           ),
         ],
       ),
@@ -228,7 +247,7 @@ class _MyAppState extends ConsumerState<MyApp> {
     });
   }
 
-  static const _brandColor = Color(0xFF0F766E);
+  static const _brandColor = Color(0xFF0E7490);
 
   // Dark surfaces stay in the same slate family as the light theme's
   // secondary color (#1F2937) instead of pure black, so cards/inputs read as
@@ -244,7 +263,9 @@ class _MyAppState extends ConsumerState<MyApp> {
       useMaterial3: true,
       brightness: brightness,
       textTheme: isDark
-          ? GoogleFonts.interTextTheme(ThemeData(brightness: Brightness.dark).textTheme)
+          ? GoogleFonts.interTextTheme(
+              ThemeData(brightness: Brightness.dark).textTheme,
+            )
           : GoogleFonts.interTextTheme(),
       // Only pin `primary`/`secondary` to the exact brand hex for light mode.
       // Forcing that same (fairly dark) teal as `primary` in dark mode too
@@ -260,12 +281,14 @@ class _MyAppState extends ConsumerState<MyApp> {
               primary: _brandColor,
               secondary: const Color(0xFF1F2937),
             ),
-      scaffoldBackgroundColor: isDark ? _darkScaffold : const Color(0xFFF7F8F7),
+      scaffoldBackgroundColor: isDark ? _darkScaffold : const Color(0xFFF8FAFC),
       appBarTheme: AppBarTheme(
-        backgroundColor: isDark ? _darkScaffold : const Color(0xFFF7F8F7),
+        backgroundColor: isDark ? _darkScaffold : const Color(0xFFF8FAFC),
         elevation: 0.0,
         centerTitle: true,
-        iconTheme: IconThemeData(color: isDark ? Colors.white70 : Colors.black87),
+        iconTheme: IconThemeData(
+          color: isDark ? Colors.white70 : Colors.black87,
+        ),
         titleTextStyle: GoogleFonts.inter(
           color: isDark ? Colors.white : Colors.black87,
           fontSize: 20.0,
@@ -278,7 +301,7 @@ class _MyAppState extends ConsumerState<MyApp> {
         color: isDark ? _darkSurface : Colors.white,
         margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14.0),
+          borderRadius: BorderRadius.circular(20.0),
           side: BorderSide(
             color: isDark ? _darkBorder : Colors.grey.shade200,
             width: 0.6,
@@ -326,6 +349,13 @@ class _MyAppState extends ConsumerState<MyApp> {
           ),
         ),
       ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        elevation: 0,
+        backgroundColor: isDark ? _darkSurface : Colors.white,
+        selectedItemColor: isDark ? const Color(0xFF22D3EE) : _brandColor,
+        unselectedItemColor: isDark ? Colors.white60 : const Color(0xFF64748B),
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700),
+      ),
     );
   }
 
@@ -336,7 +366,7 @@ class _MyAppState extends ConsumerState<MyApp> {
     final language = ref.watch(appLanguageProvider);
 
     return MaterialApp.router(
-      title: 'Spendly',
+      title: 'Splixa',
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: themeMode,

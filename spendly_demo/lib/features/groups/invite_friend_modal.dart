@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
@@ -37,10 +36,15 @@ class _InviteFriendModalState extends ConsumerState<InviteFriendModal> {
 
   Future<void> _addFriend(Map<String, dynamic> friend) async {
     try {
-      await Supabase.instance.client.from('group_members').insert({
-        'group_id': widget.groupId,
-        'user_id': friend['id'],
-      });
+      final actorId = ref.read(currentUserIdProvider);
+      if (actorId == null) return;
+      await ref
+          .read(groupServiceProvider)
+          .addMemberAsAdmin(
+            groupId: widget.groupId,
+            memberId: friend['id'] as String,
+            actorId: actorId,
+          );
       ref.invalidate(groupMembersProvider(widget.groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -60,12 +64,7 @@ class _InviteFriendModalState extends ConsumerState<InviteFriendModal> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(
-        top: 16,
-        bottom: 32,
-        left: 16,
-        right: 16,
-      ),
+      padding: const EdgeInsets.only(top: 16, bottom: 32, left: 16, right: 16),
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.7,
       ),
@@ -140,9 +139,7 @@ class _InviteFriendModalState extends ConsumerState<InviteFriendModal> {
                           .toList();
 
                 if (filtered.isEmpty) {
-                  return Center(
-                    child: Text(tr(ref, 'groups_no_search_match')),
-                  );
+                  return Center(child: Text(tr(ref, 'groups_no_search_match')));
                 }
 
                 return ListView.builder(

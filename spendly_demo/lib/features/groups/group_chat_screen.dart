@@ -6,7 +6,7 @@ import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import 'group_provider.dart';
 
-class GroupChatScreen extends ConsumerStatefulWidget {
+class GroupChatScreen extends StatelessWidget {
   final String groupId;
   final String groupName;
 
@@ -17,10 +17,24 @@ class GroupChatScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<GroupChatScreen> createState() => _GroupChatScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('$groupName Chat')),
+      body: GroupChatView(groupId: groupId),
+    );
+  }
 }
 
-class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
+class GroupChatView extends ConsumerStatefulWidget {
+  const GroupChatView({super.key, required this.groupId});
+
+  final String groupId;
+
+  @override
+  ConsumerState<GroupChatView> createState() => _GroupChatViewState();
+}
+
+class _GroupChatViewState extends ConsumerState<GroupChatView> {
   final _msgController = TextEditingController();
 
   // Captured so `dispose` never has to touch `ref` (unsafe once the widget
@@ -95,107 +109,100 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
       }
     });
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('${widget.groupName} ${tr(ref, 'groups_chat_suffix')}'),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: msgsAsync.when(
-              data: (msgs) {
-                if (msgs.isEmpty) {
-                  return Center(
-                    child: Text(tr(ref, 'groups_chat_empty')),
-                  );
-                }
+    return Column(
+      children: [
+        Expanded(
+          child: msgsAsync.when(
+            data: (msgs) {
+              if (msgs.isEmpty) {
+                return Center(child: Text(tr(ref, 'groups_chat_empty')));
+              }
 
-                return ListView.builder(
-                  reverse: true,
-                  padding: const EdgeInsets.all(12),
-                  itemCount: msgs.length,
-                  itemBuilder: (context, index) {
-                    final m = msgs[index];
-                    final senderId = m['sender_id'] as String;
-                    final isMe = senderId == curUserId;
-                    final senderName =
-                        usernamesById[senderId] ?? tr(ref, 'common_user');
+              return ListView.builder(
+                reverse: true,
+                padding: const EdgeInsets.all(12),
+                itemCount: msgs.length,
+                itemBuilder: (context, index) {
+                  final m = msgs[index];
+                  final senderId = m['sender_id'] as String;
+                  final isMe = senderId == curUserId;
+                  final senderName =
+                      usernamesById[senderId] ?? tr(ref, 'common_user');
 
-                    return Align(
-                      alignment: isMe
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
-                      child: Container(
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.75,
-                        ),
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isMe
-                              ? colorScheme.primaryContainer
-                              : colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (!isMe)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Text(
-                                  senderName,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: colorScheme.primary,
-                                  ),
+                  return Align(
+                    alignment: isMe
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.75,
+                      ),
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isMe
+                            ? colorScheme.primaryContainer
+                            : colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (!isMe)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                senderName,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: colorScheme.primary,
                                 ),
                               ),
-                            Text(
-                              m['message'] as String,
-                              style: TextStyle(
-                                color: isMe
-                                    ? colorScheme.onPrimaryContainer
-                                    : colorScheme.onSurfaceVariant,
-                              ),
                             ),
-                          ],
-                        ),
+                          Text(
+                            m['message'] as String,
+                            style: TextStyle(
+                              color: isMe
+                                  ? colorScheme.onPrimaryContainer
+                                  : colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                );
-              },
-              error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
-              loading: () => const Center(child: CircularProgressIndicator()),
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _msgController,
-                      decoration: InputDecoration(
-                        hintText: tr(ref, 'groups_chat_input_hint'),
-                        border: const OutlineInputBorder(),
-                      ),
-                      onSubmitted: (_) => _send(),
                     ),
+                  );
+                },
+              );
+            },
+            error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
+            loading: () => const Center(child: CircularProgressIndicator()),
+          ),
+        ),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _msgController,
+                    decoration: InputDecoration(
+                      hintText: tr(ref, 'groups_chat_input_hint'),
+                      border: const OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) => _send(),
                   ),
-                  const SizedBox(width: 4),
-                  IconButton(icon: const Icon(Icons.send), onPressed: _send),
-                ],
-              ),
+                ),
+                const SizedBox(width: 4),
+                IconButton(icon: const Icon(Icons.send), onPressed: _send),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

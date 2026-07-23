@@ -10,6 +10,7 @@ import '../profile/currency_provider.dart';
 import '../profile/exchange_rate_provider.dart';
 import 'add_expense_sheet.dart';
 import 'group_model.dart';
+import 'group_chat_screen.dart';
 import 'group_provider.dart';
 import 'group_transaction_model.dart';
 import 'invite_friend_modal.dart';
@@ -44,7 +45,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
   void initState() {
     super.initState();
 
-    _tabController = TabController(length: _tabBuckets.length, vsync: this);
+    _tabController = TabController(length: _tabBuckets.length + 1, vsync: this)
+      ..addListener(_handleTabChange);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.invalidate(groupTransactionsStreamProvider(widget.groupId));
@@ -55,8 +57,13 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _handleTabChange() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -67,6 +74,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     final currency = ref.watch(currencyProvider);
     final exchanger = ref.watch(exchangeRateProvider);
     final members = ref.watch(groupMembersProvider(widget.groupId));
+    final group = ref.watch(groupByIdProvider(widget.groupId));
+    final groupAvatarUrl = group.valueOrNull?.avatarUrl;
+    final isAdmin = group.valueOrNull?.createdBy == currentUserId;
     final unreadChatCount = ref.watch(
       unreadGroupMessagesCountProvider(widget.groupId),
     );
@@ -92,11 +102,16 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
               CircleAvatar(
                 radius: 18,
                 backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                child: Icon(
-                  Icons.group,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 20,
-                ),
+                foregroundImage: groupAvatarUrl?.isNotEmpty == true
+                    ? NetworkImage(groupAvatarUrl!)
+                    : null,
+                child: groupAvatarUrl?.isNotEmpty == true
+                    ? null
+                    : Icon(
+                        Icons.group,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 20,
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -120,11 +135,17 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                       ),
                       loading: () => Text(
                         tr(ref, 'common_loading'),
-                        style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                       error: (_, __) => Text(
                         tr(ref, 'groups_participants_load_error'),
-                        style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ],
@@ -141,52 +162,50 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
               label: Text('$unreadChatCount'),
               child: const Icon(Icons.chat_bubble_outline),
             ),
-            onPressed: () {
-              context.push(
-                '/groups/${widget.groupId}/chat',
-                extra: widget.groupName,
-              );
-            },
+            onPressed: () => _tabController.animateTo(_tabBuckets.length),
           ),
-          IconButton(
-            tooltip: tr(ref, 'groups_invite_friend_tooltip'),
-            icon: const Icon(Icons.person_add),
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                builder: (_) => InviteFriendModal(groupId: widget.groupId),
-              );
-            },
-          ),
+          if (isAdmin)
+            IconButton(
+              tooltip: tr(ref, 'groups_invite_friend_tooltip'),
+              icon: const Icon(Icons.person_add),
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (_) => InviteFriendModal(groupId: widget.groupId),
+                );
+              },
+            ),
         ],
       ),
       body: Column(
         children: [
-          _buildBalanceHeader(
-            currentUserId: currentUserId,
-            currency: currency,
-            exchanger: exchanger,
-          ),
-          _buildFilterCard(currentUserId),
-          transactions.when(
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
-            data: (items) {
-              final filtered = _filteredTransactions(items);
+          if (_tabController.index < _tabBuckets.length) ...[
+            _buildBalanceHeader(
+              currentUserId: currentUserId,
+              currency: currency,
+              exchanger: exchanger,
+            ),
+            _buildFilterCard(currentUserId),
+          ],
+          Builder(
+            builder: (context) {
+              final filtered = _filteredTransactions(
+                transactions.valueOrNull ?? const <GroupTransactionModel>[],
+              );
               final counts = {
                 for (final bucket in _tabBuckets)
                   bucket: filtered
-                      .where((t) => computeExpenseBucket(t) == bucket)
+                      .where((item) => computeExpenseBucket(item) == bucket)
                       .length,
               };
-
               return Material(
                 color: Theme.of(context).cardTheme.color,
                 child: TabBar(
                   controller: _tabController,
+                  isScrollable: true,
                   labelColor: colorScheme.primary,
                   unselectedLabelColor: colorScheme.onSurfaceVariant,
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 12),
                   tabs: [
                     _buildTabLabel(
                       tr(ref, 'groups_tab_pending'),
@@ -200,76 +219,89 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                       tr(ref, 'groups_tab_archived'),
                       counts[ExpenseBucket.archived]!,
                     ),
+                    Tab(
+                      child: Badge(
+                        isLabelVisible: unreadChatCount > 0,
+                        label: Text('$unreadChatCount'),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.chat_bubble_outline_rounded, size: 18),
+                            SizedBox(width: 7),
+                            Text('Chat'),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               );
             },
           ),
           Expanded(
-            child: transactions.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) =>
-                  Center(child: Text(friendlyErrorMessage(error))),
-              data: (items) {
-                final filtered = _filteredTransactions(items);
-
-                if (filtered.isEmpty) {
-                  return Center(
-                    child: Text(tr(ref, 'groups_no_transactions')),
-                  );
-                }
-
-                return TabBarView(
-                  controller: _tabController,
-                  children: _tabBuckets.map((bucket) {
-                    final bucketItems = filtered
-                        .where((t) => computeExpenseBucket(t) == bucket)
-                        .toList();
-
-                    if (bucketItems.isEmpty) {
-                      return Center(
-                        child: Text(_emptyBucketMessage(bucket)),
-                      );
-                    }
-
-                    return ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                      itemCount: bucketItems.length,
-                      itemBuilder: (context, index) {
-                        final transaction = bucketItems[index];
-
-                        return _buildTransactionCard(
-                          transaction: transaction,
-                          currentUserId: currentUserId,
-                          currency: currency,
-                          exchanger: exchanger,
-                          members: members,
-                        );
-                      },
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                ..._tabBuckets.map((bucket) {
+                  if (transactions.isLoading && !transactions.hasValue) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (transactions.hasError && !transactions.hasValue) {
+                    return Center(
+                      child: Text(friendlyErrorMessage(transactions.error!)),
                     );
-                  }).toList(),
-                );
-              },
+                  }
+                  final filtered = _filteredTransactions(
+                    transactions.valueOrNull ?? const <GroupTransactionModel>[],
+                  );
+                  final bucketItems = filtered
+                      .where((t) => computeExpenseBucket(t) == bucket)
+                      .toList();
+
+                  if (bucketItems.isEmpty) {
+                    return Center(child: Text(_emptyBucketMessage(bucket)));
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+                    itemCount: bucketItems.length,
+                    itemBuilder: (context, index) {
+                      final transaction = bucketItems[index];
+
+                      return _buildTransactionCard(
+                        transaction: transaction,
+                        currentUserId: currentUserId,
+                        currency: currency,
+                        exchanger: exchanger,
+                        members: members,
+                      );
+                    },
+                  );
+                }),
+                GroupChatView(groupId: widget.groupId),
+              ],
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: const Icon(Icons.receipt_long),
-        label: Text(tr(ref, 'groups_add_expense')),
-        onPressed: currentUserId.isEmpty
-            ? null
-            : () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  builder: (_) => AddExpenseSheet(
-                    groupId: widget.groupId,
-                    currentUserId: currentUserId,
-                  ),
-                );
-              },
-      ),
+      floatingActionButton: _tabController.index == _tabBuckets.length
+          ? null
+          : FloatingActionButton.extended(
+              icon: const Icon(Icons.receipt_long),
+              label: Text(tr(ref, 'groups_add_expense')),
+              onPressed: currentUserId.isEmpty
+                  ? null
+                  : () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (_) => AddExpenseSheet(
+                          groupId: widget.groupId,
+                          currentUserId: currentUserId,
+                        ),
+                      );
+                    },
+            ),
     );
   }
 
@@ -350,7 +382,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                             fontSize: 14,
                             color: transaction.payerId == currentUserId
                                 ? Colors.green.shade700
-                                : Theme.of(context).colorScheme.onSurfaceVariant,
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -672,9 +706,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(tr(ref, 'groups_action_failed')),
-          ),
+          SnackBar(content: Text(tr(ref, 'groups_action_failed'))),
         );
       }
     } finally {
@@ -700,9 +732,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(tr(ref, 'groups_archive_failed')),
-          ),
+          SnackBar(content: Text(tr(ref, 'groups_archive_failed'))),
         );
       }
     } finally {
