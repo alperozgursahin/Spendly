@@ -1,1 +1,1 @@
-# Spendly
+# Splixa
