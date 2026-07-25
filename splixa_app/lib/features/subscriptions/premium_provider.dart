@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'revenuecat_config.dart';
 
 final premiumProvider = StateNotifierProvider<PremiumNotifier, bool>((ref) {
@@ -8,8 +9,26 @@ final premiumProvider = StateNotifierProvider<PremiumNotifier, bool>((ref) {
 });
 
 class PremiumNotifier extends StateNotifier<bool> {
-  PremiumNotifier() : super(false) {
+  PremiumNotifier() : super(_hasServerReviewAccess()) {
+    _reviewAccess = state;
     _init();
+  }
+
+  bool _reviewAccess = false;
+
+  static bool _hasServerReviewAccess() {
+    return Supabase
+            .instance
+            .client
+            .auth
+            .currentUser
+            ?.appMetadata['play_review'] ==
+        true;
+  }
+
+  void grantReviewAccess() {
+    _reviewAccess = true;
+    if (mounted) state = true;
   }
 
   Future<void> _init() async {
@@ -30,12 +49,13 @@ class PremiumNotifier extends StateNotifier<bool> {
   void _updatePremiumStatus(CustomerInfo customerInfo) {
     if (RevenueCatConfig.premiumEntitlementId.isEmpty) return;
 
-    final isPro =
+    final hasRevenueCatEntitlement =
         customerInfo
             .entitlements
             .all[RevenueCatConfig.premiumEntitlementId]
             ?.isActive ??
         false;
+    final isPro = _reviewAccess || hasRevenueCatEntitlement;
 
     if (mounted && state != isPro) {
       state = isPro;
@@ -67,6 +87,7 @@ class PremiumNotifier extends StateNotifier<bool> {
   }
 
   void reset() {
+    _reviewAccess = false;
     state = false;
   }
 }

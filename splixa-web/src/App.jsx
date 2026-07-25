@@ -132,7 +132,7 @@ const translations = {
           title: "Delete Account",
           description:
             "Request deletion of your Splixa account and data.",
-          href: "mailto:splixa.support@gmail.com?subject=Delete%20my%20Splixa%20account",
+          href: "/delete-account",
         },
       ],
     },
@@ -177,6 +177,30 @@ Splixa Labs will not be liable for any direct, indirect or consequential loss or
 
 If you have any questions about these Terms, please contact us at splixa.support@gmail.com.
       `,
+    },
+    deleteAccountPage: {
+      eyebrow: "ACCOUNT & DATA CONTROL",
+      title: "Delete your Splixa account",
+      intro:
+        "You can permanently delete your Splixa account and associated data at any time. Choose the method that works for you below.",
+      inAppTitle: "Delete directly in the app",
+      inAppDescription:
+        "If you can access your account, deletion can be completed immediately from the Splixa mobile app.",
+      steps: [
+        "Open Splixa and sign in to your account.",
+        "Go to Profile and open Settings.",
+        "Select Delete Account / Delete Account Data.",
+        "Review the warning and confirm permanent deletion.",
+      ],
+      alternativeTitle: "Can’t access the app?",
+      alternativeDescription:
+        "Send a deletion request from your registered email address. Include your registered username and email address so we can securely identify the correct account.",
+      emailButton: "Email a deletion request",
+      emailSubject: "Delete my Splixa account",
+      afterTitle: "What happens after your request",
+      afterDescription:
+        "After confirming account ownership, your account and associated personal data will be permanently deleted within a reasonable period. Limited records may be retained only when required by law, security, fraud prevention, or financial compliance obligations.",
+      supportLabel: "Deletion request email",
     },
     footer: {
       contactTitle: "Contact",
@@ -298,7 +322,7 @@ If you have any questions about these Terms, please contact us at splixa.support
           title: "Hesabı Sil",
           description:
             "Splixa hesabının ve verilerinin silinmesini talep et.",
-          href: "mailto:splixa.support@gmail.com?subject=Delete%20my%20Splixa%20account",
+          href: "/delete-account",
         },
       ],
     },
@@ -343,6 +367,30 @@ Splixa Labs, bu koşullar veya uygulamamızla bağlantılı olarak ortaya çıka
 
 Bu koşullarla ilgili sorularınız için splixa.support@gmail.com adresinden bizimle iletişime geçebilirsiniz.
       `,
+    },
+    deleteAccountPage: {
+      eyebrow: "HESAP VE VERİ KONTROLÜ",
+      title: "Splixa hesabınızı silin",
+      intro:
+        "Splixa hesabınızı ve hesabınızla ilişkili verileri istediğiniz zaman kalıcı olarak silebilirsiniz. Size uygun yöntemi aşağıdan seçebilirsiniz.",
+      inAppTitle: "Uygulama içinden doğrudan silme",
+      inAppDescription:
+        "Hesabınıza erişebiliyorsanız silme işlemini Splixa mobil uygulamasından anında tamamlayabilirsiniz.",
+      steps: [
+        "Splixa’yı açın ve hesabınıza giriş yapın.",
+        "Profil bölümüne gidin ve Ayarlar’ı açın.",
+        "Hesabı Sil / Hesap Verilerini Sil seçeneğini seçin.",
+        "Uyarıyı inceleyin ve kalıcı silme işlemini onaylayın.",
+      ],
+      alternativeTitle: "Uygulamaya erişemiyor musunuz?",
+      alternativeDescription:
+        "Kayıtlı e-posta adresinizden bir silme talebi gönderin. Doğru hesabı güvenli biçimde belirleyebilmemiz için kayıtlı kullanıcı adınızı ve e-posta adresinizi mesaja ekleyin.",
+      emailButton: "Silme talebi gönder",
+      emailSubject: "Splixa hesabımı silin",
+      afterTitle: "Talebinizden sonra ne olur?",
+      afterDescription:
+        "Hesap sahipliği doğrulandıktan sonra hesabınız ve ilişkili kişisel verileriniz makul bir süre içinde kalıcı olarak silinir. Yalnızca yasal, güvenlik, dolandırıcılığı önleme veya finansal uyumluluk yükümlülükleri gerektiriyorsa sınırlı kayıtlar tutulabilir.",
+      supportLabel: "Silme talebi e-postası",
     },
     footer: {
       contactTitle: "İletişim",
@@ -791,7 +839,8 @@ function Nav({ t, lang, setLang, theme, setTheme, navigate }) {
     },
     {
       label: t.nav.deleteAccount,
-      href: "mailto:splixa.support@gmail.com?subject=Delete%20my%20Splixa%20account",
+      href: "/delete-account",
+      internal: true,
     },
   ];
 
@@ -1284,6 +1333,116 @@ function Footer({ t }) {
   );
 }
 
+function DeleteAccountPage({ t, navigate }) {
+  const page = t.deleteAccountPage;
+  const emailHref = `mailto:splixa.support@gmail.com?subject=${encodeURIComponent(page.emailSubject)}`;
+
+  return (
+    <div className="min-h-screen px-5 pb-32 pt-24">
+      <div className="mx-auto max-w-4xl">
+        <button
+          type="button"
+          onClick={() => {
+            navigate("/");
+            window.scrollTo(0, 0);
+          }}
+          className="mb-10 flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {t.legalPages.backToHome}
+        </button>
+
+        <MountReveal>
+          <SectionEyebrow>{page.eyebrow}</SectionEyebrow>
+          <h1 className="mt-5 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl dark:text-white">
+            {page.title}
+          </h1>
+          <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600 dark:text-slate-300">
+            {page.intro}
+          </p>
+          <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
+            {t.legalPages.lastUpdated}
+          </p>
+        </MountReveal>
+
+        <div className="mt-12 grid gap-6 lg:grid-cols-2">
+          <MountReveal className="h-full" delay={0.08}>
+            <section className="h-full rounded-3xl border border-slate-200 bg-white p-7 shadow-sm dark:border-slate-700 dark:bg-[#1E293B] dark:shadow-none sm:p-8">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-500">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <h2 className="mt-6 text-2xl font-semibold text-slate-900 dark:text-white">
+                {page.inAppTitle}
+              </h2>
+              <p className="mt-3 leading-7 text-slate-600 dark:text-slate-300">
+                {page.inAppDescription}
+              </p>
+              <ol className="mt-7 space-y-4">
+                {page.steps.map((step, index) => (
+                  <li key={step} className="flex gap-3 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-xs font-bold text-white">
+                      {index + 1}
+                    </span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          </MountReveal>
+
+          <MountReveal className="h-full" delay={0.16}>
+            <section className="h-full rounded-3xl border border-slate-200 bg-white p-7 shadow-sm dark:border-slate-700 dark:bg-[#1E293B] dark:shadow-none sm:p-8">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-500">
+                <LifeBuoy className="h-5 w-5" />
+              </div>
+              <h2 className="mt-6 text-2xl font-semibold text-slate-900 dark:text-white">
+                {page.alternativeTitle}
+              </h2>
+              <p className="mt-3 leading-7 text-slate-600 dark:text-slate-300">
+                {page.alternativeDescription}
+              </p>
+              <div className="mt-7 rounded-2xl bg-slate-50 p-4 dark:bg-slate-950/40">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  {page.supportLabel}
+                </p>
+                <a
+                  href="mailto:splixa.support@gmail.com"
+                  className="mt-1 inline-block break-all font-medium text-cyan-600 hover:underline dark:text-cyan-400"
+                >
+                  splixa.support@gmail.com
+                </a>
+              </div>
+              <a
+                href={emailHref}
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-400"
+              >
+                {page.emailButton}
+                <ArrowRight className="h-4 w-4" />
+              </a>
+            </section>
+          </MountReveal>
+        </div>
+
+        <MountReveal delay={0.24}>
+          <section className="mt-6 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-7 sm:p-8">
+            <div className="flex gap-4">
+              <ShieldCheck className="mt-1 h-6 w-6 shrink-0 text-cyan-500" />
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
+                  {page.afterTitle}
+                </h2>
+                <p className="mt-3 leading-7 text-slate-600 dark:text-slate-300">
+                  {page.afterDescription}
+                </p>
+              </div>
+            </div>
+          </section>
+        </MountReveal>
+      </div>
+    </div>
+  );
+}
+
 function LegalPageTemplate({ title, content, t, navigate }) {
   return (
     <div className="min-h-screen px-5 pb-32 pt-24">
@@ -1390,6 +1549,8 @@ export default function SplixaApp() {
         navigate={navigate}
       />
     );
+  } else if (currentPath === "/delete-account") {
+    content = <DeleteAccountPage t={t} navigate={navigate} />;
   } else {
     content = (
       <>
@@ -1432,11 +1593,13 @@ export default function SplixaApp() {
 
       <Footer t={t} />
 
-      <WaitlistModal
-        t={t}
-        isOpen={isModalOpen}
-        onClose={closeWaitlist}
-      />
+      {currentPath === "/" && (
+        <WaitlistModal
+          t={t}
+          isOpen={isModalOpen}
+          onClose={closeWaitlist}
+        />
+      )}
 
       <Analytics />
     </div>

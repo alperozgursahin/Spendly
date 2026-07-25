@@ -882,6 +882,11 @@ class AppStrings {
 
     // --- Profile ---
     'profile_title': {AppLanguage.tr: 'Profil', AppLanguage.en: 'Profile'},
+    'profile_membership_pro': {AppLanguage.tr: 'PRO', AppLanguage.en: 'PRO'},
+    'profile_membership_standard': {
+      AppLanguage.tr: 'STANDART',
+      AppLanguage.en: 'STANDARD',
+    },
     'profile_unknown_username': {
       AppLanguage.tr: '@bilinmiyor',
       AppLanguage.en: '@unknown',

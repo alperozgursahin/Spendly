@@ -200,9 +200,35 @@ Deno.serve(async (request: Request) => {
   // the app or this function. Only the server-configured review account skips
   // email OTP; its normal Supabase refresh token establishes the client session.
   if (playReviewEmail && email === playReviewEmail) {
+    const { error: metadataError } = await adminClient.auth.admin.updateUserById(
+      passwordResult.user.id,
+      {
+        app_metadata: {
+          ...passwordResult.user.app_metadata,
+          play_review: true,
+        },
+      },
+    );
+    if (metadataError) {
+      console.error("login-handler review metadata update failed", metadataError.status);
+      return jsonResponse({ error: "Login service is unavailable" }, 503);
+    }
+
+    // Refresh once so the signed JWT/session also carries the server-controlled
+    // play_review app_metadata flag used after an app restart.
+    const { data: refreshed, error: refreshError } =
+      await authClient.auth.refreshSession({
+        refresh_token: passwordResult.session.refresh_token,
+      });
+    if (refreshError || !refreshed.session) {
+      console.error("login-handler review session refresh failed", refreshError?.status);
+      return jsonResponse({ error: "Login service is unavailable" }, 503);
+    }
+
     return jsonResponse({
       email,
-      reviewRefreshToken: passwordResult.session.refresh_token,
+      reviewAccess: true,
+      reviewRefreshToken: refreshed.session.refresh_token,
     });
   }
 

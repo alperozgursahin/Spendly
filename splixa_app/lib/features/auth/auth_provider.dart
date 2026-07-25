@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -108,6 +109,10 @@ class AuthController {
             'Secure review session could not be established.',
           );
         }
+        await _identifyRevenueCatUser();
+        if (data['reviewAccess'] == true) {
+          _ref.read(premiumProvider.notifier).grantReviewAccess();
+        }
         _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
         return LoginStartResult(email: email, requiresOtp: false);
       }
@@ -147,6 +152,7 @@ class AuthController {
           'The verification code is invalid or expired.',
         );
       }
+      await _identifyRevenueCatUser();
       _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
     } catch (_) {
       rethrow;
@@ -162,11 +168,28 @@ class AuthController {
         .trim()
         .replaceFirst(RegExp(r'^@'), '')
         .toLowerCase();
-    await _client.auth.signUp(
+    final response = await _client.auth.signUp(
       email: email.trim().toLowerCase(),
       password: password,
       data: {'username': normalizedUsername},
     );
+    if (response.session != null) {
+      await _identifyRevenueCatUser();
+    }
+  }
+
+  Future<void> _identifyRevenueCatUser() async {
+    if (kIsWeb) return;
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    try {
+      await Purchases.logIn(userId);
+      _ref.invalidate(premiumProvider);
+      _ref.invalidate(offeringsProvider);
+    } catch (error) {
+      debugPrint('RevenueCat user identification failed: $error');
+    }
   }
 
   Future<void> resetPassword({required String email}) async {

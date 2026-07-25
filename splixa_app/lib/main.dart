@@ -68,7 +68,12 @@ void main() async {
 
   if (revenueCatKey.isNotEmpty) {
     await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.warn);
-    await Purchases.configure(PurchasesConfiguration(revenueCatKey));
+    final purchasesConfiguration = PurchasesConfiguration(revenueCatKey);
+    final restoredUserId = Supabase.instance.client.auth.currentUser?.id;
+    if (restoredUserId != null) {
+      purchasesConfiguration.appUserID = restoredUserId;
+    }
+    await Purchases.configure(purchasesConfiguration);
   }
 
   runApp(const ProviderScope(child: MyApp()));

@@ -14,6 +14,7 @@ import '../../core/media_upload_service.dart';
 import '../../core/splixa_design.dart';
 import '../auth/auth_provider.dart';
 import '../social/social_provider.dart';
+import '../subscriptions/premium_provider.dart';
 import '../transactions/transaction_provider.dart';
 import 'currency_provider.dart';
 import 'services/pdf_export_service.dart';
@@ -49,6 +50,61 @@ class _SplixaProfileScreenState extends ConsumerState<SplixaProfileScreen> {
   }
 }
 
+class _MembershipBadge extends ConsumerWidget {
+  const _MembershipBadge({required this.isPremium});
+
+  final bool isPremium;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final backgroundColor = isPremium
+        ? const Color(0xFFFFE08A)
+        : colorScheme.surfaceContainerHighest;
+    final foregroundColor = isPremium
+        ? const Color(0xFF6D4800)
+        : colorScheme.onSurfaceVariant;
+    final label = tr(
+      ref,
+      isPremium ? 'profile_membership_pro' : 'profile_membership_standard',
+    );
+
+    return Semantics(
+      label: label,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: foregroundColor.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isPremium
+                  ? Icons.workspace_premium_rounded
+                  : Icons.person_outline_rounded,
+              size: 14,
+              color: foregroundColor,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: foregroundColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ProfileContent extends ConsumerWidget {
   const _ProfileContent({required this.profile});
   final Map<String, dynamic> profile;
@@ -56,6 +112,7 @@ class _ProfileContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final isPremium = ref.watch(premiumProvider);
     final username = (profile['username'] as String?)?.trim();
     final displayName = (profile['full_name'] as String?)?.trim();
     final avatarUrl = (profile['avatar_url'] as String?)?.trim();
@@ -92,14 +149,24 @@ class _ProfileContent extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            displayName?.isNotEmpty == true
-                                ? displayName!
-                                : (username?.isNotEmpty == true
-                                      ? username!
-                                      : 'Splixa user'),
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w800),
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  displayName?.isNotEmpty == true
+                                      ? displayName!
+                                      : (username?.isNotEmpty == true
+                                            ? username!
+                                            : 'Splixa user'),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.titleLarge
+                                      ?.copyWith(fontWeight: FontWeight.w800),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              _MembershipBadge(isPremium: isPremium),
+                            ],
                           ),
                           const SizedBox(height: 7),
                           if (username?.isNotEmpty == true)
