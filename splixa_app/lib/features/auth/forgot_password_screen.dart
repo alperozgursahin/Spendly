@@ -36,7 +36,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(tr(ref, 'forgot_password_sent_message'))),
       );
-      context.go('/reset-password?email=${Uri.encodeComponent(email)}');
+      context.go('/reset-password', extra: email);
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(

@@ -22,7 +22,6 @@ class _LoginVerificationScreenState
     extends ConsumerState<LoginVerificationScreen> {
   final _codeController = TextEditingController();
   bool _isLoading = false;
-  bool _isResending = false;
   String? _codeError;
 
   Future<void> _verifyCode() async {
@@ -48,26 +47,6 @@ class _LoginVerificationScreenState
       ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(error))));
     } finally {
       if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _resendCode() async {
-    setState(() => _isResending = true);
-    try {
-      await ref
-          .read(authControllerProvider)
-          .resendLoginOtp(email: widget.email);
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(tr(ref, 'auth_code_resent'))));
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(error))));
-    } finally {
-      if (mounted) setState(() => _isResending = false);
     }
   }
 
@@ -147,17 +126,6 @@ class _LoginVerificationScreenState
                       icon: Icons.verified_user_outlined,
                       loading: _isLoading,
                       onPressed: _verifyCode,
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: _isLoading || _isResending
-                          ? null
-                          : _resendCode,
-                      child: Text(
-                        _isResending
-                            ? tr(ref, 'auth_code_resending')
-                            : tr(ref, 'auth_code_resend'),
-                      ),
                     ),
                   ],
                 ),

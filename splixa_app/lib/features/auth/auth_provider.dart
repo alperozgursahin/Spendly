@@ -62,13 +62,20 @@ final authControllerProvider = Provider<AuthController>((ref) {
   return AuthController(Supabase.instance.client, ref);
 });
 
+class LoginStartResult {
+  const LoginStartResult({required this.email, required this.requiresOtp});
+
+  final String email;
+  final bool requiresOtp;
+}
+
 class AuthController {
   final SupabaseClient _client;
   final Ref _ref;
 
   AuthController(this._client, this._ref);
 
-  Future<String> beginTwoStepSignIn({
+  Future<LoginStartResult> beginTwoStepSignIn({
     required String identifier,
     required String password,
   }) async {
@@ -76,24 +83,48 @@ class AuthController {
         AuthFlowStage.loginVerification;
 
     try {
-      final email = await _resolveEmail(identifier);
-      final response = await _client.auth.signInWithPassword(
-        email: email,
-        password: password,
+      final response = await _client.functions.invoke(
+        'login-handler',
+        body: {'identifier': identifier.trim(), 'password': password},
       );
-      if (response.session == null) {
-        throw const AuthException('Invalid login credentials');
+      final data = response.data;
+      if (data is! Map || data['email'] is! String) {
+        throw const AuthException(
+          'Secure login service returned an invalid response.',
+        );
+      }
+      final email = (data['email'] as String).trim().toLowerCase();
+      if (email.isEmpty) {
+        throw const AuthException(
+          'Secure login service returned an invalid response.',
+        );
       }
 
-      // Password validation creates a real session. Remove it before sending
-      // the second-factor code so no app data can be opened with password only.
-      await _client.auth.signOut(scope: SignOutScope.local);
-      await _sendLoginOtp(email);
-      return email;
-    } catch (_) {
-      if (_client.auth.currentSession != null) {
-        await _client.auth.signOut(scope: SignOutScope.local);
+      final reviewRefreshToken = data['reviewRefreshToken'];
+      if (reviewRefreshToken is String && reviewRefreshToken.isNotEmpty) {
+        final authResponse = await _client.auth.setSession(reviewRefreshToken);
+        if (authResponse.session == null) {
+          throw const AuthException(
+            'Secure review session could not be established.',
+          );
+        }
+        _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
+        return LoginStartResult(email: email, requiresOtp: false);
       }
+
+      return LoginStartResult(email: email, requiresOtp: true);
+    } on FunctionException catch (error) {
+      _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
+      if (error.status == 401) {
+        throw const AuthException('Invalid login credentials');
+      }
+      if (error.status == 429) {
+        throw const AuthException(
+          'Too many login attempts. Please try again later.',
+        );
+      }
+      throw const AuthException('Secure login service is unavailable.');
+    } catch (_) {
       _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
       rethrow;
     }
@@ -122,43 +153,11 @@ class AuthController {
     }
   }
 
-  Future<void> resendLoginOtp({required String email}) async {
-    _ref.read(authFlowStageProvider.notifier).state =
-        AuthFlowStage.loginVerification;
-    await _sendLoginOtp(email.trim().toLowerCase());
-  }
-
-  Future<void> _sendLoginOtp(String email) async {
-    await _client.auth.signInWithOtp(email: email, shouldCreateUser: false);
-  }
-
-  Future<String> _resolveEmail(String identifier) async {
-    final normalized = identifier.trim().toLowerCase();
-    if (normalized.contains('@')) return normalized;
-
-    final response = await _client.rpc(
-      'get_email_by_username',
-      params: {'p_username': normalized.replaceFirst(RegExp(r'^@'), '')},
-    );
-    if (response == null || response.toString().trim().isEmpty) {
-      throw Exception('Bu kullanıcı adıyla eşleşen bir hesap bulunamadı.');
-    }
-    return response.toString().trim().toLowerCase();
-  }
-
   Future<void> signUp({
     required String username,
     required String email,
     required String password,
   }) async {
-    final checkResponse = await _client.rpc(
-      'check_username_exists',
-      params: {'p_username': username},
-    );
-    if (checkResponse == true) {
-      throw Exception('Bu kullanıcı adı maalesef çoktan alınmış.');
-    }
-
     final normalizedUsername = username
         .trim()
         .replaceFirst(RegExp(r'^@'), '')

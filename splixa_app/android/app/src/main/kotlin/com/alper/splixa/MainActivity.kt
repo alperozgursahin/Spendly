@@ -1,4 +1,4 @@
-package com.alper.splixa
+package net.splixa.app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,7 +1,7 @@
 name: splixa_app
 description: "Splixa is a professional budget and group expense tracking app."
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.11.4
@@ -57,9 +57,18 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  # İkonları otomatik oluşturmak için eklenen paket
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
   assets:
     - .env
     - assets/images/
+
+# İkon oluşturucu ayarları
+flutter_icons:
+  android: true
+  ios: true
+  # ÖNEMLİ: Logonun isminin ve konumunun tam olarak bu olduğundan emin ol
+  image_path: "assets/images/splixa_logo.png"

@@ -117,15 +117,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/verify-login',
-        builder: (context, state) => LoginVerificationScreen(
-          email: state.uri.queryParameters['email'] ?? '',
-        ),
+        builder: (context, state) =>
+            LoginVerificationScreen(email: state.extra as String? ?? ''),
       ),
       GoRoute(
         path: '/reset-password',
-        builder: (context, state) => ResetPasswordScreen(
-          email: state.uri.queryParameters['email'] ?? '',
-        ),
+        builder: (context, state) =>
+            ResetPasswordScreen(email: state.extra as String? ?? ''),
       ),
       GoRoute(
         path: '/update-password',

@@ -40,14 +40,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_validate()) return;
     setState(() => _isLoading = true);
     try {
-      final email = await ref
+      final result = await ref
           .read(authControllerProvider)
           .beginTwoStepSignIn(
             identifier: _identifierController.text,
             password: _passwordController.text,
           );
       if (!mounted) return;
-      context.go('/verify-login?email=${Uri.encodeComponent(email)}');
+      if (result.requiresOtp) {
+        context.go('/verify-login', extra: result.email);
+      } else {
+        context.go('/dashboard');
+      }
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(

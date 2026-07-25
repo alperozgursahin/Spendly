@@ -46,3 +46,9 @@ app.*.map.json
 /.env
 /.env.*
 !/.env.example
+
+# Android Signing & Secrets (KRİTİK!)
+/android/key.properties
+*.jks
+*.keystore
+/android/local.properties
