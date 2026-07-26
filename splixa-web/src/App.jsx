@@ -18,6 +18,9 @@ import {
   ArrowLeft,
 } from "lucide-react";
 
+const PLAY_STORE_URL =
+  "https://play.google.com/store/apps/details?id=net.splixa.app";
+
 const translations = {
   en: {
     announcement:
@@ -47,6 +50,7 @@ const translations = {
       titleLine1: "Split the bill.",
       titleLine2: "Not the friendship.",
       desc: "Splixa tracks shared expenses for trips, roommates and squads while helping you manage your personal budget in one simple app.",
+      ctaPrimary: "Download from Play Store",
       ctaSecondary: "Explore features",
       stats: [
         ["256-bit", "AES Encryption"],
@@ -237,6 +241,7 @@ If you have any questions about these Terms, please contact us at splixa.support
       titleLine1: "Hesabı böl.",
       titleLine2: "Dostluğu bölme.",
       desc: "Splixa; gezilerde, ev arkadaşlarında ve gruplarda ortak harcamaları takip ederken kişisel bütçeni de tek bir uygulamada yönetmene yardımcı olur.",
+      ctaPrimary: "Google Play'den indir",
       ctaSecondary: "Özellikleri keşfet",
       stats: [
         ["256-bit", "AES Şifreleme"],
@@ -517,18 +522,19 @@ function AnnouncementBar({ t, onJoinWaitlist }) {
   );
 }
 
-function WaitlistButton({ t, onClick, className = "" }) {
+function PlayStoreButton({ t }) {
   return (
-    <motion.button
-      type="button"
-      onClick={onClick}
+    <motion.a
+      href={PLAY_STORE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
       whileHover={{ y: -3 }}
       whileTap={{ scale: 0.97 }}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl bg-[#06B6D4] px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 dark:text-[#0B0F19] ${className}`}
+      className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#06B6D4] px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 dark:text-[#0B0F19]"
     >
-      {t.waitlist.button}
+      {t.hero.ctaPrimary}
       <ArrowRight className="h-4 w-4" />
-    </motion.button>
+    </motion.a>
   );
 }
 
@@ -872,6 +878,9 @@ function Nav({ t, lang, setLang, theme, setTheme, navigate }) {
           <span className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">
             Splixa
           </span>
+          <span className="rounded-full border border-cyan-500/25 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-700 dark:border-cyan-400/25 dark:bg-cyan-400/10 dark:text-cyan-300">
+            Beta
+          </span>
         </a>
 
         <nav className="hidden items-center gap-7 md:flex">
@@ -948,7 +957,7 @@ function Nav({ t, lang, setLang, theme, setTheme, navigate }) {
   );
 }
 
-function Hero({ t, onJoinWaitlist }) {
+function Hero({ t }) {
   return (
     <section className="relative overflow-hidden px-5 pb-24 pt-20 sm:pt-28">
       <GhostGrid />
@@ -979,10 +988,7 @@ function Hero({ t, onJoinWaitlist }) {
 
             <MountReveal delay={0.3}>
               <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <WaitlistButton
-                  t={t}
-                  onClick={onJoinWaitlist}
-                />
+                <PlayStoreButton t={t} />
 
                 <motion.a
                   whileHover={{ y: -3 }}
@@ -1554,10 +1560,7 @@ export default function SplixaApp() {
   } else {
     content = (
       <>
-        <Hero
-          t={t}
-          onJoinWaitlist={openWaitlist}
-        />
+        <Hero t={t} />
         <Features t={t} />
         <FAQ t={t} />
         <LegalGrid t={t} navigate={navigate} />
