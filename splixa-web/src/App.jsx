@@ -24,18 +24,18 @@ const PLAY_STORE_URL =
 const translations = {
   en: {
     announcement:
-      "Splixa is launching soon — join the waitlist for early access.",
+      "Splixa is now in beta — join the beta and help shape what comes next.",
     waitlist: {
-      eyebrow: "COMING SOON",
-      title: "Your money, better organized.",
+      eyebrow: "BETA ACCESS",
+      title: "Join the Splixa Beta.",
       description:
-        "Splixa is not just a group expense splitter — it is also a personal budget tracker that helps you understand, plan and manage your own spending.",
+        "Join our beta community for early access, product updates and a chance to help shape the future of Splixa.",
       emailPlaceholder: "Enter your email address",
-      button: "Join the Waitlist",
-      submitting: "Joining...",
-      success: "You're on the list!",
+      button: "Join the Beta",
+      submitting: "Joining the beta...",
+      success: "Welcome to the Splixa Beta!",
       error: "We couldn't add you right now. Please try again.",
-      close: "Close waitlist modal",
+      close: "Close beta signup modal",
       emailLabel: "Email address",
     },
     nav: {
@@ -215,18 +215,18 @@ If you have any questions about these Terms, please contact us at splixa.support
 
   tr: {
     announcement:
-      "Splixa çok yakında yayında — erken erişim için bekleme listesine katıl.",
+      "Splixa şimdi beta sürümünde — betaya katıl ve gelişimine yön ver.",
     waitlist: {
-      eyebrow: "ÇOK YAKINDA",
-      title: "Paranı daha iyi yönet.",
+      eyebrow: "BETA ERİŞİMİ",
+      title: "Splixa Beta'ya katıl.",
       description:
-        "Splixa yalnızca bir grup harcaması bölüştürme uygulaması değil — aynı zamanda kendi harcamalarını anlamana, planlamana ve yönetmene yardımcı olan kişisel bir bütçe takip aracıdır.",
+        "Erken erişim, ürün güncellemeleri ve Splixa'nın geleceğine yön verme fırsatı için beta topluluğumuza katıl.",
       emailPlaceholder: "E-posta adresini gir",
-      button: "Bekleme Listesine Katıl",
-      submitting: "Kaydediliyor...",
-      success: "Listeye katıldın!",
+      button: "Beta Programına Katıl",
+      submitting: "Betaya katılınıyor...",
+      success: "Splixa Beta'ya hoş geldin!",
       error: "\u015eu anda kayd\u0131n\u0131 olu\u015fturamad\u0131k. L\u00fctfen tekrar dene.",
-      close: "Bekleme listesi penceresini kapat",
+      close: "Beta katılım penceresini kapat",
       emailLabel: "E-posta adresi",
     },
     nav: {
@@ -522,6 +522,20 @@ function AnnouncementBar({ t, onJoinWaitlist }) {
   );
 }
 
+function GooglePlayIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-4 w-4 shrink-0"
+    >
+      <path d="M3 2.5 13.2 12 3 21.5Z" fill="#00D7FE" />
+      <path d="m3 2.5 13.7 7.3-3.5 2.2Z" fill="#00F076" />
+      <path d="m3 21.5 13.7-7.3-3.5-2.2Z" fill="#FFCF47" />
+      <path d="m16.7 9.8 3.2 1.7c.8.4.8.6 0 1l-3.2 1.7-3.5-2.2Z" fill="#FF3A44" />
+    </svg>
+  );
+}
 function PlayStoreButton({ t }) {
   return (
     <motion.a
@@ -532,7 +546,10 @@ function PlayStoreButton({ t }) {
       whileTap={{ scale: 0.97 }}
       className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#06B6D4] px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 dark:text-[#0B0F19]"
     >
-      {t.hero.ctaPrimary}
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm">
+        <GooglePlayIcon />
+      </span>
+      <span>{t.hero.ctaPrimary}</span>
       <ArrowRight className="h-4 w-4" />
     </motion.a>
   );
@@ -586,7 +603,7 @@ function WaitlistModal({ isOpen, onClose, t }) {
         },
         body: JSON.stringify({
           email,
-          source: "Splixa landing page waitlist",
+          source: "Splixa landing page beta signup",
         }),
       });
 
