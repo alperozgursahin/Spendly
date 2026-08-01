@@ -72,7 +72,16 @@ class AppStrings {
     'common_category': {AppLanguage.tr: 'Kategori', AppLanguage.en: 'Category'},
     'common_expense': {AppLanguage.tr: 'Gider', AppLanguage.en: 'Expense'},
     'common_income': {AppLanguage.tr: 'Gelir', AppLanguage.en: 'Income'},
-
+    'common_currency': {
+      AppLanguage.tr: 'Para birimi',
+      AppLanguage.en: 'Currency',
+    },
+    'exchange_rate_unavailable': {
+      AppLanguage.tr:
+          'Güncel döviz kuru alınamadı. Lütfen bağlantınızı kontrol edip tekrar deneyin.',
+      AppLanguage.en:
+          'The latest exchange rate could not be loaded. Check your connection and try again.',
+    },
     // --- Category names (shared across dashboard, statistics, add-expense) ---
     'category_market': {AppLanguage.tr: 'Market', AppLanguage.en: 'Groceries'},
     'category_food': {AppLanguage.tr: 'Yemek', AppLanguage.en: 'Food'},

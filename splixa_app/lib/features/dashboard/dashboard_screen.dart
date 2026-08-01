@@ -9,6 +9,7 @@ import '../auth/auth_provider.dart';
 import '../transactions/transaction_provider.dart';
 import '../transactions/transaction_model.dart';
 import '../profile/currency_provider.dart';
+import '../profile/currency_selector.dart';
 import '../profile/exchange_rate_provider.dart';
 import 'activity_provider.dart';
 import '../filters/filters_provider.dart';
@@ -624,6 +625,7 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
 
   String transactionType = 'expense';
   String selectedCategory = 'Market';
+  String? selectedCurrency;
 
   final List<String> predefinedCategories = [
     'Market',
@@ -647,7 +649,8 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
   Widget build(BuildContext context) {
     final isOther = selectedCategory == 'Diğer';
     final isIncome = transactionType == 'income';
-    final currency = ref.watch(currencyProvider);
+    final profileCurrency = ref.watch(currencyProvider);
+    final currency = selectedCurrency ?? profileCurrency;
 
     return Card(
       elevation: 0,
@@ -725,6 +728,15 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            CurrencySelector(
+              value: currency,
+              labelText: tr(ref, 'common_currency'),
+              compact: true,
+              onChanged: (value) {
+                setState(() => selectedCurrency = value);
+              },
             ),
             const SizedBox(height: 12),
             Row(
@@ -812,7 +824,9 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
   }
 
   Future<void> _saveTransaction() async {
-    final amount = double.tryParse(amountController.text) ?? 0.0;
+    final amount =
+        double.tryParse(amountController.text.trim().replaceAll(',', '.')) ??
+        0.0;
     final finalCategory = selectedCategory == 'Diğer'
         ? customCategoryController.text.trim()
         : selectedCategory;
@@ -822,9 +836,20 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
-    final selectedCurrency = ref.read(currencyProvider);
+    final String entryCurrency = selectedCurrency ?? ref.read(currencyProvider);
     final exchanger = ref.read(exchangeRateProvider);
-    final amountInTRY = exchanger.convertToTRY(amount, selectedCurrency);
+    final canConvert = entryCurrency == '₺' || await exchanger.ensureFresh();
+    if (!canConvert) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(ref, 'exchange_rate_unavailable'))),
+        );
+      }
+      return;
+    }
+    final amountInTRY = double.parse(
+      exchanger.convertToTRY(amount, entryCurrency).toStringAsFixed(2),
+    );
 
     final transaction = TransactionModel(
       userId: user.id,

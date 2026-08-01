@@ -6,6 +6,8 @@ import 'group_provider.dart';
 import 'group_transaction_model.dart';
 import 'group_model.dart';
 import '../profile/currency_provider.dart';
+import '../profile/currency_selector.dart';
+import '../profile/exchange_rate_provider.dart';
 
 class AddExpenseSheet extends ConsumerStatefulWidget {
   final String groupId;
@@ -31,6 +33,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
 
   String _splitType = 'equal'; // 'equal', 'percentage', 'exact'
   Set<String> _selectedUsers = {};
+  String? _selectedCurrency;
 
   @override
   void initState() {
@@ -62,7 +65,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     }
   }
 
-  double get _totalAmount => double.tryParse(_amountController.text) ?? 0.0;
+  double get _totalAmount => _parseValue(_amountController.text) ?? 0.0;
 
   TextEditingController _exactControllerFor(String userId) {
     return _exactControllers.putIfAbsent(userId, () => TextEditingController());
@@ -132,7 +135,8 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
   @override
   Widget build(BuildContext context) {
     final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
-    final currency = ref.watch(currencyProvider);
+    final profileCurrency = ref.watch(currencyProvider);
+    final currency = _selectedCurrency ?? profileCurrency;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -172,6 +176,14 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
+          ),
+          const SizedBox(height: 16),
+          CurrencySelector(
+            value: currency,
+            labelText: tr(ref, 'common_currency'),
+            onChanged: (value) {
+              setState(() => _selectedCurrency = value);
+            },
           ),
           const SizedBox(height: 24),
 
@@ -413,9 +425,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     final amount = _totalAmount;
     if (amount <= 0 || _descController.text.isEmpty || _selectedUsers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(tr(ref, 'groups_expense_validation_generic')),
-        ),
+        SnackBar(content: Text(tr(ref, 'groups_expense_validation_generic'))),
       );
       return;
     }
@@ -453,9 +463,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         final value = _percentageValues[userId];
         if (value == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(tr(ref, 'groups_percentage_validation')),
-            ),
+            SnackBar(content: Text(tr(ref, 'groups_percentage_validation'))),
           );
           return;
         }
@@ -468,7 +476,9 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       );
       if ((totalPercentage - 100).abs() > 0.01) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(tr(ref, 'groups_percentage_total_validation'))),
+          SnackBar(
+            content: Text(tr(ref, 'groups_percentage_total_validation')),
+          ),
         );
         return;
       }
@@ -485,9 +495,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       final splitValues = _syncExactSplitValues(amount);
       if (splitValues == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(tr(ref, 'groups_exact_validation')),
-          ),
+          SnackBar(content: Text(tr(ref, 'groups_exact_validation'))),
         );
         return;
       }
@@ -501,13 +509,36 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       }
     }
 
+    final String entryCurrency =
+        _selectedCurrency ?? ref.read(currencyProvider);
+    final exchanger = ref.read(exchangeRateProvider);
+    final canConvert = entryCurrency == '₺' || await exchanger.ensureFresh();
+    if (!canConvert) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(ref, 'exchange_rate_unavailable'))),
+        );
+      }
+      return;
+    }
+
+    final amountInTRY = _roundMoney(
+      exchanger.convertToTRY(amount, entryCurrency),
+    );
+    final splitDataInTRY = _convertSplitDataToTRY(
+      splitData,
+      entryCurrency,
+      exchanger,
+      amountInTRY,
+    );
+
     final tx = GroupTransactionModel(
       groupId: widget.groupId,
       payerId: widget.currentUserId,
-      amount: amount,
+      amount: amountInTRY,
       description: _descController.text,
       splitType: _splitType,
-      splitData: splitData,
+      splitData: splitDataInTRY,
       status: 'pending',
     );
 
@@ -525,6 +556,47 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(e))));
       }
     }
+  }
+
+  double _roundMoney(double value) {
+    return double.parse(value.toStringAsFixed(2));
+  }
+
+  Map<String, dynamic> _convertSplitDataToTRY(
+    Map<String, dynamic> source,
+    String currency,
+    ExchangeRateService exchanger,
+    double targetTotal,
+  ) {
+    final converted = <String, dynamic>{};
+    var convertedTotal = 0.0;
+
+    for (final entry in source.entries) {
+      final rawValue = Map<String, dynamic>.from(entry.value as Map);
+      final sourceAmount = (rawValue['amount'] as num).toDouble();
+      final convertedAmount = _roundMoney(
+        exchanger.convertToTRY(sourceAmount, currency),
+      );
+      rawValue['amount'] = convertedAmount;
+      converted[entry.key] = rawValue;
+      convertedTotal += convertedAmount;
+    }
+
+    if (converted.isNotEmpty) {
+      final adjustment = _roundMoney(targetTotal - convertedTotal);
+      if (adjustment.abs() >= 0.01) {
+        final firstKey = converted.keys.first;
+        final firstValue = Map<String, dynamic>.from(
+          converted[firstKey] as Map,
+        );
+        firstValue['amount'] = _roundMoney(
+          (firstValue['amount'] as num).toDouble() + adjustment,
+        );
+        converted[firstKey] = firstValue;
+      }
+    }
+
+    return converted;
   }
 
   Map<String, double>? _syncExactSplitValues(double targetTotal) {
