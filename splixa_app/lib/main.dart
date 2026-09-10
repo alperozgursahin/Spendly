@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -9,6 +8,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/foundation.dart';
+import 'core/analytics_service.dart';
 import 'core/locale_provider.dart';
 import 'core/app_theme_provider.dart';
 import 'core/app_strings.dart';
@@ -38,16 +38,20 @@ import 'main_scaffold.dart';
 import 'features/subscriptions/revenuecat_config.dart';
 
 class GoRouterRefreshStream extends ChangeNotifier {
-  GoRouterRefreshStream(Stream<dynamic> stream) {
+  GoRouterRefreshStream(Stream<dynamic> stream, {Listenable? listenable})
+    : _listenable = listenable {
     notifyListeners();
     _subscription = stream.asBroadcastStream().listen(
       (dynamic _) => notifyListeners(),
     );
+    _listenable?.addListener(notifyListeners);
   }
   late final StreamSubscription<dynamic> _subscription;
+  final Listenable? _listenable;
   @override
   void dispose() {
     _subscription.cancel();
+    _listenable?.removeListener(notifyListeners);
     super.dispose();
   }
 }
@@ -57,14 +61,21 @@ void main() async {
 
   await dotenv.load(fileName: '.env');
 
+  await AnalyticsService.instance.initialize();
+  final onboardingController = await OnboardingController.load();
+
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL'] ?? '',
     anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
 
-  final revenueCatKey = Platform.isAndroid
-      ? RevenueCatConfig.apiKeyAndroid
-      : RevenueCatConfig.apiKeyIOS;
+  final revenueCatKey = kIsWeb
+      ? ''
+      : switch (defaultTargetPlatform) {
+          TargetPlatform.android => RevenueCatConfig.apiKeyAndroid,
+          TargetPlatform.iOS => RevenueCatConfig.apiKeyIOS,
+          _ => '',
+        };
 
   if (revenueCatKey.isNotEmpty) {
     await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.warn);
@@ -76,24 +87,44 @@ void main() async {
     await Purchases.configure(purchasesConfiguration);
   }
 
-  runApp(const ProviderScope(child: MyApp()));
+  runApp(
+    ProviderScope(
+      overrides: [
+        onboardingControllerProvider.overrideWith(
+          (ref) => onboardingController,
+        ),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
+  final onboardingController = ref.read(onboardingControllerProvider);
+  final analytics = ref.read(analyticsServiceProvider);
+  final navigationObserver = analytics.navigationObserver;
+
   return GoRouter(
     initialLocation: '/onboarding',
     refreshListenable: GoRouterRefreshStream(
       Supabase.instance.client.auth.onAuthStateChange,
+      listenable: onboardingController,
     ),
+    observers: [if (navigationObserver != null) navigationObserver],
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
       final isAuth = session != null;
       final path = state.uri.path;
       final authFlow = ref.read(authFlowStageProvider);
+      final hasCompletedOnboarding = onboardingController.completed;
       final isPublicAuthRoute =
           path == '/onboarding' ||
           path == '/login' ||
           path == '/register' ||
+          path == '/forgot-password' ||
+          path == '/verify-login' ||
+          path == '/reset-password';
+      final isRecoveryRoute =
           path == '/forgot-password' ||
           path == '/verify-login' ||
           path == '/reset-password';
@@ -102,8 +133,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Supabase session. Never treat those temporary sessions as completed
       // authentication while a verification flow is pending.
       if (authFlow != AuthFlowStage.none && isPublicAuthRoute) return null;
+      // Onboarding completion is persisted locally. A first-time install is
+      // always introduced to Splixa before entering the app, while a restored
+      // session on a returning install goes straight to the dashboard.
+      if (!hasCompletedOnboarding &&
+          path != '/onboarding' &&
+          !isRecoveryRoute) {
+        return '/onboarding';
+      }
+      if (hasCompletedOnboarding && path == '/onboarding') {
+        return isAuth ? '/dashboard' : '/login';
+      }
       if (!isAuth && !isPublicAuthRoute) return '/login';
-      if (isAuth && isPublicAuthRoute) return '/dashboard';
+      if (isAuth && isPublicAuthRoute) {
+        return hasCompletedOnboarding ? '/dashboard' : '/onboarding';
+      }
       return null;
     },
     routes: [
@@ -248,7 +292,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/paywall',
-        builder: (context, state) => const PaywallScreen(),
+        builder: (context, state) => PaywallScreen(
+          source: PaywallSource.fromAnalyticsValue(
+            state.uri.queryParameters['source'],
+          ),
+        ),
       ),
     ],
   );

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/analytics_service.dart';
 import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
+import 'financial_models.dart';
 import 'group_provider.dart';
-import 'group_transaction_model.dart';
 import 'group_model.dart';
 import '../profile/currency_provider.dart';
 import '../profile/currency_selector.dart';
 import '../profile/exchange_rate_provider.dart';
+import '../subscriptions/premium_provider.dart';
 
 class AddExpenseSheet extends ConsumerStatefulWidget {
   final String groupId;
@@ -137,6 +140,8 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
     final profileCurrency = ref.watch(currencyProvider);
     final currency = _selectedCurrency ?? profileCurrency;
+    final isPremium = ref.watch(premiumProvider);
+    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
 
     return Padding(
       padding: EdgeInsets.only(
@@ -154,7 +159,20 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => _handleProFeature(
+              source: PaywallSource.receiptScan,
+              isPremium: isPremium,
+            ),
+            icon: const Icon(Icons.document_scanner_rounded),
+            label: Text(
+              isTurkish
+                  ? 'Fiş Tara ✨${isPremium ? '' : ' · Pro'}'
+                  : 'Scan Receipt ✨${isPremium ? '' : ' · Pro'}',
+            ),
+          ),
+          const SizedBox(height: 16),
           TextField(
             controller: _descController,
             decoration: InputDecoration(
@@ -181,6 +199,14 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
           CurrencySelector(
             value: currency,
             labelText: tr(ref, 'common_currency'),
+            customRateUnlocked: isPremium,
+            customRateTooltip: isTurkish
+                ? 'Özel döviz kuru${isPremium ? '' : ' · Pro'}'
+                : 'Custom exchange rate${isPremium ? '' : ' · Pro'}',
+            onCustomRatePressed: () => _handleProFeature(
+              source: PaywallSource.customExchangeRate,
+              isPremium: isPremium,
+            ),
             onChanged: (value) {
               setState(() => _selectedCurrency = value);
             },
@@ -261,6 +287,27 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
           ),
           const SizedBox(height: 24),
         ],
+      ),
+    );
+  }
+
+  void _handleProFeature({
+    required PaywallSource source,
+    required bool isPremium,
+  }) {
+    if (!isPremium) {
+      context.push('/paywall?source=${source.analyticsValue}');
+      return;
+    }
+
+    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isTurkish
+              ? 'Bu Pro aracı yakında kullanıma açılacak.'
+              : 'This Pro tool is coming soon.',
+        ),
       ),
     );
   }
@@ -418,9 +465,6 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     );
   }
 
-  String _initialStatusFor(String uid) =>
-      uid == widget.currentUserId ? 'approved' : 'pending';
-
   void _submitExpense() async {
     final amount = _totalAmount;
     if (amount <= 0 || _descController.text.isEmpty || _selectedUsers.isEmpty) {
@@ -430,31 +474,24 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       return;
     }
 
-    Map<String, dynamic> splitData = {};
+    final splitAmounts = <String, double>{};
+    final splitPercentages = <String, double>{};
 
     if (_splitType == 'equal') {
       final share = double.parse(
         (amount / _selectedUsers.length).toStringAsFixed(2),
       );
       for (var uid in _selectedUsers) {
-        splitData[uid] = {
-          'amount': share,
-          'paid': uid == widget.currentUserId,
-          'status': _initialStatusFor(uid),
-        };
+        splitAmounts[uid] = share;
       }
 
       // Fix rounding errors (add remainder to current user if they are in the split, or first user)
       double totalCalculated = share * _selectedUsers.length;
       if ((amount - totalCalculated).abs() > 0.001) {
         String firstUser = _selectedUsers.first;
-        splitData[firstUser] = {
-          'amount': double.parse(
-            (share + (amount - totalCalculated)).toStringAsFixed(2),
-          ),
-          'paid': firstUser == widget.currentUserId,
-          'status': _initialStatusFor(firstUser),
-        };
+        splitAmounts[firstUser] = double.parse(
+          (share + (amount - totalCalculated)).toStringAsFixed(2),
+        );
       }
     } else if (_splitType == 'percentage') {
       _syncPercentageAutoFill();
@@ -485,11 +522,10 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
 
       for (var uid in _selectedUsers) {
         final pct = splitValues[uid] ?? 0.0;
-        splitData[uid] = {
-          'amount': double.parse(((amount * pct) / 100).toStringAsFixed(2)),
-          'paid': uid == widget.currentUserId,
-          'status': _initialStatusFor(uid),
-        };
+        splitAmounts[uid] = double.parse(
+          ((amount * pct) / 100).toStringAsFixed(2),
+        );
+        splitPercentages[uid] = pct;
       }
     } else if (_splitType == 'exact') {
       final splitValues = _syncExactSplitValues(amount);
@@ -501,18 +537,16 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       }
 
       for (var uid in _selectedUsers) {
-        splitData[uid] = {
-          'amount': splitValues[uid] ?? 0.0,
-          'paid': uid == widget.currentUserId,
-          'status': _initialStatusFor(uid),
-        };
+        splitAmounts[uid] = splitValues[uid] ?? 0.0;
       }
     }
 
     final String entryCurrency =
         _selectedCurrency ?? ref.read(currencyProvider);
+    final currencyOption = currencyOptionForSymbol(entryCurrency);
     final exchanger = ref.read(exchangeRateProvider);
-    final canConvert = entryCurrency == '₺' || await exchanger.ensureFresh();
+    final isBaseCurrency = currencyOption.code == 'TRY';
+    final canConvert = isBaseCurrency || await exchanger.ensureFresh();
     if (!canConvert) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -522,30 +556,41 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       return;
     }
 
-    final amountInTRY = _roundMoney(
-      exchanger.convertToTRY(amount, entryCurrency),
+    final exchangeRate = isBaseCurrency
+        ? 1.0
+        : 1 / exchanger.rateFor(entryCurrency);
+    final baseAmount = _roundMoney(amount * exchangeRate);
+    final shares = _buildExpenseShares(
+      originalShares: splitAmounts,
+      percentages: splitPercentages,
+      exchangeRate: exchangeRate,
+      targetBaseAmount: baseAmount,
     );
-    final splitDataInTRY = _convertSplitDataToTRY(
-      splitData,
-      entryCurrency,
-      exchanger,
-      amountInTRY,
-    );
+    final rateLockedAt = isBaseCurrency
+        ? DateTime.now().toUtc()
+        : exchanger.lastUpdatedAt!;
 
-    final tx = GroupTransactionModel(
+    final expense = ExpenseDraft(
       groupId: widget.groupId,
       payerId: widget.currentUserId,
-      amount: amountInTRY,
       description: _descController.text,
-      splitType: _splitType,
-      splitData: splitDataInTRY,
-      status: 'pending',
+      expenseDate: DateTime.now(),
+      splitType: ExpenseSplitTypeCodec.parse(_splitType),
+      originalAmount: amount,
+      currencyCode: currencyOption.code,
+      baseAmount: baseAmount,
+      baseCurrencyCode: 'TRY',
+      exchangeRate: exchangeRate,
+      rateSource: isBaseCurrency ? 'identity' : exchanger.currentRateSource,
+      rateLockedAt: rateLockedAt,
+      shares: shares,
     );
 
     try {
-      await ref.read(groupServiceProvider).addGroupTransaction(tx);
-      ref.invalidate(groupTransactionsStreamProvider(widget.groupId));
-      ref.invalidate(balanceEngineProvider(widget.groupId));
+      await ref.read(groupServiceProvider).createExpense(expense);
+      ref.invalidate(groupExpensesStreamProvider(widget.groupId));
+      ref.invalidate(groupBalancesProvider(widget.groupId));
+      ref.invalidate(groupSettlementsProvider(widget.groupId));
       ref.read(groupDataRefreshProvider.notifier).state++;
 
       if (mounted) Navigator.pop(context);
@@ -562,41 +607,36 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     return double.parse(value.toStringAsFixed(2));
   }
 
-  Map<String, dynamic> _convertSplitDataToTRY(
-    Map<String, dynamic> source,
-    String currency,
-    ExchangeRateService exchanger,
-    double targetTotal,
-  ) {
-    final converted = <String, dynamic>{};
-    var convertedTotal = 0.0;
-
-    for (final entry in source.entries) {
-      final rawValue = Map<String, dynamic>.from(entry.value as Map);
-      final sourceAmount = (rawValue['amount'] as num).toDouble();
-      final convertedAmount = _roundMoney(
-        exchanger.convertToTRY(sourceAmount, currency),
-      );
-      rawValue['amount'] = convertedAmount;
-      converted[entry.key] = rawValue;
-      convertedTotal += convertedAmount;
+  List<ExpenseShareDraft> _buildExpenseShares({
+    required Map<String, double> originalShares,
+    required Map<String, double> percentages,
+    required double exchangeRate,
+    required double targetBaseAmount,
+  }) {
+    final baseShares = {
+      for (final entry in originalShares.entries)
+        entry.key: _roundMoney(entry.value * exchangeRate),
+    };
+    final convertedTotal = baseShares.values.fold<double>(
+      0,
+      (sum, value) => sum + value,
+    );
+    final adjustment = _roundMoney(targetBaseAmount - convertedTotal);
+    if (baseShares.isNotEmpty && adjustment.abs() >= 0.01) {
+      final firstKey = baseShares.keys.first;
+      baseShares[firstKey] = _roundMoney(baseShares[firstKey]! + adjustment);
     }
 
-    if (converted.isNotEmpty) {
-      final adjustment = _roundMoney(targetTotal - convertedTotal);
-      if (adjustment.abs() >= 0.01) {
-        final firstKey = converted.keys.first;
-        final firstValue = Map<String, dynamic>.from(
-          converted[firstKey] as Map,
-        );
-        firstValue['amount'] = _roundMoney(
-          (firstValue['amount'] as num).toDouble() + adjustment,
-        );
-        converted[firstKey] = firstValue;
-      }
-    }
-
-    return converted;
+    return originalShares.entries
+        .map(
+          (entry) => ExpenseShareDraft(
+            participantId: entry.key,
+            originalShareAmount: entry.value,
+            baseShareAmount: baseShares[entry.key]!,
+            sharePercentage: percentages[entry.key],
+          ),
+        )
+        .toList(growable: false);
   }
 
   Map<String, double>? _syncExactSplitValues(double targetTotal) {

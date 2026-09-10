@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
@@ -8,6 +10,7 @@ import '../dashboard/heatmap_provider.dart';
 import '../filters/filters_provider.dart';
 import '../groups/group_provider.dart';
 import '../notifications/notification_provider.dart';
+import '../onboarding/onboarding_screen.dart';
 import '../profile/currency_provider.dart';
 import '../transactions/transaction_provider.dart';
 import '../social/chat_screen.dart';
@@ -70,11 +73,47 @@ class LoginStartResult {
   final bool requiresOtp;
 }
 
+class AccountDeletionException implements Exception {
+  const AccountDeletionException({
+    required this.code,
+    required this.message,
+    this.groupNames = const [],
+  });
+
+  final String code;
+  final String message;
+  final List<String> groupNames;
+
+  @override
+  String toString() => message;
+}
+
 class AuthController {
+  static const _googleAuthCallback = 'splixa://auth-callback';
+
   final SupabaseClient _client;
   final Ref _ref;
 
   AuthController(this._client, this._ref);
+
+  /// Starts Supabase's PKCE-backed Google OAuth flow. Supabase Flutter
+  /// launches Google in an external browser on Android and completes the
+  /// session when the configured app deep link is received.
+  Future<void> signInWithGoogle() async {
+    _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
+
+    final launched = await _client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: kIsWeb ? null : _googleAuthCallback,
+      scopes: 'openid email profile',
+      queryParams: const {'prompt': 'select_account'},
+    );
+    if (!launched) {
+      throw const AuthException(
+        'Google sign-in could not be opened. Please try again.',
+      );
+    }
+  }
 
   Future<LoginStartResult> beginTwoStepSignIn({
     required String identifier,
@@ -253,6 +292,84 @@ class AuthController {
     // data into a provider cache during the invalidation window.
     await _client.auth.signOut();
 
+    await _clearLocalAccountState(outgoingUserId);
+  }
+
+  Future<void> deleteAccount() async {
+    final outgoingUserId = _client.auth.currentUser?.id;
+    if (outgoingUserId == null) {
+      throw const AccountDeletionException(
+        code: 'UNAUTHORIZED',
+        message: 'Your session has expired. Please sign in again.',
+      );
+    }
+
+    try {
+      final response = await _client.functions.invoke(
+        'delete-account',
+        body: const {'confirmation': 'DELETE'},
+      );
+      final data = response.data;
+      if (data is! Map || data['deleted'] != true) {
+        throw const AccountDeletionException(
+          code: 'INVALID_RESPONSE',
+          message: 'The deletion service returned an invalid response.',
+        );
+      }
+    } on FunctionException catch (error) {
+      throw _accountDeletionExceptionFrom(error);
+    }
+
+    // The server has hard-deleted the Auth user, so only local sign-out is
+    // required. This clears Supabase's persisted access and refresh tokens
+    // without making a second network request for an account that no longer
+    // exists.
+    await _client.auth.signOut(scope: SignOutScope.local);
+    await _clearLocalAccountState(outgoingUserId, resetOnboarding: true);
+  }
+
+  AccountDeletionException _accountDeletionExceptionFrom(
+    FunctionException error,
+  ) {
+    dynamic details = error.details;
+    if (details is String) {
+      try {
+        details = jsonDecode(details);
+      } catch (_) {}
+    }
+
+    dynamic errorBody = details;
+    if (details is Map && details['error'] is Map) {
+      errorBody = details['error'];
+    }
+    if (errorBody is Map) {
+      final groups = errorBody['groups'];
+      final groupNames = groups is List
+          ? groups
+                .whereType<Map>()
+                .map((group) => group['name']?.toString().trim() ?? '')
+                .where((name) => name.isNotEmpty)
+                .toList(growable: false)
+          : const <String>[];
+      return AccountDeletionException(
+        code: errorBody['code']?.toString() ?? 'DELETION_FAILED',
+        message:
+            errorBody['message']?.toString() ??
+            'Account deletion could not be completed.',
+        groupNames: groupNames,
+      );
+    }
+
+    return const AccountDeletionException(
+      code: 'DELETION_FAILED',
+      message: 'Account deletion could not be completed. Please try again.',
+    );
+  }
+
+  Future<void> _clearLocalAccountState(
+    String? outgoingUserId, {
+    bool resetOnboarding = false,
+  }) async {
     try {
       await Purchases.logOut();
     } catch (_) {}
@@ -261,16 +378,20 @@ class AuthController {
       await NotificationCursorStorage.clearCursor(outgoingUserId);
     }
     await CurrencyNotifier.clearPersistedCurrency();
+    if (resetOnboarding) {
+      await _ref.read(onboardingControllerProvider).reset();
+    }
 
     _ref.invalidate(authStateProvider);
     _ref.invalidate(authClientProvider);
     _ref.invalidate(currencyProvider);
     _ref.invalidate(transactionFilterProvider);
-    _ref.invalidate(groupPaidOverridesProvider);
     _ref.invalidate(groupDataRefreshProvider);
     _ref.invalidate(userGroupsProvider);
     _ref.invalidate(groupMembersProvider);
-    _ref.invalidate(groupTransactionsStreamProvider);
+    _ref.invalidate(groupExpensesStreamProvider);
+    _ref.invalidate(groupBalancesProvider);
+    _ref.invalidate(groupSettlementsProvider);
     _ref.invalidate(transactionsProvider);
     _ref.invalidate(activityProvider);
     _ref.invalidate(heatmapRangeProvider);

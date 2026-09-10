@@ -13,49 +13,58 @@ class MainScaffold extends StatelessWidget {
     return 0;
   }
 
+  bool _showsPrimaryNavigation(String location) {
+    return location == '/dashboard' ||
+        location == '/social' ||
+        location == '/debts' ||
+        location == '/profile';
+  }
+
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     return Scaffold(
       body: child,
-      bottomNavigationBar: NavigationBar(
-        height: 72,
-        selectedIndex: _selectedIndex(location),
-        onDestinationSelected: (index) {
-          switch (index) {
-            case 0:
-              context.go('/dashboard');
-            case 1:
-              context.go('/social');
-            case 2:
-              context.go('/debts');
-            case 3:
-              context.go('/profile');
-          }
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline_rounded),
-            selectedIcon: Icon(Icons.people_rounded),
-            label: 'Friends',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet_rounded),
-            label: 'Debts',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
-            label: 'Profile',
-          ),
-        ],
-      ),
+      bottomNavigationBar: _showsPrimaryNavigation(location)
+          ? NavigationBar(
+              height: 72,
+              selectedIndex: _selectedIndex(location),
+              onDestinationSelected: (index) {
+                switch (index) {
+                  case 0:
+                    context.go('/dashboard');
+                  case 1:
+                    context.go('/social');
+                  case 2:
+                    context.go('/debts');
+                  case 3:
+                    context.go('/profile');
+                }
+              },
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home_rounded),
+                  label: 'Home',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.people_outline_rounded),
+                  selectedIcon: Icon(Icons.people_rounded),
+                  label: 'Friends',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.account_balance_wallet_outlined),
+                  selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+                  label: 'Debts',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.person_outline_rounded),
+                  selectedIcon: Icon(Icons.person_rounded),
+                  label: 'Profile',
+                ),
+              ],
+            )
+          : null,
     );
   }
 }

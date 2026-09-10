@@ -18,10 +18,8 @@ migrate_working_dir/
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# Local IDE state
+.vscode/
 
 # Flutter/Dart/Pub related
 **/doc/api/
@@ -32,6 +30,10 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+!/pubspec.lock
+!/android/gradlew
+!/android/gradlew.bat
+!/android/gradle/wrapper/gradle-wrapper.jar
 
 # Symbolication related
 app.*.symbols
@@ -43,12 +45,22 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-/.env
-/.env.*
-!/.env.example
+# Runtime configuration. The example contract is safe to commit.
+.env
+.env.*
+!.env.example
+
+# Firebase platform configuration is injected per release environment.
+**/google-services.json
+**/GoogleService-Info.plist
+.firebase/
+firebase-debug.log
 
 # Android Signing & Secrets (KRİTİK!)
-/android/key.properties
+**/key.properties
 *.jks
 *.keystore
-/android/local.properties
+**/local.properties
+
+# Supabase CLI link metadata and local service versions.
+supabase/.temp/

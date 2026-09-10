@@ -2,18 +2,24 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/analytics_service.dart';
 import 'revenuecat_config.dart';
 
 final premiumProvider = StateNotifierProvider<PremiumNotifier, bool>((ref) {
-  return PremiumNotifier();
+  return PremiumNotifier(ref);
 });
 
+final customerInfoProvider = StateProvider<CustomerInfo?>((ref) => null);
+
 class PremiumNotifier extends StateNotifier<bool> {
-  PremiumNotifier() : super(_hasServerReviewAccess()) {
+  PremiumNotifier(this._ref) : super(_hasServerReviewAccess()) {
     _reviewAccess = state;
+    _customerInfoListener = _updatePremiumStatus;
     _init();
   }
 
+  final Ref _ref;
+  late final CustomerInfoUpdateListener _customerInfoListener;
   bool _reviewAccess = false;
 
   static bool _hasServerReviewAccess() {
@@ -35,9 +41,7 @@ class PremiumNotifier extends StateNotifier<bool> {
     try {
       if (kIsWeb) return;
 
-      Purchases.addCustomerInfoUpdateListener((customerInfo) {
-        _updatePremiumStatus(customerInfo);
-      });
+      Purchases.addCustomerInfoUpdateListener(_customerInfoListener);
 
       final customerInfo = await Purchases.getCustomerInfo();
       _updatePremiumStatus(customerInfo);
@@ -47,14 +51,10 @@ class PremiumNotifier extends StateNotifier<bool> {
   }
 
   void _updatePremiumStatus(CustomerInfo customerInfo) {
+    _ref.read(customerInfoProvider.notifier).state = customerInfo;
     if (RevenueCatConfig.premiumEntitlementId.isEmpty) return;
 
-    final hasRevenueCatEntitlement =
-        customerInfo
-            .entitlements
-            .all[RevenueCatConfig.premiumEntitlementId]
-            ?.isActive ??
-        false;
+    final hasRevenueCatEntitlement = _hasActiveEntitlement(customerInfo);
     final isPro = _reviewAccess || hasRevenueCatEntitlement;
 
     if (mounted && state != isPro) {
@@ -62,12 +62,31 @@ class PremiumNotifier extends StateNotifier<bool> {
     }
   }
 
-  Future<bool> purchasePackage(Package package) async {
+  Future<bool> purchasePackage(
+    Package package, {
+    required PaywallSource source,
+  }) async {
+    final analytics = _ref.read(analyticsServiceProvider);
+    await analytics.purchaseAttempt(
+      source: source,
+      packageId: package.identifier,
+      productId: package.storeProduct.identifier,
+    );
+
     try {
       final purchaseResult = await Purchases.purchase(
         PurchaseParams.package(package),
       );
       _updatePremiumStatus(purchaseResult.customerInfo);
+      if (_hasActiveEntitlement(purchaseResult.customerInfo)) {
+        await analytics.purchaseSuccess(
+          source: source,
+          packageId: package.identifier,
+          productId: package.storeProduct.identifier,
+          currencyCode: package.storeProduct.currencyCode,
+          price: package.storeProduct.price,
+        );
+      }
       return state;
     } catch (e) {
       debugPrint("Purchase failed: $e");
@@ -88,7 +107,22 @@ class PremiumNotifier extends StateNotifier<bool> {
 
   void reset() {
     _reviewAccess = false;
+    _ref.read(customerInfoProvider.notifier).state = null;
     state = false;
+  }
+
+  bool _hasActiveEntitlement(CustomerInfo customerInfo) {
+    final entitlementId = RevenueCatConfig.premiumEntitlementId;
+    if (entitlementId.isEmpty) return false;
+    return customerInfo.entitlements.all[entitlementId]?.isActive ?? false;
+  }
+
+  @override
+  void dispose() {
+    if (!kIsWeb) {
+      Purchases.removeCustomerInfoUpdateListener(_customerInfoListener);
+    }
+    super.dispose();
   }
 }
 

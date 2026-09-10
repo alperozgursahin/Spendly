@@ -5,6 +5,7 @@ import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import '../subscriptions/premium_provider.dart';
+import '../../core/analytics_service.dart';
 import 'group_provider.dart';
 
 class GroupsScreen extends ConsumerStatefulWidget {
@@ -103,7 +104,9 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
           final groupsCount = groupsAsync.value?.length ?? 0;
 
           if (!isPremium && groupsCount >= 2) {
-            context.push('/paywall');
+            context.push(
+              '/paywall?source=${PaywallSource.unlimitedGroups.analyticsValue}',
+            );
           } else {
             _showCreateGroupDialog(context, ref);
           }

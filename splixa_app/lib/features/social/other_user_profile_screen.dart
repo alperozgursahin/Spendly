@@ -67,7 +67,8 @@ class OtherUserProfileScreen extends ConsumerWidget {
       body: profileAsync.when(
         data: (profile) {
           final username =
-              profile['username'] as String? ?? tr(ref, 'other_profile_unknown');
+              profile['username'] as String? ??
+              tr(ref, 'other_profile_unknown');
 
           return Center(
             child: Padding(
@@ -141,7 +142,9 @@ class OtherUserProfileScreen extends ConsumerWidget {
                                 );
                               },
                               icon: const Icon(Icons.message),
-                              label: Text(tr(ref, 'other_profile_send_message')),
+                              label: Text(
+                                tr(ref, 'other_profile_send_message'),
+                              ),
                             ),
                           ],
                         ],

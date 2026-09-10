@@ -77,7 +77,7 @@ class StatisticsScreen extends ConsumerWidget {
           if (sanitized.isEmpty) continue;
           categorySums[sanitized] =
               (categorySums[sanitized] ?? 0) +
-              exchanger.convertFromTRY(t.amount, currency);
+              exchanger.convertFromTRY(t.baseAmount, currency);
         }
 
         // Validated categorical palette (dataviz skill's references/palette.md):

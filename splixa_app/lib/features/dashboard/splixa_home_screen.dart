@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/app_strings.dart';
+import '../../core/analytics_service.dart';
 import '../../core/app_theme_provider.dart';
 import '../../core/friendly_error.dart';
 import '../../core/locale_provider.dart';
@@ -153,7 +154,9 @@ class SplixaHomeScreen extends ConsumerWidget {
     AsyncValue<List<GroupModel>> groups,
   ) async {
     if (!ref.read(premiumProvider) && (groups.valueOrNull?.length ?? 0) >= 2) {
-      context.push('/paywall');
+      context.push(
+        '/paywall?source=${PaywallSource.unlimitedGroups.analyticsValue}',
+      );
       return;
     }
     final controller = TextEditingController();
@@ -250,7 +253,15 @@ class _Header extends ConsumerWidget {
           constraints: const BoxConstraints.tightFor(width: 36, height: 40),
           padding: EdgeInsets.zero,
           iconSize: 20,
-          onPressed: () => context.push('/dashboard/statistics'),
+          onPressed: () {
+            if (ref.read(premiumProvider)) {
+              context.push('/dashboard/statistics');
+            } else {
+              context.push(
+                '/paywall?source=${PaywallSource.advancedAnalytics.analyticsValue}',
+              );
+            }
+          },
           icon: const Icon(Icons.insights_outlined),
         ),
         IconButton(

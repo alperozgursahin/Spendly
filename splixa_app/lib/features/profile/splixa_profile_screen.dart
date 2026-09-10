@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_strings.dart';
+import '../../core/analytics_service.dart';
 import '../../core/app_theme_provider.dart';
 import '../../core/friendly_error.dart';
 import '../../core/locale_provider.dart';
@@ -117,6 +117,7 @@ class _ProfileContent extends ConsumerWidget {
     final displayName = (profile['full_name'] as String?)?.trim();
     final avatarUrl = (profile['avatar_url'] as String?)?.trim();
     final bio = (profile['bio'] as String?)?.trim() ?? '';
+    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
     final email = user?.email?.isNotEmpty == true
         ? user!.email!
         : 'Email not added';
@@ -229,6 +230,20 @@ class _ProfileContent extends ConsumerWidget {
             child: Column(
               children: [
                 _MenuRow(
+                  icon: isPremium
+                      ? Icons.manage_accounts_rounded
+                      : Icons.workspace_premium_rounded,
+                  label: isPremium
+                      ? (isTurkish ? 'Aboneliği Yönet' : 'Manage Subscription')
+                      : (isTurkish ? "Splixa Pro'ya Geç" : 'Upgrade to Pro'),
+                  onTap: isPremium
+                      ? () => _manageSubscription(context)
+                      : () => context.push(
+                          '/paywall?source=${PaywallSource.profile.analyticsValue}',
+                        ),
+                ),
+                const _MenuDivider(),
+                _MenuRow(
                   icon: Icons.edit_outlined,
                   label: 'Edit Profile',
                   onTap: () => _editProfile(
@@ -260,9 +275,21 @@ class _ProfileContent extends ConsumerWidget {
                 ),
                 const _MenuDivider(),
                 _MenuRow(
-                  icon: Icons.picture_as_pdf_outlined,
-                  label: 'Download Monthly Report',
-                  onTap: () => _downloadReport(context, ref),
+                  icon: isPremium
+                      ? Icons.picture_as_pdf_outlined
+                      : Icons.lock_rounded,
+                  label: isPremium
+                      ? (isTurkish
+                            ? 'Aylık Raporu İndir'
+                            : 'Download Monthly Report')
+                      : (isTurkish
+                            ? 'Aylık Raporu İndir · Pro'
+                            : 'Download Monthly Report · Pro'),
+                  onTap: isPremium
+                      ? () => _downloadReport(context, ref)
+                      : () => context.push(
+                          '/paywall?source=${PaywallSource.advancedReports.analyticsValue}',
+                        ),
                 ),
                 const _MenuDivider(),
                 _MenuRow(
@@ -599,33 +626,165 @@ class _ProfileContent extends ConsumerWidget {
     }
   }
 
-  void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
+  Future<void> _showDeleteAccountDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final confirmationController = TextEditingController();
+    var confirmation = '';
+    var isDeleting = false;
+    String? errorMessage;
+    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
+
+    await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Account and Data?'),
-        content: const Text(
-          'This will sign you out and begin the account deletion flow. This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final canDelete = confirmation.trim() == 'DELETE' && !isDeleting;
+          return PopScope(
+            canPop: !isDeleting,
+            child: AlertDialog(
+              title: Text(
+                isTurkish
+                    ? 'Hesap ve veriler silinsin mi?'
+                    : 'Delete account and data?',
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isTurkish
+                          ? 'Bu işlem kalıcıdır. Profilin, kişisel işlemlerin, '
+                                'mesajların ve sosyal bağlantıların silinir. '
+                                'Paylaşılan finansal geçmiş, diğer üyelerin '
+                                'bakiyeleri bozulmaması için isimsiz olarak tutulur.'
+                          : 'This is permanent. Your profile, personal transactions, '
+                                'messages, and social connections will be deleted. '
+                                'Shared financial history is retained anonymously so '
+                                'other members’ balances remain correct.',
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      isTurkish
+                          ? 'Başka üyeleri olan bir grubun yöneticisiysen önce '
+                                'grubu silmen veya sahipliği devretmen gerekir.'
+                          : 'If you manage a group with other members, you must '
+                                'delete it or transfer ownership first.',
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      isTurkish
+                          ? 'Onaylamak için DELETE yaz:'
+                          : 'Type DELETE to confirm:',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: confirmationController,
+                      enabled: !isDeleting,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: const InputDecoration(hintText: 'DELETE'),
+                      onChanged: (value) {
+                        setDialogState(() => confirmation = value);
+                      },
+                    ),
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        errorMessage!,
+                        style: TextStyle(
+                          color: Theme.of(dialogContext).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isDeleting
+                      ? null
+                      : () => Navigator.pop(dialogContext),
+                  child: Text(isTurkish ? 'Vazgeç' : 'Cancel'),
+                ),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(dialogContext).colorScheme.error,
+                    foregroundColor: Theme.of(
+                      dialogContext,
+                    ).colorScheme.onError,
+                  ),
+                  onPressed: canDelete
+                      ? () async {
+                          setDialogState(() {
+                            isDeleting = true;
+                            errorMessage = null;
+                          });
+                          try {
+                            await ref
+                                .read(authControllerProvider)
+                                .deleteAccount();
+                            if (dialogContext.mounted) {
+                              Navigator.pop(dialogContext);
+                            }
+                            if (context.mounted) context.go('/onboarding');
+                          } on AccountDeletionException catch (error) {
+                            if (!dialogContext.mounted) return;
+                            setDialogState(() {
+                              isDeleting = false;
+                              if (error.code == 'GROUP_OWNERSHIP_REQUIRED') {
+                                final groups = error.groupNames.isEmpty
+                                    ? ''
+                                    : '\n${error.groupNames.join(', ')}';
+                                errorMessage = isTurkish
+                                    ? 'Önce yönettiğin grupları sil veya '
+                                          'sahipliğini devret:$groups'
+                                    : 'Delete or transfer your managed groups '
+                                          'first:$groups';
+                              } else {
+                                errorMessage = error.message;
+                              }
+                            });
+                          } catch (_) {
+                            if (!dialogContext.mounted) return;
+                            setDialogState(() {
+                              isDeleting = false;
+                              errorMessage = isTurkish
+                                  ? 'Hesap silinemedi. Lütfen tekrar dene.'
+                                  : 'Account deletion failed. Please try again.';
+                            });
+                          }
+                        }
+                      : null,
+                  icon: isDeleting
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.delete_forever_outlined),
+                  label: Text(
+                    isDeleting
+                        ? (isTurkish ? 'Siliniyor…' : 'Deleting…')
+                        : (isTurkish
+                              ? 'Kalıcı Olarak Sil'
+                              : 'Delete Permanently'),
+                  ),
+                ),
+              ],
             ),
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              await ref.read(authControllerProvider).signOut();
-              if (context.mounted) context.go('/login');
-            },
-            child: const Text('Delete'),
-          ),
-        ],
+          );
+        },
       ),
     );
+    confirmationController.dispose();
   }
 
   Future<void> _logOut(BuildContext context, WidgetRef ref) async {
@@ -646,6 +805,13 @@ class _ProfileContent extends ConsumerWidget {
         const SnackBar(content: Text('Could not open this page.')),
       );
     }
+  }
+
+  Future<void> _manageSubscription(BuildContext context) async {
+    final uri = !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+        ? Uri.parse('https://play.google.com/store/account/subscriptions')
+        : Uri.parse('https://apps.apple.com/account/subscriptions');
+    await _openLegalPage(context, uri);
   }
 }
 

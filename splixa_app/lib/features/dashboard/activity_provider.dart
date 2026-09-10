@@ -39,11 +39,14 @@ final activityProvider = FutureProvider<List<ActivityItem>>((ref) async {
 
     for (var f in friendships) {
       final username =
-          f['profiles']?['username'] ?? AppStrings.of('activity_someone', language);
+          f['profiles']?['username'] ??
+          AppStrings.of('activity_someone', language);
       activities.add(
         ActivityItem(
-          description: AppStrings.of('activity_became_friends', language)
-              .replaceAll('{name}', username),
+          description: AppStrings.of(
+            'activity_became_friends',
+            language,
+          ).replaceAll('{name}', username),
           createdAt: DateTime.parse(f['created_at']),
           icon: Icons.person_add,
         ),
@@ -63,9 +66,10 @@ final activityProvider = FutureProvider<List<ActivityItem>>((ref) async {
       final amount = gt['amount'];
       activities.add(
         ActivityItem(
-          description: AppStrings.of('activity_added_expense', language)
-              .replaceAll('{group}', groupName)
-              .replaceAll('{amount}', '$amount'),
+          description: AppStrings.of(
+            'activity_added_expense',
+            language,
+          ).replaceAll('{group}', groupName).replaceAll('{amount}', '$amount'),
           createdAt: DateTime.parse(gt['created_at']),
           icon: Icons.receipt_long,
         ),
@@ -78,4 +82,3 @@ final activityProvider = FutureProvider<List<ActivityItem>>((ref) async {
     return [];
   }
 });
-

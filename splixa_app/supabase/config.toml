@@ -1,2 +1,8 @@
 [functions.login-handler]
 verify_jwt = false
+
+[functions.create-load-test-users]
+verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = true

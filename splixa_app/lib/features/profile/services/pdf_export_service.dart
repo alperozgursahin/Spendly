@@ -24,9 +24,9 @@ class PdfExportService {
 
     for (var t in transactions) {
       if (t.type == 'income') {
-        totalIncome += t.amount;
+        totalIncome += t.baseAmount;
       } else {
-        totalExpense += t.amount;
+        totalExpense += t.baseAmount;
       }
     }
 
@@ -43,10 +43,10 @@ class PdfExportService {
           pw.Header(
             level: 0,
             child: pw.Text(
-              AppStrings.of('pdf_title', language).replaceFirst(
-                '%s',
-                monthYear,
-              ),
+              AppStrings.of(
+                'pdf_title',
+                language,
+              ).replaceFirst('%s', monthYear),
               style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
             ),
           ),
@@ -106,7 +106,7 @@ class PdfExportService {
                           ? AppStrings.of('common_income', language)
                           : AppStrings.of('common_expense', language))
                       .toUpperCase(),
-                  currencyFormatter.format(t.amount),
+                  currencyFormatter.format(t.baseAmount),
                 ];
               }).toList(),
               headerStyle: pw.TextStyle(

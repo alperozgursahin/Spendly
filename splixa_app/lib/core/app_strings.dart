@@ -305,6 +305,11 @@ class AppStrings {
       AppLanguage.en: 'Forgot password?',
     },
     'login_submit': {AppLanguage.tr: 'Giriş Yap', AppLanguage.en: 'Log in'},
+    'login_or': {AppLanguage.tr: 'veya', AppLanguage.en: 'or'},
+    'login_google_continue': {
+      AppLanguage.tr: 'Google ile devam et',
+      AppLanguage.en: 'Continue with Google',
+    },
     'login_no_account': {
       AppLanguage.tr: 'Hesabın yok mu? Kayıt Ol',
       AppLanguage.en: "Don't have an account? Sign up",

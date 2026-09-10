@@ -41,6 +41,8 @@ class AppLanguageNotifier extends StateNotifier<AppLanguage> {
   }
 
   Future<void> toggle() {
-    return setLanguage(state == AppLanguage.tr ? AppLanguage.en : AppLanguage.tr);
+    return setLanguage(
+      state == AppLanguage.tr ? AppLanguage.en : AppLanguage.tr,
+    );
   }
 }

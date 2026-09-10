@@ -9,10 +9,10 @@ import '../filters/filters_provider.dart';
 import '../profile/currency_provider.dart';
 import '../profile/exchange_rate_provider.dart';
 import 'add_expense_sheet.dart';
-import 'group_model.dart';
 import 'group_chat_screen.dart';
+import 'financial_models.dart';
+import 'group_model.dart';
 import 'group_provider.dart';
-import 'group_transaction_model.dart';
 import 'invite_friend_modal.dart';
 
 class GroupDetailScreen extends ConsumerStatefulWidget {
@@ -50,9 +50,10 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      ref.invalidate(groupTransactionsStreamProvider(widget.groupId));
+      ref.invalidate(groupExpensesStreamProvider(widget.groupId));
       ref.invalidate(groupMembersProvider(widget.groupId));
-      ref.invalidate(balanceEngineProvider(widget.groupId));
+      ref.invalidate(groupBalancesProvider(widget.groupId));
+      ref.invalidate(groupSettlementsProvider(widget.groupId));
       final userId = ref.read(currentUserIdProvider);
       if (userId == null) return;
       try {
@@ -91,9 +92,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     final unreadChatCount = ref.watch(
       unreadGroupMessagesCountProvider(widget.groupId),
     );
-    final transactions = ref.watch(
-      groupTransactionsStreamProvider(widget.groupId),
-    );
+    final expenses = ref.watch(groupExpensesStreamProvider(widget.groupId));
 
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -200,13 +199,13 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
           ],
           Builder(
             builder: (context) {
-              final filtered = _filteredTransactions(
-                transactions.valueOrNull ?? const <GroupTransactionModel>[],
+              final filtered = _filteredExpenses(
+                expenses.valueOrNull ?? const <ExpenseWithShares>[],
               );
               final counts = {
                 for (final bucket in _tabBuckets)
                   bucket: filtered
-                      .where((item) => computeExpenseBucket(item) == bucket)
+                      .where((item) => item.bucket == bucket)
                       .length,
               };
               return Material(
@@ -254,19 +253,19 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
               controller: _tabController,
               children: [
                 ..._tabBuckets.map((bucket) {
-                  if (transactions.isLoading && !transactions.hasValue) {
+                  if (expenses.isLoading && !expenses.hasValue) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  if (transactions.hasError && !transactions.hasValue) {
+                  if (expenses.hasError && !expenses.hasValue) {
                     return Center(
-                      child: Text(friendlyErrorMessage(transactions.error!)),
+                      child: Text(friendlyErrorMessage(expenses.error!)),
                     );
                   }
-                  final filtered = _filteredTransactions(
-                    transactions.valueOrNull ?? const <GroupTransactionModel>[],
+                  final filtered = _filteredExpenses(
+                    expenses.valueOrNull ?? const <ExpenseWithShares>[],
                   );
                   final bucketItems = filtered
-                      .where((t) => computeExpenseBucket(t) == bucket)
+                      .where((item) => item.bucket == bucket)
                       .toList();
 
                   if (bucketItems.isEmpty) {
@@ -277,10 +276,10 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
                     itemCount: bucketItems.length,
                     itemBuilder: (context, index) {
-                      final transaction = bucketItems[index];
+                      final expense = bucketItems[index];
 
                       return _buildTransactionCard(
-                        transaction: transaction,
+                        item: expense,
                         currentUserId: currentUserId,
                         currency: currency,
                         exchanger: exchanger,
@@ -337,13 +336,14 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
   }
 
   Widget _buildTransactionCard({
-    required GroupTransactionModel transaction,
+    required ExpenseWithShares item,
     required String currentUserId,
     required String currency,
     required ExchangeRateService exchanger,
     required AsyncValue<List<GroupMemberModel>> members,
   }) {
-    final transactionId = transaction.id ?? '';
+    final transaction = item.expense;
+    final transactionId = transaction.id;
     final isExpanded = _activeTransactionId == transactionId;
     final payerName = transaction.payerId == currentUserId
         ? tr(ref, 'common_you')
@@ -403,7 +403,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '$currency${exchanger.convertFromTRY(transaction.amount, currency).toStringAsFixed(2)}',
+                    '$currency${exchanger.convertFromTRY(transaction.baseAmount, currency).toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -411,25 +411,22 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                   ),
                 ],
               ),
-              if (transaction.createdAt != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  _formatDate(transaction.createdAt!),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+              const SizedBox(height: 8),
+              Text(
+                _formatDate(transaction.createdAt),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-              ],
+              ),
               const Divider(height: 24),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: transaction.splitData.entries.map((entry) {
+                children: item.shares.map((share) {
                   return _buildParticipantChip(
-                    transaction: transaction,
-                    participantId: entry.key,
-                    rawValue: entry.value,
+                    item: item,
+                    share: share,
                     currentUserId: currentUserId,
                     currency: currency,
                     exchanger: exchanger,
@@ -437,10 +434,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                   );
                 }).toList(),
               ),
-              if (transactionId.isNotEmpty &&
-                  transaction.payerId == currentUserId &&
+              if (transaction.payerId == currentUserId &&
                   transaction.archivedAt == null &&
-                  allParticipantsSettled(transaction)) ...[
+                  item.allNonPayerSharesSettled) ...[
                 const SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerRight,
@@ -465,17 +461,18 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
   }
 
   Widget _buildParticipantChip({
-    required GroupTransactionModel transaction,
-    required String participantId,
-    required dynamic rawValue,
+    required ExpenseWithShares item,
+    required ExpenseShare share,
     required String currentUserId,
     required String currency,
     required ExchangeRateService exchanger,
     required AsyncValue<List<GroupMemberModel>> members,
   }) {
+    final transaction = item.expense;
+    final participantId = share.participantId;
     final isPayer = participantId == transaction.payerId;
     final isCurrentUser = participantId == currentUserId;
-    final amount = _splitAmount(rawValue);
+    final amount = share.baseShareAmount;
     final participantName = isCurrentUser
         ? tr(ref, 'common_you')
         : _memberName(members, participantId, currentUserId);
@@ -495,11 +492,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
       );
     }
 
-    final status = participantApprovalStatus(
-      transaction.splitData,
-      participantId,
-      transaction.payerId,
-    );
+    final status = share.status;
 
     final transactionId = transaction.id;
     final actionKey = '$transactionId:$participantId';
@@ -509,8 +502,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     IconData? actionIcon;
     VoidCallback? onActionPressed;
 
-    if (transactionId != null && !isBusy) {
-      if (status == DebtApprovalStatus.pending && isCurrentUser) {
+    if (!isBusy) {
+      if (status == ExpenseShareStatus.pending && isCurrentUser) {
         actionLabel = tr(ref, 'groups_action_approve');
         actionIcon = Icons.check_rounded;
         onActionPressed = () => _runLifecycleAction(
@@ -518,7 +511,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
           participantId: participantId,
           status: status,
         );
-      } else if (status == DebtApprovalStatus.approved && isCurrentUser) {
+      } else if (status == ExpenseShareStatus.approved && isCurrentUser) {
         actionLabel = tr(ref, 'groups_action_mark_paid');
         actionIcon = Icons.payments_rounded;
         onActionPressed = () => _runLifecycleAction(
@@ -526,7 +519,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
           participantId: participantId,
           status: status,
         );
-      } else if (status == DebtApprovalStatus.paymentPending &&
+      } else if (status == ExpenseShareStatus.paymentPending &&
           transaction.payerId == currentUserId) {
         actionLabel = tr(ref, 'groups_action_confirm_payment');
         actionIcon = Icons.done_all_rounded;
@@ -539,7 +532,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     }
 
     switch (status) {
-      case DebtApprovalStatus.pending:
+      case ExpenseShareStatus.pending:
         return _statusChip(
           amountLabel: amountLabel,
           label: tr(ref, 'groups_status_pending'),
@@ -553,7 +546,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
           isBusy: isBusy,
         );
 
-      case DebtApprovalStatus.approved:
+      case ExpenseShareStatus.approved:
         return _statusChip(
           amountLabel: amountLabel,
           label: isCurrentUser
@@ -569,7 +562,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
           isBusy: isBusy,
         );
 
-      case DebtApprovalStatus.paymentPending:
+      case ExpenseShareStatus.paymentPending:
         // Kept in the same blue family as "approved" (still an active,
         // in-progress debt) instead of a 5th distinct hue, to reduce how
         // many colors a user has to learn to read the debt status.
@@ -588,7 +581,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
           isBusy: isBusy,
         );
 
-      case DebtApprovalStatus.settled:
+      case ExpenseShareStatus.settled:
         return _statusChip(
           amountLabel: amountLabel,
           label: tr(ref, 'groups_status_settled'),
@@ -598,7 +591,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
           textColor: _shade(_statusGood, 0.15),
         );
 
-      case DebtApprovalStatus.rejected:
+      case ExpenseShareStatus.rejected:
         return _statusChip(
           amountLabel: amountLabel,
           label: tr(ref, 'groups_status_rejected'),
@@ -606,6 +599,28 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
           backgroundColor: _tint(_statusCritical, 0.10),
           borderColor: _tint(_statusCritical, 0.30),
           textColor: _shade(_statusCritical, 0.20),
+        );
+
+      case ExpenseShareStatus.notOwed:
+        return _statusChip(
+          amountLabel: amountLabel,
+          label: tr(ref, 'groups_status_payer'),
+          icon: Icons.account_balance_wallet_rounded,
+          backgroundColor: Color.lerp(
+            Colors.white,
+            Theme.of(context).colorScheme.primary,
+            0.10,
+          )!,
+          borderColor: Color.lerp(
+            Colors.white,
+            Theme.of(context).colorScheme.primary,
+            0.30,
+          )!,
+          textColor: Color.lerp(
+            Colors.black,
+            Theme.of(context).colorScheme.primary,
+            0.55,
+          )!,
         );
     }
   }
@@ -682,7 +697,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
   Future<void> _runLifecycleAction({
     required String transactionId,
     required String participantId,
-    required DebtApprovalStatus status,
+    required ExpenseShareStatus status,
   }) async {
     final actionKey = '$transactionId:$participantId';
 
@@ -694,25 +709,27 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
       final service = ref.read(groupServiceProvider);
 
       switch (status) {
-        case DebtApprovalStatus.pending:
-          await service.acknowledgeDebtParticipant(transactionId);
+        case ExpenseShareStatus.pending:
+          await service.acknowledgeExpenseShare(transactionId);
 
-        case DebtApprovalStatus.approved:
-          await service.markPaymentSent(transactionId);
+        case ExpenseShareStatus.approved:
+          await service.markExpensePaymentSent(transactionId);
 
-        case DebtApprovalStatus.paymentPending:
-          await service.confirmPaymentReceived(
-            transactionId: transactionId,
+        case ExpenseShareStatus.paymentPending:
+          await service.confirmExpensePayment(
+            expenseId: transactionId,
             participantId: participantId,
           );
 
-        case DebtApprovalStatus.settled:
-        case DebtApprovalStatus.rejected:
+        case ExpenseShareStatus.notOwed:
+        case ExpenseShareStatus.settled:
+        case ExpenseShareStatus.rejected:
           return;
       }
 
-      ref.invalidate(groupTransactionsStreamProvider(widget.groupId));
-      ref.invalidate(balanceEngineProvider(widget.groupId));
+      ref.invalidate(groupExpensesStreamProvider(widget.groupId));
+      ref.invalidate(groupBalancesProvider(widget.groupId));
+      ref.invalidate(groupSettlementsProvider(widget.groupId));
       ref.read(groupDataRefreshProvider.notifier).state++;
     } catch (_) {
       if (mounted) {
@@ -736,9 +753,10 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
 
     try {
       final service = ref.read(groupServiceProvider);
-      await service.archiveGroupTransaction(transactionId);
+      await service.archiveExpense(transactionId);
 
-      ref.invalidate(groupTransactionsStreamProvider(widget.groupId));
+      ref.invalidate(groupExpensesStreamProvider(widget.groupId));
+      ref.invalidate(groupSettlementsProvider(widget.groupId));
       ref.read(groupDataRefreshProvider.notifier).state++;
     } catch (_) {
       if (mounted) {
@@ -758,12 +776,17 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     required String currency,
     required ExchangeRateService exchanger,
   }) {
-    final balances = ref.watch(balanceEngineProvider(widget.groupId));
+    final balances = ref.watch(groupBalancesProvider(widget.groupId));
     final members = ref.watch(groupMembersProvider(widget.groupId));
 
     final entries =
-        balances.entries.where((entry) => entry.value.abs() > 0.0001).toList()
-          ..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
+        (balances.valueOrNull ?? const <GroupBalance>[])
+            .where(
+              (entry) =>
+                  entry.currencyCode == 'TRY' && entry.balance.abs() > 0.0001,
+            )
+            .toList()
+          ..sort((a, b) => b.balance.abs().compareTo(a.balance.abs()));
 
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -792,10 +815,10 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: entries.map((entry) {
-                  final isPositive = entry.value > 0;
-                  final displayName = entry.key == currentUserId
+                  final isPositive = entry.balance > 0;
+                  final displayName = entry.userId == currentUserId
                       ? tr(ref, 'common_you')
-                      : _memberName(members, entry.key, currentUserId);
+                      : _memberName(members, entry.userId, currentUserId);
 
                   final background = isPositive
                       ? Colors.green.shade50
@@ -820,7 +843,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                     ),
                     child: Text(
                       '$displayName ${isPositive ? tr(ref, "groups_creditor_label") : tr(ref, "groups_debtor_label")}: '
-                      '$currency${exchanger.convertFromTRY(entry.value.abs(), currency).toStringAsFixed(2)}',
+                      '$currency${exchanger.convertFromTRY(entry.balance.abs(), currency).toStringAsFixed(2)}',
                       style: TextStyle(
                         color: text,
                         fontWeight: FontWeight.bold,
@@ -975,19 +998,17 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     );
   }
 
-  List<GroupTransactionModel> _filteredTransactions(
-    List<GroupTransactionModel> transactions,
-  ) {
+  List<ExpenseWithShares> _filteredExpenses(List<ExpenseWithShares> expenses) {
     final filters = ref.read(transactionFilterProvider);
 
-    return transactions.where((transaction) {
-      if (filters.personId.isNotEmpty &&
-          transaction.payerId != filters.personId) {
+    return expenses.where((item) {
+      final expense = item.expense;
+      if (filters.personId.isNotEmpty && expense.payerId != filters.personId) {
         return false;
       }
 
-      final date = transaction.createdAt;
-      if (filters.start != null && filters.end != null && date != null) {
+      final date = expense.createdAt;
+      if (filters.start != null && filters.end != null) {
         final transactionDate = DateTime(date.year, date.month, date.day);
         final start = DateTime(
           filters.start!.year,
@@ -1031,14 +1052,6 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
       },
       orElse: () => tr(ref, 'common_user'),
     );
-  }
-
-  double _splitAmount(dynamic rawValue) {
-    if (rawValue is Map) {
-      return (rawValue['amount'] as num?)?.toDouble() ?? 0;
-    }
-
-    return (rawValue as num?)?.toDouble() ?? 0;
   }
 
   String _formatDate(DateTime dateTime) {

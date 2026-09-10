@@ -27,9 +27,9 @@ final netBalanceProvider = Provider<double>((ref) {
       double balance = 0.0;
       for (var t in transactions) {
         if (t.type == 'income') {
-          balance += t.amount;
+          balance += t.baseAmount;
         } else {
-          balance -= t.amount;
+          balance -= t.baseAmount;
         }
       }
       return balance;
@@ -46,7 +46,11 @@ class TransactionService {
   Future<List<TransactionModel>> getTransactions(String userId) async {
     final response = await _supabase
         .from('transactions')
-        .select()
+        .select(
+          'id, user_id, group_id, amount, original_amount, currency_code, '
+          'base_amount, base_currency_code, exchange_rate, rate_source, '
+          'rate_locked_at, category, date, type, created_at',
+        )
         .eq('user_id', userId)
         .order('date', ascending: false);
 
@@ -54,6 +58,8 @@ class TransactionService {
   }
 
   Future<void> addTransaction(TransactionModel transaction) async {
+    // RLS enforces ownership. The compatibility trigger keeps `amount` equal
+    // to base_amount until the legacy column is removed.
     await _supabase.from('transactions').insert(transaction.toJson());
   }
 

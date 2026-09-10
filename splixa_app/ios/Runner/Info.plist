@@ -41,46 +41,13 @@
 	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
-        <key>CFBundleURLTypes</key>
-        <array>
-                <dict>
-                        <key>CFBundleTypeRole</key>
-                        <string>Editor</string>
-                        <key>CFBundleURLSchemes</key>
-                        <array>
-                                <string>splixa</string>
-                        </array>
-                </dict>
-        </array>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 		<key>UISceneConfigurations</key>
 		<dict>
-        <key>CFBundleURLTypes</key>
-        <array>
-                <dict>
-                        <key>CFBundleTypeRole</key>
-                        <string>Editor</string>
-                        <key>CFBundleURLSchemes</key>
-                        <array>
-                                <string>splixa</string>
-                        </array>
-                </dict>
-        </array>
 			<key>UIWindowSceneSessionRoleApplication</key>
 			<array>
 				<dict>
-        <key>CFBundleURLTypes</key>
-        <array>
-                <dict>
-                        <key>CFBundleTypeRole</key>
-                        <string>Editor</string>
-                        <key>CFBundleURLSchemes</key>
-                        <array>
-                                <string>splixa</string>
-                        </array>
-                </dict>
-        </array>
 					<key>UISceneClassName</key>
 					<string>UIWindowScene</string>
 					<key>UISceneConfigurationName</key>

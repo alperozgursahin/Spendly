@@ -2,22 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/auth_provider.dart';
+import 'financial_models.dart';
 import 'group_model.dart';
-import 'group_transaction_model.dart';
 
 final groupServiceProvider = Provider<GroupService>((ref) {
   return GroupService(Supabase.instance.client);
 });
 
 final groupDataRefreshProvider = StateProvider<int>((ref) => 0);
-
-final groupPaidOverridesProvider =
-    StateNotifierProvider<
-      GroupPaidOverridesNotifier,
-      Map<String, Map<String, bool>>
-    >((ref) {
-      return GroupPaidOverridesNotifier();
-    });
 
 final userGroupsProvider = FutureProvider<List<GroupModel>>((ref) async {
   final service = ref.watch(groupServiceProvider);
@@ -42,23 +34,27 @@ final groupMembersProvider =
       return service.getGroupMembers(groupId);
     });
 
-final groupTransactionsStreamProvider =
-    StreamProvider.family<List<GroupTransactionModel>, String>((ref, groupId) {
-      return Supabase.instance.client
-          .from('group_transactions')
-          .stream(primaryKey: ['id'])
-          .eq('group_id', groupId)
-          .order('created_at', ascending: false)
-          .map(
-            (rows) => rows
-                .map(
-                  (row) => GroupTransactionModel.fromJson(
-                    Map<String, dynamic>.from(row),
-                  ),
-                )
-                .toList(),
-          );
+/// Canonical group-expense source for new UI code.
+final groupExpensesStreamProvider =
+    StreamProvider.family<List<ExpenseWithShares>, String>((ref, groupId) {
+      ref.watch(groupDataRefreshProvider);
+      return ref.watch(groupServiceProvider).watchGroupExpenses(groupId);
     });
+
+final groupSettlementsProvider =
+    FutureProvider.family<List<Settlement>, String>((ref, groupId) {
+      ref.watch(groupDataRefreshProvider);
+      ref.watch(groupExpensesStreamProvider(groupId));
+      return ref.watch(groupServiceProvider).getGroupSettlements(groupId);
+    });
+
+final groupBalancesProvider = FutureProvider.family<List<GroupBalance>, String>(
+  (ref, groupId) {
+    ref.watch(groupDataRefreshProvider);
+    ref.watch(groupExpensesStreamProvider(groupId));
+    return ref.watch(groupServiceProvider).getGroupBalances(groupId);
+  },
+);
 
 final groupMessagesStreamProvider =
     StreamProvider.family<List<Map<String, dynamic>>, String>((ref, groupId) {
@@ -100,7 +96,7 @@ final unreadGroupActivityCountProvider = Provider.family<int, String>((
   if (userId == null) return 0;
 
   final messages = ref.watch(groupMessagesStreamProvider(groupId));
-  final transactions = ref.watch(groupTransactionsStreamProvider(groupId));
+  final expenses = ref.watch(groupExpensesStreamProvider(groupId));
   final lastRead = ref.watch(groupChatReadStreamProvider(groupId));
   final cutoff = lastRead.maybeWhen(data: (value) => value, orElse: () => null);
 
@@ -114,10 +110,11 @@ final unreadGroupActivityCountProvider = Provider.family<int, String>((
     orElse: () => 0,
   );
 
-  final unreadTransactions = transactions.maybeWhen(
+  final unreadTransactions = expenses.maybeWhen(
     data: (items) => items.where((item) {
-      if (item.payerId == userId || item.createdAt == null) return false;
-      return cutoff == null || item.createdAt!.toUtc().isAfter(cutoff);
+      final expense = item.expense;
+      if (expense.payerId == userId) return false;
+      return cutoff == null || expense.createdAt.toUtc().isAfter(cutoff);
     }).length,
     orElse: () => 0,
   );
@@ -159,57 +156,129 @@ Future<void> markGroupChatRead(String groupId, String userId) {
   }, onConflict: 'group_id,user_id');
 }
 
-/// Only approved and payment-pending participant shares affect balances.
-/// Pending, rejected, and settled participant shares are excluded.
-final balanceEngineProvider = Provider.family<Map<String, double>, String>((
-  ref,
-  groupId,
-) {
-  final transactions = ref.watch(groupTransactionsStreamProvider(groupId));
-
-  return transactions.maybeWhen(
-    data: (items) {
-      final balances = <String, double>{};
-
-      for (final transaction in items) {
-        transaction.splitData.forEach((participantId, rawValue) {
-          if (participantId == transaction.payerId) return;
-
-          final status = participantApprovalStatus(
-            transaction.splitData,
-            participantId,
-            transaction.payerId,
-          );
-
-          if (!isDebtCountedStatus(status)) return;
-
-          final amount = _splitAmount(rawValue);
-          if (amount <= 0) return;
-
-          balances[participantId] = (balances[participantId] ?? 0) - amount;
-          balances[transaction.payerId] =
-              (balances[transaction.payerId] ?? 0) + amount;
-        });
-      }
-
-      return balances;
-    },
-    orElse: () => <String, double>{},
-  );
-});
-
-double _splitAmount(dynamic rawValue) {
-  if (rawValue is Map) {
-    return (rawValue['amount'] as num?)?.toDouble() ?? 0;
-  }
-
-  return (rawValue as num?)?.toDouble() ?? 0;
-}
-
 class GroupService {
   final SupabaseClient _supabase;
 
   GroupService(this._supabase);
+
+  Stream<List<ExpenseWithShares>> watchGroupExpenses(String groupId) {
+    return _supabase
+        .from('expenses')
+        .stream(primaryKey: ['id'])
+        .eq('group_id', groupId)
+        .order('created_at', ascending: false)
+        .asyncMap(_hydrateExpenses);
+  }
+
+  Future<List<ExpenseWithShares>> getGroupExpenses(String groupId) async {
+    final rows = await _supabase
+        .from('expenses')
+        .select()
+        .eq('group_id', groupId)
+        .order('created_at', ascending: false);
+    return _hydrateExpenses(rows);
+  }
+
+  Future<List<ExpenseWithShares>> _hydrateExpenses(
+    List<Map<String, dynamic>> rows,
+  ) async {
+    final expenses = rows
+        .map((row) => Expense.fromJson(Map<String, dynamic>.from(row)))
+        .toList(growable: false);
+    if (expenses.isEmpty) return const [];
+
+    final shareRows = await _supabase
+        .from('expense_shares')
+        .select()
+        .inFilter('expense_id', expenses.map((expense) => expense.id).toList());
+    final shares = shareRows
+        .map((row) => ExpenseShare.fromJson(Map<String, dynamic>.from(row)))
+        .toList(growable: false);
+
+    final sharesByExpense = <String, List<ExpenseShare>>{};
+    for (final share in shares) {
+      sharesByExpense.putIfAbsent(share.expenseId, () => []).add(share);
+    }
+
+    return expenses
+        .map(
+          (expense) => ExpenseWithShares(
+            expense: expense,
+            shares: List.unmodifiable(sharesByExpense[expense.id] ?? const []),
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  Future<List<Settlement>> getGroupSettlements(String groupId) async {
+    final rows = await _supabase
+        .from('settlements')
+        .select()
+        .eq('group_id', groupId)
+        .order('created_at', ascending: false);
+    return rows
+        .map((row) => Settlement.fromJson(Map<String, dynamic>.from(row)))
+        .toList(growable: false);
+  }
+
+  Future<List<GroupBalance>> getGroupBalances(String groupId) async {
+    final rows = await _supabase
+        .from('group_balances_v1')
+        .select('group_id, user_id, currency_code, balance')
+        .eq('group_id', groupId);
+    return rows
+        .map((row) => GroupBalance.fromJson(Map<String, dynamic>.from(row)))
+        .toList(growable: false);
+  }
+
+  Future<Expense> createExpense(ExpenseDraft draft) async {
+    final response = await _supabase.rpc(
+      'create_expense_v1',
+      params: draft.toRpcParameters(),
+    );
+    return Expense.fromJson(_singleRpcRow(response, 'create_expense_v1'));
+  }
+
+  Future<void> acknowledgeExpenseShare(String expenseId) {
+    return _supabase.rpc(
+      'acknowledge_expense_share_v1',
+      params: {'p_expense_id': expenseId},
+    );
+  }
+
+  Future<void> markExpensePaymentSent(String expenseId) {
+    return _supabase.rpc(
+      'mark_expense_payment_sent_v1',
+      params: {'p_expense_id': expenseId},
+    );
+  }
+
+  Future<Settlement> confirmExpensePayment({
+    required String expenseId,
+    required String participantId,
+  }) async {
+    final response = await _supabase.rpc(
+      'confirm_expense_payment_v1',
+      params: {'p_expense_id': expenseId, 'p_participant_id': participantId},
+    );
+    return Settlement.fromJson(
+      _singleRpcRow(response, 'confirm_expense_payment_v1'),
+    );
+  }
+
+  Future<void> rejectExpenseShare(String expenseId) {
+    return _supabase.rpc(
+      'reject_expense_share_v1',
+      params: {'p_expense_id': expenseId},
+    );
+  }
+
+  Future<void> archiveExpense(String expenseId) {
+    return _supabase.rpc(
+      'archive_expense_v1',
+      params: {'p_expense_id': expenseId},
+    );
+  }
 
   Future<GroupModel?> getGroup(String groupId) async {
     final row = await _supabase
@@ -337,137 +406,12 @@ class GroupService {
         .map((row) => GroupMemberModel.fromJson(Map<String, dynamic>.from(row)))
         .toList();
   }
-
-  Future<void> addGroupTransaction(GroupTransactionModel transaction) async {
-    final insertedRow = await _supabase
-        .from('group_transactions')
-        .insert(transaction.toJson())
-        .select(
-          'id, group_id, payer_id, amount, description, split_type, '
-          'split_data, status, created_at',
-        )
-        .single();
-
-    final inserted = GroupTransactionModel.fromJson(
-      Map<String, dynamic>.from(insertedRow),
-    );
-
-    final recipientIds = inserted.splitData.keys
-        .where((userId) => userId != inserted.payerId)
-        .toSet()
-        .toList();
-
-    if (recipientIds.isEmpty) return;
-
-    await _supabase
-        .from('notifications')
-        .insert(
-          recipientIds
-              .map(
-                (recipientId) => {
-                  'recipient_id': recipientId,
-                  'sender_id': inserted.payerId,
-                  'group_id': inserted.groupId,
-                  'expense_id': inserted.id,
-                  'type': 'debt_request',
-                  'is_read': false,
-                },
-              )
-              .toList(),
-        );
-  }
-
-  /// Legacy generic participant update. Do not use this for lifecycle actions.
-  Future<void> updateOwnSplitEntry({
-    required String transactionId,
-    required bool paid,
-    required String status,
-  }) {
-    return _supabase.rpc(
-      'update_own_group_transaction_split',
-      params: {
-        'p_transaction_id': transactionId,
-        'p_paid': paid,
-        'p_status': status,
-      },
-    );
-  }
-
-  /// Debtor: pending -> approved.
-  Future<void> acknowledgeDebtParticipant(String transactionId) {
-    return _supabase.rpc(
-      'acknowledge_debt_participant',
-      params: {'p_transaction_id': transactionId},
-    );
-  }
-
-  /// Debtor: approved -> payment_pending.
-  Future<void> markPaymentSent(String transactionId) {
-    return _supabase.rpc(
-      'mark_payment_sent',
-      params: {'p_transaction_id': transactionId},
-    );
-  }
-
-  /// Creditor: payment_pending -> settled.
-  Future<void> confirmPaymentReceived({
-    required String transactionId,
-    required String participantId,
-  }) {
-    return _supabase.rpc(
-      'confirm_payment_received',
-      params: {
-        'p_transaction_id': transactionId,
-        'p_participant_id': participantId,
-      },
-    );
-  }
-
-  /// Kept because the current approvals screen still offers rejection.
-  Future<void> rejectDebtParticipant(String transactionId) {
-    return _supabase.rpc(
-      'reject_debt_participant',
-      params: {'p_transaction_id': transactionId},
-    );
-  }
-
-  /// Backward-compatible alias for any older callers.
-  Future<void> approveDebtParticipant(String transactionId) {
-    return acknowledgeDebtParticipant(transactionId);
-  }
-
-  /// Payer: moves an expense to the archive tab once every participant has
-  /// settled. Rejected server-side if any share isn't settled yet.
-  Future<void> archiveGroupTransaction(String transactionId) {
-    return _supabase.rpc(
-      'archive_group_transaction',
-      params: {'p_transaction_id': transactionId},
-    );
-  }
 }
 
-class GroupPaidOverridesNotifier
-    extends StateNotifier<Map<String, Map<String, bool>>> {
-  GroupPaidOverridesNotifier() : super(const {});
-
-  void setPaid(String transactionId, String participantId, bool paid) {
-    final updatedState = Map<String, Map<String, bool>>.from(state);
-    final transactionOverrides = Map<String, bool>.from(
-      updatedState[transactionId] ?? const {},
-    );
-
-    transactionOverrides[participantId] = paid;
-    updatedState[transactionId] = transactionOverrides;
-    state = updatedState;
+Map<String, dynamic> _singleRpcRow(Object? response, String functionName) {
+  if (response is Map) return Map<String, dynamic>.from(response);
+  if (response is List && response.length == 1 && response.single is Map) {
+    return Map<String, dynamic>.from(response.single as Map);
   }
-
-  void clearTransaction(String transactionId) {
-    final updatedState = Map<String, Map<String, bool>>.from(state);
-    updatedState.remove(transactionId);
-    state = updatedState;
-  }
-
-  void clear() {
-    state = const {};
-  }
+  throw StateError('$functionName returned an unexpected response');
 }

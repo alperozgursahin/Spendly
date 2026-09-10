@@ -1,7 +1,7 @@
 name: splixa_app
 description: "Splixa is a professional budget and group expense tracking app."
 publish_to: 'none'
-version: 1.0.0+3
+version: 0.4.0-alpha+4
 
 environment:
   sdk: ^3.11.4
@@ -33,6 +33,8 @@ dependencies:
   
   # Hata Takibi ve Loglama
   sentry_flutter: ^8.0.0
+  firebase_core: ^4.14.0
+  firebase_analytics: ^12.5.0
   
   # Sayfa Yönlendirmeleri (Modern Navigation)
   go_router: ^13.2.0

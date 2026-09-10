@@ -34,12 +34,18 @@ class CurrencySelector extends StatelessWidget {
     required this.onChanged,
     this.labelText,
     this.compact = false,
+    this.customRateUnlocked = false,
+    this.customRateTooltip,
+    this.onCustomRatePressed,
   });
 
   final String value;
   final ValueChanged<String> onChanged;
   final String? labelText;
   final bool compact;
+  final bool customRateUnlocked;
+  final String? customRateTooltip;
+  final VoidCallback? onCustomRatePressed;
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +64,18 @@ class CurrencySelector extends StatelessWidget {
         prefixIcon: compact
             ? null
             : const Icon(Icons.currency_exchange_rounded),
+        suffixIcon: onCustomRatePressed == null
+            ? null
+            : IconButton(
+                tooltip: customRateTooltip,
+                onPressed: onCustomRatePressed,
+                icon: Icon(
+                  customRateUnlocked ? Icons.tune_rounded : Icons.lock_rounded,
+                  color: customRateUnlocked
+                      ? Theme.of(context).colorScheme.primary
+                      : const Color(0xFFD97706),
+                ),
+              ),
         contentPadding: EdgeInsets.symmetric(
           horizontal: compact ? 10 : 12,
           vertical: compact ? 10 : 14,

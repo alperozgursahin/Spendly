@@ -147,7 +147,8 @@ Future<List<AppNotificationModel>> _buildNotifications(
       'notif_default_expense_desc',
       language,
     );
-    final description = expense?['description'] as String? ?? defaultDescription;
+    final description =
+        expense?['description'] as String? ?? defaultDescription;
     final groupName = groupId == null
         ? defaultGroupName
         : groupNames[groupId] ?? defaultGroupName;

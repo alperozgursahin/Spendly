@@ -18,6 +18,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _obscurePassword = true;
   String? _identifierError;
   String? _passwordError;
@@ -59,6 +60,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(error))));
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isGoogleLoading = true);
+    try {
+      await ref.read(authControllerProvider).signInWithGoogle();
+      // OAuth completion arrives through Supabase's deep-link listener. The
+      // router reacts to the auth event and selects the persisted destination.
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(error))));
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 
@@ -178,11 +195,62 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       label: tr(ref, 'login_submit'),
                       icon: Icons.login_rounded,
                       loading: _isLoading,
-                      onPressed: _signIn,
+                      onPressed: _isGoogleLoading ? null : _signIn,
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          child: Text(
+                            tr(ref, 'login_or'),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ),
+                        const Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      height: 56,
+                      child: OutlinedButton(
+                        onPressed: _isLoading || _isGoogleLoading
+                            ? null
+                            : _signInWithGoogle,
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              SplixaSpace.buttonRadius,
+                            ),
+                          ),
+                        ),
+                        child: _isGoogleLoading
+                            ? const SizedBox.square(
+                                dimension: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const _GoogleMark(),
+                                  const SizedBox(width: 10),
+                                  Text(tr(ref, 'login_google_continue')),
+                                ],
+                              ),
+                      ),
                     ),
                     const SizedBox(height: 14),
                     TextButton(
-                      onPressed: _isLoading
+                      onPressed: _isLoading || _isGoogleLoading
                           ? null
                           : () => context.go('/register'),
                       child: Text(tr(ref, 'login_no_account')),
@@ -193,6 +261,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GoogleMark extends StatelessWidget {
+  const _GoogleMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Google',
+      child: const Text(
+        'G',
+        style: TextStyle(
+          color: Color(0xFF4285F4),
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
+          height: 1,
         ),
       ),
     );

@@ -19,6 +19,7 @@ class ExchangeRateService extends ChangeNotifier with WidgetsBindingObserver {
 
   Timer? _timer;
   DateTime? _lastUpdatedAt;
+  String _currentRateSource = 'unverified';
   Future<bool>? _refreshInFlight;
   late final Future<void> _initialization;
 
@@ -34,6 +35,7 @@ class ExchangeRateService extends ChangeNotifier with WidgetsBindingObserver {
 
   bool get hasVerifiedRates => _lastUpdatedAt != null;
   DateTime? get lastUpdatedAt => _lastUpdatedAt;
+  String get currentRateSource => _currentRateSource;
 
   double rateFor(String currency) => _rates[currency] ?? 1.0;
 
@@ -100,6 +102,7 @@ class ExchangeRateService extends ChangeNotifier with WidgetsBindingObserver {
       _rates['€'] = eur.toDouble();
       _rates['₺'] = 1.0;
       _lastUpdatedAt = timestamp;
+      _currentRateSource = 'cached_open_er_api';
       notifyListeners();
     } catch (_) {
       // A corrupt cache is ignored; the network refresh below remains primary.
@@ -150,6 +153,7 @@ class ExchangeRateService extends ChangeNotifier with WidgetsBindingObserver {
       _rates['€'] = eur.toDouble();
       _rates['₺'] = 1.0;
       _lastUpdatedAt = updatedAt;
+      _currentRateSource = 'open_er_api';
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(

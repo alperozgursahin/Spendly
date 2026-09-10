@@ -64,6 +64,9 @@ class TransactionFiltersNotifier extends StateNotifier<TransactionFilters> {
   }
 }
 
-final transactionFilterProvider = StateNotifierProvider<TransactionFiltersNotifier, TransactionFilters>((ref) {
-  return TransactionFiltersNotifier();
-});
+final transactionFilterProvider =
+    StateNotifierProvider<TransactionFiltersNotifier, TransactionFilters>((
+      ref,
+    ) {
+      return TransactionFiltersNotifier();
+    });

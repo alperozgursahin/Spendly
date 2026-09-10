@@ -28,7 +28,10 @@ class HeatmapCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(tr(ref, 'statistics_heatmap_title'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(
+              tr(ref, 'statistics_heatmap_title'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             HeatMapCalendar(
               datasets: data,
@@ -42,22 +45,27 @@ class HeatmapCard extends ConsumerWidget {
               weekFontSize: 12,
               fontSize: 10,
               onClick: (value) {
-                  showModalBottomSheet(
-                    context: context,
-                    builder: (_) => Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('${value.year}-${value.month.toString().padLeft(2,'0')}-${value.day.toString().padLeft(2,'0')}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          Text('${data[value] ?? 0} ${tr(ref, 'statistics_heatmap_activity_count')}'),
-                        ],
-                      ),
+                showModalBottomSheet(
+                  context: context,
+                  builder: (_) => Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${data[value] ?? 0} ${tr(ref, 'statistics_heatmap_activity_count')}',
+                        ),
+                      ],
                     ),
-                  );
-                },
+                  ),
+                );
+              },
             ),
           ],
         ),

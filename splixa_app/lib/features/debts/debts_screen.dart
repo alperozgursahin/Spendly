@@ -6,9 +6,9 @@ import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import '../filters/filters_provider.dart';
+import '../groups/financial_models.dart';
 import '../groups/group_model.dart';
 import '../groups/group_provider.dart';
-import '../groups/group_transaction_model.dart';
 import '../profile/currency_provider.dart';
 import '../profile/exchange_rate_provider.dart';
 
@@ -33,9 +33,10 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
         final groups = await ref.read(userGroupsProvider.future);
         for (final group in groups) {
           if (group.id == null) continue;
-          ref.invalidate(groupTransactionsStreamProvider(group.id!));
+          ref.invalidate(groupExpensesStreamProvider(group.id!));
           ref.invalidate(groupMembersProvider(group.id!));
-          ref.invalidate(balanceEngineProvider(group.id!));
+          ref.invalidate(groupBalancesProvider(group.id!));
+          ref.invalidate(groupSettlementsProvider(group.id!));
         }
       } catch (_) {
         // Providers show their own error states.
@@ -157,19 +158,19 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
       if (filters.groupId.isNotEmpty && filters.groupId != groupId) continue;
 
       final members = ref.watch(groupMembersProvider(groupId));
-      final transactions = ref.watch(groupTransactionsStreamProvider(groupId));
+      final expenses = ref.watch(groupExpensesStreamProvider(groupId));
 
-      final lines = transactions.maybeWhen(
+      final lines = expenses.maybeWhen(
         data: (items) => isOurDebt
             ? _collectOurDebts(
-                transactions: items,
+                expenses: items,
                 group: group,
                 currentUserId: currentUserId,
                 members: members,
                 filters: filters,
               )
             : _collectPeopleOweUs(
-                transactions: items,
+                expenses: items,
                 group: group,
                 currentUserId: currentUserId,
                 members: members,
@@ -287,33 +288,28 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
       if (groupId == null) continue;
 
       final members = ref.watch(groupMembersProvider(groupId));
-      final transactions = ref.watch(groupTransactionsStreamProvider(groupId));
+      final expenses = ref.watch(groupExpensesStreamProvider(groupId));
 
-      transactions.whenData((items) {
-        for (final transaction in items) {
-          transaction.splitData.forEach((participantId, rawValue) {
-            if (participantId == transaction.payerId) return;
+      expenses.whenData((items) {
+        for (final item in items) {
+          final expense = item.expense;
+          for (final share in item.shares) {
+            final participantId = share.participantId;
+            if (participantId == expense.payerId) continue;
+            if (share.status != ExpenseShareStatus.pending) continue;
 
-            final status = participantApprovalStatus(
-              transaction.splitData,
-              participantId,
-              transaction.payerId,
-            );
-
-            if (status != DebtApprovalStatus.pending) return;
-
-            final amount = _amountFromSplit(rawValue);
-            if (amount <= 0) return;
+            final amount = share.baseShareAmount;
+            if (amount <= 0) continue;
 
             final line = _PendingLine(
-              transactionId: transaction.id,
+              transactionId: expense.id,
               groupId: groupId,
               groupName: group.name,
-              title: transaction.description,
+              title: expense.description,
               counterpartyName: _memberName(
                 members,
                 participantId == currentUserId
-                    ? transaction.payerId
+                    ? expense.payerId
                     : participantId,
                 currentUserId,
               ),
@@ -322,10 +318,10 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
 
             if (participantId == currentUserId) {
               awaitingMe.add(line);
-            } else if (transaction.payerId == currentUserId) {
+            } else if (expense.payerId == currentUserId) {
               awaitingOthers.add(line);
             }
-          });
+          }
         }
       });
     }
@@ -428,10 +424,20 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
       if (filters.groupId.isNotEmpty && filters.groupId != groupId) continue;
 
       final members = ref.watch(groupMembersProvider(groupId));
-      final balances = ref.watch(balanceEngineProvider(groupId));
+      final balances = ref.watch(groupBalancesProvider(groupId));
 
       final settlements = members.maybeWhen(
-        data: (items) => _buildSettlements(balances, items, currentUserId),
+        data: (items) => _buildSettlements(
+          balances.maybeWhen(
+            data: (rows) => {
+              for (final row in rows)
+                if (row.currencyCode == 'TRY') row.userId: row.balance,
+            },
+            orElse: () => <String, double>{},
+          ),
+          items,
+          currentUserId,
+        ),
         orElse: () => const <_SettlementLine>[],
       );
 
@@ -618,7 +624,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
       item,
       () => ref
           .read(groupServiceProvider)
-          .acknowledgeDebtParticipant(item.transactionId!),
+          .acknowledgeExpenseShare(item.transactionId!),
     );
   }
 
@@ -627,7 +633,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
       item,
       () => ref
           .read(groupServiceProvider)
-          .rejectDebtParticipant(item.transactionId!),
+          .rejectExpenseShare(item.transactionId!),
     );
   }
 
@@ -645,8 +651,9 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
 
     try {
       await action();
-      ref.invalidate(groupTransactionsStreamProvider(item.groupId));
-      ref.invalidate(balanceEngineProvider(item.groupId));
+      ref.invalidate(groupExpensesStreamProvider(item.groupId));
+      ref.invalidate(groupBalancesProvider(item.groupId));
+      ref.invalidate(groupSettlementsProvider(item.groupId));
       ref.read(groupDataRefreshProvider.notifier).state++;
     } catch (_) {
       if (mounted) {
@@ -662,7 +669,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
   }
 
   List<_DebtLine> _collectOurDebts({
-    required List<GroupTransactionModel> transactions,
+    required List<ExpenseWithShares> expenses,
     required GroupModel group,
     required String currentUserId,
     required AsyncValue<List<GroupMemberModel>> members,
@@ -670,35 +677,33 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
   }) {
     final results = <_DebtLine>[];
 
-    for (final transaction in transactions) {
-      if (transaction.payerId == currentUserId) continue;
-      if (!_matchesDate(transaction.createdAt, filters)) continue;
+    for (final item in expenses) {
+      final expense = item.expense;
+      if (expense.payerId == currentUserId) continue;
+      if (!_matchesDate(expense.createdAt, filters)) continue;
 
-      final rawValue = transaction.splitData[currentUserId];
-      if (rawValue == null) continue;
-
-      final status = participantApprovalStatus(
-        transaction.splitData,
-        currentUserId,
-        transaction.payerId,
-      );
+      final share = item.shareFor(currentUserId);
+      if (share == null) continue;
 
       // Only approved and payment_pending are live financial debts.
-      if (!isDebtCountedStatus(status)) continue;
+      if (share.status != ExpenseShareStatus.approved &&
+          share.status != ExpenseShareStatus.paymentPending) {
+        continue;
+      }
 
-      final amount = _amountFromSplit(rawValue);
+      final amount = share.baseShareAmount;
       if (amount <= 0) continue;
 
       results.add(
         _DebtLine(
-          title: transaction.description,
+          title: expense.description,
           counterpartyName: _memberName(
             members,
-            transaction.payerId,
+            expense.payerId,
             currentUserId,
           ),
           amount: amount,
-          date: transaction.createdAt,
+          date: expense.createdAt,
           groupName: group.name,
         ),
       );
@@ -708,7 +713,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
   }
 
   List<_DebtLine> _collectPeopleOweUs({
-    required List<GroupTransactionModel> transactions,
+    required List<ExpenseWithShares> expenses,
     required GroupModel group,
     required String currentUserId,
     required AsyncValue<List<GroupMemberModel>> members,
@@ -716,39 +721,38 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
   }) {
     final results = <_DebtLine>[];
 
-    for (final transaction in transactions) {
-      if (transaction.payerId != currentUserId) continue;
-      if (!_matchesDate(transaction.createdAt, filters)) continue;
+    for (final item in expenses) {
+      final expense = item.expense;
+      if (expense.payerId != currentUserId) continue;
+      if (!_matchesDate(expense.createdAt, filters)) continue;
 
-      transaction.splitData.forEach((participantId, rawValue) {
-        if (participantId == transaction.payerId) return;
-
-        final status = participantApprovalStatus(
-          transaction.splitData,
-          participantId,
-          transaction.payerId,
-        );
+      for (final share in item.shares) {
+        final participantId = share.participantId;
+        if (participantId == expense.payerId) continue;
 
         // settled, pending, and rejected shares are intentionally excluded.
-        if (!isDebtCountedStatus(status)) return;
+        if (share.status != ExpenseShareStatus.approved &&
+            share.status != ExpenseShareStatus.paymentPending) {
+          continue;
+        }
 
-        final amount = _amountFromSplit(rawValue);
-        if (amount <= 0) return;
+        final amount = share.baseShareAmount;
+        if (amount <= 0) continue;
 
         results.add(
           _DebtLine(
-            title: transaction.description,
+            title: expense.description,
             counterpartyName: _memberName(
               members,
               participantId,
               currentUserId,
             ),
             amount: amount,
-            date: transaction.createdAt,
+            date: expense.createdAt,
             groupName: group.name,
           ),
         );
-      });
+      }
     }
 
     return results;
@@ -832,14 +836,6 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     }
 
     return results;
-  }
-
-  double _amountFromSplit(dynamic value) {
-    if (value is Map) {
-      return (value['amount'] as num?)?.toDouble() ?? 0;
-    }
-
-    return (value as num?)?.toDouble() ?? 0;
   }
 
   String _memberName(

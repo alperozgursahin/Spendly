@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/analytics_service.dart';
 import '../../core/friendly_error.dart';
 import '../../core/app_strings.dart';
 import '../../core/locale_provider.dart';
@@ -14,6 +15,7 @@ import '../profile/exchange_rate_provider.dart';
 import 'activity_provider.dart';
 import '../filters/filters_provider.dart';
 import '../notifications/notification_provider.dart';
+import '../subscriptions/premium_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({
@@ -65,7 +67,7 @@ class DashboardScreen extends ConsumerWidget {
               IconButton(
                 icon: const Icon(Icons.insights_outlined),
                 tooltip: tr(ref, 'dashboard_statistics'),
-                onPressed: () => context.push('/dashboard/statistics'),
+                onPressed: () => _openStatistics(context, ref),
               ),
             ],
           ),
@@ -122,7 +124,7 @@ class DashboardScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.insights_outlined),
             tooltip: tr(ref, 'dashboard_statistics'),
-            onPressed: () => context.push('/dashboard/statistics'),
+            onPressed: () => _openStatistics(context, ref),
           ),
           Badge(
             isLabelVisible: unreadNotificationCount > 0,
@@ -148,6 +150,16 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _openStatistics(BuildContext context, WidgetRef ref) {
+    if (ref.read(premiumProvider)) {
+      context.push('/dashboard/statistics');
+      return;
+    }
+    context.push(
+      '/paywall?source=${PaywallSource.advancedAnalytics.analyticsValue}',
     );
   }
 
@@ -559,7 +571,7 @@ class DashboardScreen extends ConsumerWidget {
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         trailing: Text(
-                          '${isIncome ? '+' : '-'}$currency${exchanger.convertFromTRY(t.amount, currency).toStringAsFixed(2)}',
+                          '${isIncome ? '+' : '-'}$currency${exchanger.convertFromTRY(t.baseAmount, currency).toStringAsFixed(2)}',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -651,6 +663,8 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
     final isIncome = transactionType == 'income';
     final profileCurrency = ref.watch(currencyProvider);
     final currency = selectedCurrency ?? profileCurrency;
+    final isPremium = ref.watch(premiumProvider);
+    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
 
     return Card(
       elevation: 0,
@@ -734,6 +748,11 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
               value: currency,
               labelText: tr(ref, 'common_currency'),
               compact: true,
+              customRateUnlocked: isPremium,
+              customRateTooltip: isTurkish
+                  ? 'Özel döviz kuru${isPremium ? '' : ' · Pro'}'
+                  : 'Custom exchange rate${isPremium ? '' : ' · Pro'}',
+              onCustomRatePressed: () => _handleCustomRate(isPremium),
               onChanged: (value) {
                 setState(() => selectedCurrency = value);
               },
@@ -823,6 +842,26 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
     );
   }
 
+  void _handleCustomRate(bool isPremium) {
+    if (!isPremium) {
+      context.push(
+        '/paywall?source=${PaywallSource.customExchangeRate.analyticsValue}',
+      );
+      return;
+    }
+
+    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isTurkish
+              ? 'Özel kur düzenleyicisi yakında kullanıma açılacak.'
+              : 'The custom rate editor is coming soon.',
+        ),
+      ),
+    );
+  }
+
   Future<void> _saveTransaction() async {
     final amount =
         double.tryParse(amountController.text.trim().replaceAll(',', '.')) ??
@@ -850,12 +889,27 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
     final amountInTRY = double.parse(
       exchanger.convertToTRY(amount, entryCurrency).toStringAsFixed(2),
     );
+    final currencyOption = currencyOptionForSymbol(entryCurrency);
+    final exchangeRate = entryCurrency == '₺'
+        ? 1.0
+        : 1 / exchanger.rateFor(entryCurrency);
+    final now = DateTime.now();
 
     final transaction = TransactionModel(
       userId: user.id,
-      amount: amountInTRY,
+      originalAmount: amount,
+      currencyCode: currencyOption.code,
+      baseAmount: amountInTRY,
+      baseCurrencyCode: 'TRY',
+      exchangeRate: exchangeRate,
+      rateSource: entryCurrency == '₺'
+          ? 'identity'
+          : exchanger.currentRateSource,
+      rateLockedAt: entryCurrency == '₺'
+          ? now.toUtc()
+          : exchanger.lastUpdatedAt!,
       category: finalCategory,
-      date: DateTime.now(),
+      date: now,
       type: transactionType,
     );
 
