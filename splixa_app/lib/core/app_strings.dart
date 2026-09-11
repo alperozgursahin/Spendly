@@ -1189,8 +1189,10 @@ class AppStrings {
       AppLanguage.en: 'A problem occurred. Please try again.',
     },
     'error_google_cancelled': {
-      AppLanguage.tr: 'Google ile giriş iptal edildi.',
-      AppLanguage.en: 'Google sign-in was cancelled.',
+      AppLanguage.tr:
+          'Google girişi iptal edildi veya cihaz doğrulanamadı. Tekrar deneyin.',
+      AppLanguage.en:
+          'Google sign-in was cancelled or the device could not be verified. Try again.',
     },
     'error_google_configuration': {
       AppLanguage.tr: 'Google ile giriş şu anda doğru yapılandırılmamış.',

@@ -94,6 +94,7 @@ class NativeGoogleAuthClient implements GoogleAuthClient {
     } on NativeGoogleAuthException {
       rethrow;
     } on GoogleSignInException catch (error) {
+      debugPrint('Native Google sign-in failed: ${error.code.name}');
       throw NativeGoogleAuthException(_failureFor(error.code));
     } catch (_) {
       throw const NativeGoogleAuthException(NativeGoogleAuthFailure.failed);

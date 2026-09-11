@@ -75,7 +75,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         context.go(result.requiresOnboarding ? '/onboarding' : '/dashboard');
       }
     } on NativeGoogleAuthException catch (error) {
-      if (error.failure == NativeGoogleAuthFailure.cancelled) return;
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
