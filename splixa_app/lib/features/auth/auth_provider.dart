@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -84,9 +85,34 @@ class LoginStartResult {
 }
 
 class GoogleLoginResult {
-  const GoogleLoginResult({required this.requiresOnboarding});
+  const GoogleLoginResult({
+    required this.requiresOnboarding,
+    required this.requiresProfileSetup,
+  });
 
   final bool requiresOnboarding;
+  final bool requiresProfileSetup;
+}
+
+bool requiresGoogleProfileSetup(User user) {
+  final provider = user.appMetadata['provider']?.toString();
+  final providers = user.appMetadata['providers'];
+  final isGoogleIdentity =
+      provider == 'google' ||
+      (providers is List &&
+          providers.map((value) => '$value').contains('google'));
+  if (!isGoogleIdentity) return false;
+
+  final username = user.userMetadata?['username']?.toString().trim() ?? '';
+  return !RegExp(r'^[a-z0-9_]{3,30}$').hasMatch(username.toLowerCase());
+}
+
+enum UsernameSetupFailure { invalid, taken, unauthorized, timedOut, failed }
+
+class UsernameSetupException implements Exception {
+  const UsernameSetupException(this.failure);
+
+  final UsernameSetupFailure failure;
 }
 
 /// Supabase sets `created_at` and `last_sign_in_at` to effectively the same
@@ -117,6 +143,10 @@ class AccountDeletionException implements Exception {
 }
 
 class AuthController {
+  static const _supabaseSignInTimeout = Duration(seconds: 25);
+  static const _profileWriteTimeout = Duration(seconds: 15);
+  static const _postLoginSyncTimeout = Duration(seconds: 12);
+
   final SupabaseClient _client;
   final Ref _ref;
   final GoogleAuthClient _googleAuth;
@@ -132,11 +162,18 @@ class AuthController {
 
     try {
       final googleTokens = await _googleAuth.authenticate();
-      final response = await _client.auth.signInWithIdToken(
-        provider: OAuthProvider.google,
-        idToken: googleTokens.idToken,
-        accessToken: googleTokens.accessToken,
-      );
+      final response = await _client.auth
+          .signInWithIdToken(
+            provider: OAuthProvider.google,
+            idToken: googleTokens.idToken,
+            accessToken: googleTokens.accessToken,
+          )
+          .timeout(
+            _supabaseSignInTimeout,
+            onTimeout: () => throw const NativeGoogleAuthException(
+              NativeGoogleAuthFailure.timedOut,
+            ),
+          );
 
       final user = response.user;
       if (response.session == null || user == null) {
@@ -152,12 +189,12 @@ class AuthController {
         await onboarding.reset();
       }
 
-      await _identifyRevenueCatUser();
-      await _ref
-          .read(analyticsServiceProvider)
-          .login(method: AnalyticsLoginMethod.google);
       _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
-      return GoogleLoginResult(requiresOnboarding: requiresOnboarding);
+      _schedulePostLogin(AnalyticsLoginMethod.google);
+      return GoogleLoginResult(
+        requiresOnboarding: requiresOnboarding,
+        requiresProfileSetup: requiresGoogleProfileSetup(user),
+      );
     } catch (_) {
       if (_client.auth.currentSession == null) {
         try {
@@ -202,14 +239,11 @@ class AuthController {
             'Secure review session could not be established.',
           );
         }
-        await _identifyRevenueCatUser();
-        await _ref
-            .read(analyticsServiceProvider)
-            .login(method: AnalyticsLoginMethod.password);
         if (data['reviewAccess'] == true) {
           _ref.read(premiumProvider.notifier).grantReviewAccess();
         }
         _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
+        _schedulePostLogin(AnalyticsLoginMethod.password);
         return LoginStartResult(email: email, requiresOtp: false);
       }
 
@@ -248,11 +282,8 @@ class AuthController {
           'The verification code is invalid or expired.',
         );
       }
-      await _identifyRevenueCatUser();
-      await _ref
-          .read(analyticsServiceProvider)
-          .login(method: AnalyticsLoginMethod.password);
       _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
+      _schedulePostLogin(AnalyticsLoginMethod.password);
     } catch (_) {
       rethrow;
     }
@@ -273,8 +304,73 @@ class AuthController {
       data: {'username': normalizedUsername},
     );
     if (response.session != null) {
-      await _identifyRevenueCatUser();
+      _scheduleRevenueCatIdentitySync();
     }
+  }
+
+  Future<void> completeGoogleProfile({required String username}) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      throw const UsernameSetupException(UsernameSetupFailure.unauthorized);
+    }
+
+    final normalized = username
+        .trim()
+        .replaceFirst(RegExp(r'^@'), '')
+        .toLowerCase();
+    if (!RegExp(r'^[a-z0-9_]{3,30}$').hasMatch(normalized)) {
+      throw const UsernameSetupException(UsernameSetupFailure.invalid);
+    }
+
+    try {
+      final existing = await _client
+          .from('profiles')
+          .select('id')
+          .ilike('username', normalized)
+          .neq('id', user.id)
+          .limit(1)
+          .maybeSingle()
+          .timeout(_profileWriteTimeout);
+      if (existing != null) {
+        throw const UsernameSetupException(UsernameSetupFailure.taken);
+      }
+
+      await _client
+          .from('profiles')
+          .upsert({'id': user.id, 'username': normalized}, onConflict: 'id')
+          .timeout(_profileWriteTimeout);
+      await _client.auth
+          .updateUser(UserAttributes(data: {'username': normalized}))
+          .timeout(_profileWriteTimeout);
+
+      _ref.invalidate(currentUserProfileProvider);
+    } on UsernameSetupException {
+      rethrow;
+    } on TimeoutException {
+      throw const UsernameSetupException(UsernameSetupFailure.timedOut);
+    } on PostgrestException catch (error) {
+      if (error.code == '23505') {
+        throw const UsernameSetupException(UsernameSetupFailure.taken);
+      }
+      throw const UsernameSetupException(UsernameSetupFailure.failed);
+    } catch (_) {
+      throw const UsernameSetupException(UsernameSetupFailure.failed);
+    }
+  }
+
+  void _schedulePostLogin(AnalyticsLoginMethod method) {
+    _scheduleRevenueCatIdentitySync();
+    unawaited(_ref.read(analyticsServiceProvider).login(method: method));
+  }
+
+  void _scheduleRevenueCatIdentitySync() {
+    unawaited(
+      _identifyRevenueCatUser().timeout(_postLoginSyncTimeout).catchError((
+        Object error,
+      ) {
+        debugPrint('RevenueCat post-login sync timed out or failed: $error');
+      }),
+    );
   }
 
   Future<void> _identifyRevenueCatUser() async {

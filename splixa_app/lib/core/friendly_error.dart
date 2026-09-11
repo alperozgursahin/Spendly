@@ -34,6 +34,7 @@ String _friendlyGoogleAuthMessage(NativeGoogleAuthException error) {
     NativeGoogleAuthFailure.cancelled => 'error_google_cancelled',
     NativeGoogleAuthFailure.configuration => 'error_google_configuration',
     NativeGoogleAuthFailure.unavailable => 'error_google_unavailable',
+    NativeGoogleAuthFailure.timedOut => 'error_google_timeout',
     NativeGoogleAuthFailure.missingToken ||
     NativeGoogleAuthFailure.failed => 'error_google_failed',
   };

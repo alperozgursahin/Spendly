@@ -6,6 +6,7 @@ enum NativeGoogleAuthFailure {
   cancelled,
   configuration,
   unavailable,
+  timedOut,
   missingToken,
   failed,
 }
@@ -17,10 +18,10 @@ class NativeGoogleAuthException implements Exception {
 }
 
 class NativeGoogleTokens {
-  const NativeGoogleTokens({required this.idToken, required this.accessToken});
+  const NativeGoogleTokens({required this.idToken, this.accessToken});
 
   final String idToken;
-  final String accessToken;
+  final String? accessToken;
 }
 
 abstract interface class GoogleAuthClient {
@@ -40,6 +41,8 @@ class NativeGoogleAuthClient implements GoogleAuthClient {
     : _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
 
   static const _authorizationScopes = <String>[];
+  static const _accountPickerTimeout = Duration(seconds: 45);
+  static const _silentAuthorizationTimeout = Duration(seconds: 5);
 
   final GoogleSignIn _googleSignIn;
   Future<void>? _initialization;
@@ -55,14 +58,27 @@ class NativeGoogleAuthClient implements GoogleAuthClient {
     }
 
     try {
-      final account = await _googleSignIn.authenticate(
-        scopeHint: _authorizationScopes,
-      );
-      var authorization = await account.authorizationClient
-          .authorizationForScopes(_authorizationScopes);
-      authorization ??= await account.authorizationClient.authorizeScopes(
-        _authorizationScopes,
-      );
+      final account = await _googleSignIn
+          .authenticate(scopeHint: _authorizationScopes)
+          .timeout(
+            _accountPickerTimeout,
+            onTimeout: () => throw const NativeGoogleAuthException(
+              NativeGoogleAuthFailure.timedOut,
+            ),
+          );
+
+      // Supabase authenticates Google with the ID token. An access token is
+      // useful when Google can return one silently, but it is optional in
+      // GoTrue. Never launch a second consent prompt for an empty scope list:
+      // some Android credential-manager versions can leave that future open.
+      GoogleSignInClientAuthorization? authorization;
+      try {
+        authorization = await account.authorizationClient
+            .authorizationForScopes(_authorizationScopes)
+            .timeout(_silentAuthorizationTimeout, onTimeout: () => null);
+      } catch (_) {
+        authorization = null;
+      }
 
       final idToken = account.authentication.idToken;
       if (idToken == null || idToken.isEmpty) {
@@ -73,7 +89,7 @@ class NativeGoogleAuthClient implements GoogleAuthClient {
 
       return NativeGoogleTokens(
         idToken: idToken,
-        accessToken: authorization.accessToken,
+        accessToken: authorization?.accessToken,
       );
     } on NativeGoogleAuthException {
       rethrow;

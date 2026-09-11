@@ -69,7 +69,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       final result = await ref.read(authControllerProvider).signInWithGoogle();
       if (!mounted) return;
-      context.go(result.requiresOnboarding ? '/onboarding' : '/dashboard');
+      if (result.requiresProfileSetup) {
+        context.go('/complete-profile');
+      } else {
+        context.go(result.requiresOnboarding ? '/onboarding' : '/dashboard');
+      }
     } on NativeGoogleAuthException catch (error) {
       if (error.failure == NativeGoogleAuthFailure.cancelled) return;
       if (!mounted) return;

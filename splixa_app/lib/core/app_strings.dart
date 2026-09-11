@@ -365,6 +365,54 @@ class AppStrings {
       AppLanguage.en: 'Already have an account? Log in',
     },
 
+    // --- Auth: Google profile completion ---
+    'profile_setup_title': {
+      AppLanguage.tr: 'Seni nasıl tanıyalım?',
+      AppLanguage.en: 'What should we call you?',
+    },
+    'profile_setup_subtitle': {
+      AppLanguage.tr:
+          'Arkadaşlarının seni bulabilmesi için benzersiz bir kullanıcı adı seç.',
+      AppLanguage.en:
+          'Choose a unique username so friends can find you on Splixa.',
+    },
+    'profile_setup_username_label': {
+      AppLanguage.tr: 'Kullanıcı adı',
+      AppLanguage.en: 'Username',
+    },
+    'profile_setup_username_hint': {
+      AppLanguage.tr: 'örnek_kullanici',
+      AppLanguage.en: 'your_username',
+    },
+    'profile_setup_username_helper': {
+      AppLanguage.tr: '3–30 karakter; yalnızca harf, rakam ve alt çizgi.',
+      AppLanguage.en: '3–30 characters; letters, numbers, and underscore only.',
+    },
+    'profile_setup_continue': {
+      AppLanguage.tr: 'Splixa’ya devam et',
+      AppLanguage.en: 'Continue to Splixa',
+    },
+    'profile_setup_use_other_account': {
+      AppLanguage.tr: 'Başka bir hesap kullan',
+      AppLanguage.en: 'Use another account',
+    },
+    'profile_setup_username_taken': {
+      AppLanguage.tr: 'Bu kullanıcı adı alınmış. Başka bir tane dene.',
+      AppLanguage.en: 'That username is taken. Try another one.',
+    },
+    'profile_setup_session_expired': {
+      AppLanguage.tr: 'Oturumun sona erdi. Lütfen tekrar giriş yap.',
+      AppLanguage.en: 'Your session expired. Please sign in again.',
+    },
+    'profile_setup_timeout': {
+      AppLanguage.tr: 'İşlem zaman aşımına uğradı. Tekrar dene.',
+      AppLanguage.en: 'The request timed out. Please try again.',
+    },
+    'profile_setup_failed': {
+      AppLanguage.tr: 'Kullanıcı adı kaydedilemedi. Tekrar dene.',
+      AppLanguage.en: 'Your username could not be saved. Please try again.',
+    },
+
     // --- Auth: forgot / update password ---
     'forgot_password_title': {
       AppLanguage.tr: 'Şifremi Unuttum',
@@ -1151,6 +1199,10 @@ class AppStrings {
     'error_google_unavailable': {
       AppLanguage.tr: 'Google ile giriş bu cihazda kullanılamıyor.',
       AppLanguage.en: 'Google sign-in is unavailable on this device.',
+    },
+    'error_google_timeout': {
+      AppLanguage.tr: 'Google ile giriş zaman aşımına uğradı. Tekrar deneyin.',
+      AppLanguage.en: 'Google sign-in timed out. Please try again.',
     },
     'error_google_failed': {
       AppLanguage.tr: 'Google ile giriş tamamlanamadı. Lütfen tekrar deneyin.',

@@ -13,6 +13,7 @@ import 'core/locale_provider.dart';
 import 'core/app_theme_provider.dart';
 import 'core/app_strings.dart';
 import 'features/auth/login_screen.dart';
+import 'features/auth/complete_profile_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/forgot_password_screen.dart';
 import 'features/auth/login_verification_screen.dart';
@@ -130,6 +131,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
       final isAuth = session != null;
+      final needsGoogleProfile =
+          session != null && requiresGoogleProfileSetup(session.user);
       final path = state.uri.path;
       final authFlow = ref.read(authFlowStageProvider);
       final hasCompletedOnboarding = onboardingController.completed;
@@ -157,6 +160,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           !isRecoveryRoute) {
         return '/onboarding';
       }
+      if (isAuth && needsGoogleProfile && path != '/complete-profile') {
+        return '/complete-profile';
+      }
+      if (isAuth && !needsGoogleProfile && path == '/complete-profile') {
+        return '/dashboard';
+      }
       if (hasCompletedOnboarding && path == '/onboarding') {
         return isAuth ? '/dashboard' : '/login';
       }
@@ -172,6 +181,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const OnboardingScreen(),
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/complete-profile',
+        builder: (context, state) => const CompleteProfileScreen(),
+      ),
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
