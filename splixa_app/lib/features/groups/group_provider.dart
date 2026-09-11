@@ -1,12 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/analytics_service.dart';
 import '../auth/auth_provider.dart';
 import 'financial_models.dart';
 import 'group_model.dart';
 
 final groupServiceProvider = Provider<GroupService>((ref) {
-  return GroupService(Supabase.instance.client);
+  return GroupService(
+    Supabase.instance.client,
+    ref.watch(analyticsServiceProvider),
+  );
 });
 
 final groupDataRefreshProvider = StateProvider<int>((ref) => 0);
@@ -158,8 +162,9 @@ Future<void> markGroupChatRead(String groupId, String userId) {
 
 class GroupService {
   final SupabaseClient _supabase;
+  final AnalyticsService _analytics;
 
-  GroupService(this._supabase);
+  GroupService(this._supabase, this._analytics);
 
   Stream<List<ExpenseWithShares>> watchGroupExpenses(String groupId) {
     return _supabase
@@ -236,7 +241,11 @@ class GroupService {
       'create_expense_v1',
       params: draft.toRpcParameters(),
     );
-    return Expense.fromJson(_singleRpcRow(response, 'create_expense_v1'));
+    final expense = Expense.fromJson(
+      _singleRpcRow(response, 'create_expense_v1'),
+    );
+    await _analytics.expenseAdded(scope: ExpenseAnalyticsScope.group);
+    return expense;
   }
 
   Future<void> acknowledgeExpenseShare(String expenseId) {

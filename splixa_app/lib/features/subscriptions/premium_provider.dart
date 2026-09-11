@@ -11,6 +11,16 @@ final premiumProvider = StateNotifierProvider<PremiumNotifier, bool>((ref) {
 
 final customerInfoProvider = StateProvider<CustomerInfo?>((ref) => null);
 
+/// Binds RevenueCat ownership to the authenticated Supabase user.
+Future<CustomerInfo> synchronizeRevenueCatIdentity(User user) async {
+  final result = await Purchases.logIn(user.id);
+  final email = user.email?.trim();
+  if (email != null && email.isNotEmpty) {
+    await Purchases.setEmail(email);
+  }
+  return result.customerInfo;
+}
+
 class PremiumNotifier extends StateNotifier<bool> {
   PremiumNotifier(this._ref) : super(_hasServerReviewAccess()) {
     _reviewAccess = state;
@@ -21,6 +31,9 @@ class PremiumNotifier extends StateNotifier<bool> {
   final Ref _ref;
   late final CustomerInfoUpdateListener _customerInfoListener;
   bool _reviewAccess = false;
+  String? _identifiedUserId;
+  String? _identitySyncUserId;
+  Future<void>? _identitySyncFuture;
 
   static bool _hasServerReviewAccess() {
     return Supabase
@@ -43,11 +56,55 @@ class PremiumNotifier extends StateNotifier<bool> {
 
       Purchases.addCustomerInfoUpdateListener(_customerInfoListener);
 
-      final customerInfo = await Purchases.getCustomerInfo();
-      _updatePremiumStatus(customerInfo);
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        final customerInfo = await Purchases.getCustomerInfo();
+        _updatePremiumStatus(customerInfo);
+      } else {
+        await identifyUser(user);
+      }
     } catch (e) {
       debugPrint("RevenueCat Init Error: $e");
     }
+  }
+
+  Future<void> identifyUser(User user) {
+    if (_identifiedUserId == user.id) return Future<void>.value();
+    if (_identitySyncUserId == user.id && _identitySyncFuture != null) {
+      return _identitySyncFuture!;
+    }
+
+    final operation = _synchronizeIdentity(user);
+    _identitySyncUserId = user.id;
+    _identitySyncFuture = operation;
+    return operation.whenComplete(() {
+      if (_identitySyncUserId == user.id) {
+        _identitySyncUserId = null;
+        _identitySyncFuture = null;
+      }
+    });
+  }
+
+  Future<void> _synchronizeIdentity(User user) async {
+    if (kIsWeb || !await Purchases.isConfigured) return;
+
+    final currentRevenueCatUserId = await Purchases.appUserID;
+    final customerInfo = currentRevenueCatUserId == user.id
+        ? await Purchases.getCustomerInfo()
+        : await synchronizeRevenueCatIdentity(user);
+
+    // A restored app session may already be identified from bootstrap. Keep
+    // the email attribute synchronized even when another logIn is unnecessary.
+    final email = user.email?.trim();
+    if (currentRevenueCatUserId == user.id &&
+        email != null &&
+        email.isNotEmpty) {
+      await Purchases.setEmail(email);
+    }
+
+    _identifiedUserId = user.id;
+    _updatePremiumStatus(customerInfo);
+    _ref.invalidate(offeringsProvider);
   }
 
   void _updatePremiumStatus(CustomerInfo customerInfo) {
@@ -67,6 +124,10 @@ class PremiumNotifier extends StateNotifier<bool> {
     required PaywallSource source,
   }) async {
     final analytics = _ref.read(analyticsServiceProvider);
+    final previousCustomerInfo = _ref.read(customerInfoProvider);
+    final previouslyActive =
+        previousCustomerInfo != null &&
+        _hasActiveEntitlement(previousCustomerInfo);
     await analytics.purchaseAttempt(
       source: source,
       packageId: package.identifier,
@@ -86,6 +147,15 @@ class PremiumNotifier extends StateNotifier<bool> {
           currencyCode: package.storeProduct.currencyCode,
           price: package.storeProduct.price,
         );
+        if (!previouslyActive &&
+            package.storeProduct.productCategory ==
+                ProductCategory.subscription) {
+          await analytics.subscriptionStarted(
+            source: source,
+            packageId: package.identifier,
+            productId: package.storeProduct.identifier,
+          );
+        }
       }
       return state;
     } catch (e) {
@@ -107,6 +177,9 @@ class PremiumNotifier extends StateNotifier<bool> {
 
   void reset() {
     _reviewAccess = false;
+    _identifiedUserId = null;
+    _identitySyncUserId = null;
+    _identitySyncFuture = null;
     _ref.read(customerInfoProvider.notifier).state = null;
     state = false;
   }
@@ -114,7 +187,7 @@ class PremiumNotifier extends StateNotifier<bool> {
   bool _hasActiveEntitlement(CustomerInfo customerInfo) {
     final entitlementId = RevenueCatConfig.premiumEntitlementId;
     if (entitlementId.isEmpty) return false;
-    return customerInfo.entitlements.all[entitlementId]?.isActive ?? false;
+    return customerInfo.entitlements.active.containsKey(entitlementId);
   }
 
   @override

@@ -38,8 +38,14 @@ import 'main_scaffold.dart';
 import 'features/subscriptions/revenuecat_config.dart';
 
 class GoRouterRefreshStream extends ChangeNotifier {
-  GoRouterRefreshStream(Stream<dynamic> stream, {Listenable? listenable})
-    : _listenable = listenable {
+  factory GoRouterRefreshStream(
+    Stream<dynamic> stream, {
+    Listenable? listenable,
+  }) {
+    return GoRouterRefreshStream._(stream, listenable);
+  }
+
+  GoRouterRefreshStream._(Stream<dynamic> stream, this._listenable) {
     notifyListeners();
     _subscription = stream.asBroadcastStream().listen(
       (dynamic _) => notifyListeners(),
@@ -80,11 +86,21 @@ void main() async {
   if (revenueCatKey.isNotEmpty) {
     await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.warn);
     final purchasesConfiguration = PurchasesConfiguration(revenueCatKey);
-    final restoredUserId = Supabase.instance.client.auth.currentUser?.id;
-    if (restoredUserId != null) {
-      purchasesConfiguration.appUserID = restoredUserId;
+    final restoredUser = Supabase.instance.client.auth.currentUser;
+    if (restoredUser != null) {
+      purchasesConfiguration.appUserID = restoredUser.id;
     }
     await Purchases.configure(purchasesConfiguration);
+    if (restoredUser != null) {
+      try {
+        final email = restoredUser.email?.trim();
+        if (email != null && email.isNotEmpty) {
+          await Purchases.setEmail(email);
+        }
+      } catch (error) {
+        debugPrint('RevenueCat restored-session sync failed: $error');
+      }
+    }
   }
 
   runApp(

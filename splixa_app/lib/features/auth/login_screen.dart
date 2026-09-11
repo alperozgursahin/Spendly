@@ -6,6 +6,7 @@ import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import '../../core/splixa_design.dart';
 import 'auth_provider.dart';
+import 'native_google_auth.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -66,9 +67,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _signInWithGoogle() async {
     setState(() => _isGoogleLoading = true);
     try {
-      await ref.read(authControllerProvider).signInWithGoogle();
-      // OAuth completion arrives through Supabase's deep-link listener. The
-      // router reacts to the auth event and selects the persisted destination.
+      final result = await ref.read(authControllerProvider).signInWithGoogle();
+      if (!mounted) return;
+      context.go(result.requiresOnboarding ? '/onboarding' : '/dashboard');
+    } on NativeGoogleAuthException catch (error) {
+      if (error.failure == NativeGoogleAuthFailure.cancelled) return;
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(error))));
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(

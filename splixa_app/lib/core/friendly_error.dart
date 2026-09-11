@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app_strings.dart';
 import 'locale_provider.dart';
+import '../features/auth/native_google_auth.dart';
 
 /// Converts a caught error into a short, non-technical message suitable for
 /// showing directly to end users (SnackBar, inline error text), translated
@@ -12,6 +13,9 @@ import 'locale_provider.dart';
 /// shown as-is. Anything from Supabase (auth/database) or unrecognized gets
 /// a generic, friendly fallback instead of leaking raw exception text.
 String friendlyErrorMessage(Object error) {
+  if (error is NativeGoogleAuthException) {
+    return _friendlyGoogleAuthMessage(error);
+  }
   if (error is AuthException) return _friendlyAuthMessage(error);
   if (error is PostgrestException) return _friendlyPostgrestMessage(error);
 
@@ -23,6 +27,17 @@ String friendlyErrorMessage(Object error) {
   }
 
   return AppStrings.of('error_generic_short', currentAppLanguage);
+}
+
+String _friendlyGoogleAuthMessage(NativeGoogleAuthException error) {
+  final key = switch (error.failure) {
+    NativeGoogleAuthFailure.cancelled => 'error_google_cancelled',
+    NativeGoogleAuthFailure.configuration => 'error_google_configuration',
+    NativeGoogleAuthFailure.unavailable => 'error_google_unavailable',
+    NativeGoogleAuthFailure.missingToken ||
+    NativeGoogleAuthFailure.failed => 'error_google_failed',
+  };
+  return AppStrings.of(key, currentAppLanguage);
 }
 
 String _friendlyAuthMessage(AuthException error) {

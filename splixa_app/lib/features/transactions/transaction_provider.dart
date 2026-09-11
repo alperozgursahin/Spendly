@@ -1,11 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/analytics_service.dart';
 import 'transaction_model.dart';
 import '../auth/auth_provider.dart';
 
 final transactionServiceProvider = Provider<TransactionService>((ref) {
   final supabase = Supabase.instance.client;
-  return TransactionService(supabase);
+  return TransactionService(supabase, ref.watch(analyticsServiceProvider));
 });
 
 final transactionsProvider = FutureProvider<List<TransactionModel>>((
@@ -40,8 +41,9 @@ final netBalanceProvider = Provider<double>((ref) {
 
 class TransactionService {
   final SupabaseClient _supabase;
+  final AnalyticsService _analytics;
 
-  TransactionService(this._supabase);
+  TransactionService(this._supabase, this._analytics);
 
   Future<List<TransactionModel>> getTransactions(String userId) async {
     final response = await _supabase
@@ -61,6 +63,9 @@ class TransactionService {
     // RLS enforces ownership. The compatibility trigger keeps `amount` equal
     // to base_amount until the legacy column is removed.
     await _supabase.from('transactions').insert(transaction.toJson());
+    if (transaction.type == 'expense') {
+      await _analytics.expenseAdded(scope: ExpenseAnalyticsScope.personal);
+    }
   }
 
   Future<void> deleteTransaction(String id) async {

@@ -7,12 +7,18 @@ import '../../core/analytics_service.dart';
 import '../../core/splixa_design.dart';
 
 class OnboardingController extends ChangeNotifier {
-  OnboardingController({required bool completed}) : _completed = completed;
+  factory OnboardingController({required bool completed}) {
+    return OnboardingController._(completed);
+  }
+
+  OnboardingController._(this._completed);
 
   static const _storageKey = 'splixa_onboarding_completed_v1';
 
   bool _completed;
   bool get completed => _completed;
+  bool _completedThisRun = false;
+  bool get completedThisRun => _completedThisRun;
 
   static Future<OnboardingController> load() async {
     final preferences = await SharedPreferences.getInstance();
@@ -22,6 +28,7 @@ class OnboardingController extends ChangeNotifier {
   }
 
   Future<void> complete() async {
+    _completedThisRun = true;
     if (_completed) return;
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_storageKey, true);
@@ -32,6 +39,7 @@ class OnboardingController extends ChangeNotifier {
   Future<void> reset() async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.remove(_storageKey);
+    _completedThisRun = false;
     if (!_completed) return;
     _completed = false;
     notifyListeners();

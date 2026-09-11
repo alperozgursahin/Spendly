@@ -1140,6 +1140,22 @@ class AppStrings {
       AppLanguage.tr: 'Bir sorun oluştu. Lütfen tekrar deneyin.',
       AppLanguage.en: 'A problem occurred. Please try again.',
     },
+    'error_google_cancelled': {
+      AppLanguage.tr: 'Google ile giriş iptal edildi.',
+      AppLanguage.en: 'Google sign-in was cancelled.',
+    },
+    'error_google_configuration': {
+      AppLanguage.tr: 'Google ile giriş şu anda doğru yapılandırılmamış.',
+      AppLanguage.en: 'Google sign-in is not configured correctly.',
+    },
+    'error_google_unavailable': {
+      AppLanguage.tr: 'Google ile giriş bu cihazda kullanılamıyor.',
+      AppLanguage.en: 'Google sign-in is unavailable on this device.',
+    },
+    'error_google_failed': {
+      AppLanguage.tr: 'Google ile giriş tamamlanamadı. Lütfen tekrar deneyin.',
+      AppLanguage.en: 'Google sign-in could not be completed. Try again.',
+    },
     'error_invalid_credentials': {
       AppLanguage.tr: 'Kullanıcı adı veya şifre hatalı.',
       AppLanguage.en: 'Incorrect username or password.',

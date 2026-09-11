@@ -26,16 +26,43 @@ enum PaywallSource {
   }
 }
 
+enum AnalyticsLoginMethod {
+  google('google'),
+  password('password');
+
+  const AnalyticsLoginMethod(this.analyticsValue);
+
+  final String analyticsValue;
+}
+
+enum ExpenseAnalyticsScope {
+  personal('personal'),
+  group('group');
+
+  const ExpenseAnalyticsScope(this.analyticsValue);
+
+  final String analyticsValue;
+}
+
+typedef AnalyticsEventWriter =
+    Future<void> Function(String name, Map<String, Object>? parameters);
+
 /// One fault-tolerant gateway for product analytics.
 ///
-/// Firebase configuration is intentionally external to source control. Until
-/// `flutterfire configure` supplies the platform configuration, every method
-/// safely becomes a no-op instead of blocking app startup.
+/// Firebase configuration stays outside source control. Android reads the
+/// generated resources from `google-services.json`; other targets can use the
+/// environment fallback. Missing configuration never blocks app startup.
 class AnalyticsService {
-  AnalyticsService._();
+  AnalyticsService._() : _eventWriter = null;
+
+  @visibleForTesting
+  AnalyticsService.forTesting(AnalyticsEventWriter eventWriter)
+    : _eventWriter = eventWriter,
+      _isEnabled = true;
 
   static final AnalyticsService instance = AnalyticsService._();
 
+  final AnalyticsEventWriter? _eventWriter;
   FirebaseAnalytics? _analytics;
   bool _isEnabled = false;
 
@@ -91,6 +118,13 @@ class AnalyticsService {
     );
   }
 
+  /// Firebase automatically records `app_open` when Analytics collection is
+  /// enabled. Splixa deliberately does not emit a second manual event because
+  /// that would double-count launches.
+  Future<void> login({required AnalyticsLoginMethod method}) {
+    return _log('login', parameters: {'method': method.analyticsValue});
+  }
+
   Future<void> paywallView({required PaywallSource source}) {
     return _log('paywall_view', parameters: {'source': source.analyticsValue});
   }
@@ -129,7 +163,32 @@ class AnalyticsService {
     );
   }
 
+  Future<void> subscriptionStarted({
+    required PaywallSource source,
+    required String packageId,
+    required String productId,
+  }) {
+    return _log(
+      'subscription_started',
+      parameters: {
+        'source': source.analyticsValue,
+        'package_id': packageId,
+        'product_id': productId,
+      },
+    );
+  }
+
+  Future<void> expenseAdded({required ExpenseAnalyticsScope scope}) {
+    return _log('expense_added', parameters: {'scope': scope.analyticsValue});
+  }
+
   Future<void> _log(String eventName, {Map<String, Object>? parameters}) async {
+    final eventWriter = _eventWriter;
+    if (eventWriter != null) {
+      await eventWriter(eventName, parameters);
+      return;
+    }
+
     final analytics = _analytics;
     if (!_isEnabled || analytics == null) return;
 

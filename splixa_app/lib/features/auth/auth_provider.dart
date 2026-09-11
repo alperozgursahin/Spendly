@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/analytics_service.dart';
 import '../dashboard/activity_provider.dart';
 import '../dashboard/heatmap_provider.dart';
 import '../filters/filters_provider.dart';
@@ -19,6 +20,7 @@ import '../social/social_provider.dart'
     show currentUserProfileProvider, friendsStreamProvider;
 import '../subscriptions/premium_provider.dart'
     show offeringsProvider, premiumProvider;
+import 'native_google_auth.dart';
 
 final authClientProvider = Provider<GoTrueClient>((ref) {
   return Supabase.instance.client.auth;
@@ -28,10 +30,14 @@ final authStateProvider = StreamProvider<AuthState>((ref) {
   return ref.watch(authClientProvider).onAuthStateChange;
 });
 
-enum AuthFlowStage { none, loginVerification, passwordRecovery }
+enum AuthFlowStage { none, nativeSignIn, loginVerification, passwordRecovery }
 
 final authFlowStageProvider = StateProvider<AuthFlowStage>((ref) {
   return AuthFlowStage.none;
+});
+
+final googleAuthClientProvider = Provider<GoogleAuthClient>((ref) {
+  return NativeGoogleAuthClient();
 });
 
 // `authClientProvider` always resolves to the same GoTrueClient instance, so
@@ -63,7 +69,11 @@ final currentUserProvider = Provider<User?>((ref) {
 });
 
 final authControllerProvider = Provider<AuthController>((ref) {
-  return AuthController(Supabase.instance.client, ref);
+  return AuthController(
+    Supabase.instance.client,
+    ref,
+    ref.watch(googleAuthClientProvider),
+  );
 });
 
 class LoginStartResult {
@@ -71,6 +81,24 @@ class LoginStartResult {
 
   final String email;
   final bool requiresOtp;
+}
+
+class GoogleLoginResult {
+  const GoogleLoginResult({required this.requiresOnboarding});
+
+  final bool requiresOnboarding;
+}
+
+/// Supabase sets `created_at` and `last_sign_in_at` to effectively the same
+/// instant when an identity is created. Existing users retain their original
+/// creation timestamp, including when Google is linked on a later login.
+bool isNewSupabaseUser(User user) {
+  final createdAt = DateTime.tryParse(user.createdAt)?.toUtc();
+  final lastSignInAt = DateTime.tryParse(user.lastSignInAt ?? '')?.toUtc();
+  if (createdAt == null || lastSignInAt == null) return false;
+
+  return lastSignInAt.difference(createdAt).abs() <=
+      const Duration(seconds: 30);
 }
 
 class AccountDeletionException implements Exception {
@@ -89,29 +117,55 @@ class AccountDeletionException implements Exception {
 }
 
 class AuthController {
-  static const _googleAuthCallback = 'splixa://auth-callback';
-
   final SupabaseClient _client;
   final Ref _ref;
+  final GoogleAuthClient _googleAuth;
 
-  AuthController(this._client, this._ref);
+  AuthController(this._client, this._ref, this._googleAuth);
 
-  /// Starts Supabase's PKCE-backed Google OAuth flow. Supabase Flutter
-  /// launches Google in an external browser on Android and completes the
-  /// session when the configured app deep link is received.
-  Future<void> signInWithGoogle() async {
-    _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
+  /// Uses the platform-native Google account picker, then exchanges Google's
+  /// short-lived tokens for a normal Supabase session. Tokens are never
+  /// persisted or logged by the app.
+  Future<GoogleLoginResult> signInWithGoogle() async {
+    _ref.read(authFlowStageProvider.notifier).state =
+        AuthFlowStage.nativeSignIn;
 
-    final launched = await _client.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: kIsWeb ? null : _googleAuthCallback,
-      scopes: 'openid email profile',
-      queryParams: const {'prompt': 'select_account'},
-    );
-    if (!launched) {
-      throw const AuthException(
-        'Google sign-in could not be opened. Please try again.',
+    try {
+      final googleTokens = await _googleAuth.authenticate();
+      final response = await _client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: googleTokens.idToken,
+        accessToken: googleTokens.accessToken,
       );
+
+      final user = response.user;
+      if (response.session == null || user == null) {
+        throw const AuthException(
+          'Native Google sign-in did not create a valid session.',
+        );
+      }
+
+      final onboarding = _ref.read(onboardingControllerProvider);
+      final requiresOnboarding =
+          isNewSupabaseUser(user) && !onboarding.completedThisRun;
+      if (requiresOnboarding) {
+        await onboarding.reset();
+      }
+
+      await _identifyRevenueCatUser();
+      await _ref
+          .read(analyticsServiceProvider)
+          .login(method: AnalyticsLoginMethod.google);
+      _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
+      return GoogleLoginResult(requiresOnboarding: requiresOnboarding);
+    } catch (_) {
+      if (_client.auth.currentSession == null) {
+        try {
+          await _googleAuth.signOut();
+        } catch (_) {}
+      }
+      _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
+      rethrow;
     }
   }
 
@@ -149,6 +203,9 @@ class AuthController {
           );
         }
         await _identifyRevenueCatUser();
+        await _ref
+            .read(analyticsServiceProvider)
+            .login(method: AnalyticsLoginMethod.password);
         if (data['reviewAccess'] == true) {
           _ref.read(premiumProvider.notifier).grantReviewAccess();
         }
@@ -192,6 +249,9 @@ class AuthController {
         );
       }
       await _identifyRevenueCatUser();
+      await _ref
+          .read(analyticsServiceProvider)
+          .login(method: AnalyticsLoginMethod.password);
       _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
     } catch (_) {
       rethrow;
@@ -219,13 +279,11 @@ class AuthController {
 
   Future<void> _identifyRevenueCatUser() async {
     if (kIsWeb) return;
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return;
+    final user = _client.auth.currentUser;
+    if (user == null) return;
 
     try {
-      await Purchases.logIn(userId);
-      _ref.invalidate(premiumProvider);
-      _ref.invalidate(offeringsProvider);
+      await _ref.read(premiumProvider.notifier).identifyUser(user);
     } catch (error) {
       debugPrint('RevenueCat user identification failed: $error');
     }
@@ -370,6 +428,10 @@ class AuthController {
     String? outgoingUserId, {
     bool resetOnboarding = false,
   }) async {
+    try {
+      await _googleAuth.signOut();
+    } catch (_) {}
+
     try {
       await Purchases.logOut();
     } catch (_) {}

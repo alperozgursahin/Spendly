@@ -24,7 +24,9 @@ void main() {
       final reloadedController = await OnboardingController.load();
 
       expect(controller.completed, isTrue);
+      expect(controller.completedThisRun, isTrue);
       expect(reloadedController.completed, isTrue);
+      expect(reloadedController.completedThisRun, isFalse);
     });
 
     test('reset removes completion after account deletion', () async {
@@ -35,6 +37,7 @@ void main() {
       final reloadedController = await OnboardingController.load();
 
       expect(controller.completed, isFalse);
+      expect(controller.completedThisRun, isFalse);
       expect(reloadedController.completed, isFalse);
     });
   });

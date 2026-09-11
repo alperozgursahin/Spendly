@@ -1,10 +1,10 @@
 name: splixa_app
 description: "Splixa is a professional budget and group expense tracking app."
 publish_to: 'none'
-version: 0.4.0-alpha+4
+version: 0.5.0-alpha+5 # Play Store release candidate
 
 environment:
-  sdk: ^3.11.4
+  sdk: ^3.12.0
 
 dependencies:
   flutter:
@@ -13,32 +13,33 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   flutter_dotenv: ^5.2.1
-  
+
   # --- SPLIXA MVP PAKETLERİ ---
-  
+
   # Backend, Auth ve Veritabanı
   supabase_flutter: ^2.4.0
-  
+  google_sign_in: ^7.2.0
+
   # State Management (Durum Yönetimi)
   flutter_riverpod: ^2.5.0
-  
+
   # Güvenlik ve Token Saklama
   flutter_secure_storage: ^9.0.0
 
   # Dil / Tema Tercihi Saklama
   shared_preferences: ^2.2.3
-  
+
   # Gelir Modeli (App Store / Play Store Abonelikleri)
   purchases_flutter: ^9.15.1
-  
+
   # Hata Takibi ve Loglama
-  sentry_flutter: ^8.0.0
+  sentry_flutter: ^9.30.0
   firebase_core: ^4.14.0
   firebase_analytics: ^12.5.0
-  
+
   # Sayfa Yönlendirmeleri (Modern Navigation)
   go_router: ^13.2.0
-  
+
   # Dashboard Grafikleri (Pasta ve Çizgi Grafikler)
   fl_chart: ^0.67.0
   flutter_heatmap_calendar: ^1.0.5
