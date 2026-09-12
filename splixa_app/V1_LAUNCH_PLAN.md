@@ -30,7 +30,8 @@
 
 - [x] Audit the current auth router, onboarding persistence, Supabase session handling, RevenueCat provider, and analytics service.
 - [x] Document the new-user versus returning-user routing contract before changing auth code.
-- [ ] Confirm the Android Web OAuth client ID and iOS URL scheme/configuration are read from safe platform configuration.
+- [x] Confirm the Android OAuth clients and Web client ID are read from ignored Firebase platform configuration.
+- [ ] Confirm the iOS URL scheme/configuration before the later iOS release track.
 - [x] Define typed, privacy-safe analytics parameters and duplicate-event prevention rules.
 
 ### Native Google authentication
@@ -68,7 +69,8 @@
 - [x] Run formatting and `flutter analyze` with zero errors.
 - [x] Run relevant unit/widget tests and add missing auth/identity tests.
 - [x] Build a release Android artifact successfully.
-- [ ] Manually smoke-test native Google login: new user, returning user, cancellation, sign-out, and relogin.
+- [x] Manually smoke-test successful native Google login with multiple Google accounts on a physical Android device.
+- [ ] Manually smoke-test cancellation, sign-out, and relogin before the final release audit.
 - [ ] Verify RevenueCat user ID and active entitlement state after login and restore.
 - [ ] Verify Firebase DebugView receives the required events without PII.
 - [x] Record validation results in this file.
@@ -304,7 +306,7 @@
 
 ### Phase 1
 
-- Status: Implementation complete; awaiting owner/device validation and review
+- Status: Implementation complete; physical Android Google login validated; awaiting Phase 2 approval
 - Commit: `feat(auth): implement native Google identity and funnel analytics`
 - Validation: `flutter analyze` passed with zero issues; 11 unit/widget tests passed; `flutter build apk --release` produced a signed 70.8 MB APK; `git diff --check` passed; release Firebase resources were generated; browser OAuth and `$RCAnonymousID` source references are absent.
 - Routing contract: a newly created Supabase Google identity is sent through onboarding unless onboarding was already completed in the same install run; returning identities go to the dashboard. Restored sessions bypass auth according to persisted onboarding state.
@@ -312,8 +314,10 @@
 - Post-review fix: native Google authorization no longer launches a second empty-scope consent request; Google and Supabase stages have bounded timeouts; RevenueCat/Analytics post-login work cannot block navigation; Google identities without a valid username are forced through `/complete-profile` before dashboard access.
 - Follow-up validation: `flutter analyze` passed with zero issues; 14 unit/widget tests passed, including three Google profile-gate cases; the corrected release APK built successfully at 70.8 MB.
 - Runtime QA finding: Firebase CLI confirmed the live `splixa` Android app has all three SHA-1 fingerprints registered and one Web OAuth client, but zero Android OAuth clients. `google_sign_in_android` can report this server-side configuration failure as `canceled` after account selection, so the client now surfaces that result instead of silently ignoring it. The ignored local `google-services.json` was refreshed from the live Firebase app and the release APK rebuilt.
-- Manual release gate: verify native sign-in on a physical Android device and confirm Google Cloud has an Android OAuth client for `net.splixa.app` with release SHA-1 `B9:F9:F3:0F:63:20:09:A0:09:6A:BD:1A:A7:A5:C1:1E:FB:FF:AF:B5`; the current ignored `google-services.json` contains Firebase app resources but no Android OAuth entry. Also verify RevenueCat identity/restore and Firebase DebugView. iOS client ID and URL scheme remain intentionally unverified for this Play Store phase.
-- Review decision: Pending owner review
+- Device validation: Google Cloud now has Android OAuth clients for the local and Play signing identities, the OAuth audience/branding was prepared for production, and the owner confirmed successful native sign-in with multiple Gmail accounts. The remaining login blocker was in the Supabase signup function and was corrected by the owner.
+- Startup hardening: Android release packaging omitted the dot-prefixed `.env` asset and produced `FileNotFoundError` before `runApp()`. Runtime configuration now uses the ignored, non-dot-prefixed `env.config` asset so APK/AAB packaging retains it.
+- Deferred final-release checks: verify RevenueCat identity/restore, Firebase DebugView, Google cancellation/sign-out/relogin, and iOS URL scheme configuration in their applicable release tracks.
+- Review decision: Phase 1 implementation accepted on Android; explicit approval is still required before Phase 2 begins.
 
 ### Phase 2
 

@@ -66,7 +66,10 @@ class GoRouterRefreshStream extends ChangeNotifier {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: '.env');
+  // Android's release asset packaging can omit dot-prefixed files even when
+  // Flutter lists them as assets. Keep the local runtime configuration under
+  // a non-hidden filename so release APK/AAB builds can always load it.
+  await dotenv.load(fileName: 'env.config');
 
   await AnalyticsService.instance.initialize();
   final onboardingController = await OnboardingController.load();
