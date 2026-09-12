@@ -1,0 +1,26 @@
+Iteration Duration
+Timings
+This chapter provides an overview of test run HTTP timing metrics. Graphs plot the value of metrics over time.
+HTTP
+These metrics are generated only when the test makes HTTP requests.
+Request Duration
+Request Failed Rate
+time: 2026-08-13 21:10:08
+avg: 167ms 750µs
+p90: 177ms 540µs
+p95: 180ms 50µs
+p99: 182ms 50µs
+time: 2026-08-13 21:10:08
+avg: 3.6s
+p90: 3.6s
+p95: 3.6s
+p99: 3.6s
+time: 2026-08-13 21:10:08
+avg: 167ms 750µs
+p90: 177ms 540µs
+p95: 180ms 50µs
+p99: 182ms 50µs
+13.08.2026 21:11
+k6 report
+127.0.0.1:5665/report
+2/5

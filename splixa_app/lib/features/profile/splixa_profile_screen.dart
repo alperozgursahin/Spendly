@@ -9,6 +9,7 @@ import '../../core/app_strings.dart';
 import '../../core/analytics_service.dart';
 import '../../core/app_theme_provider.dart';
 import '../../core/friendly_error.dart';
+import '../../core/language_selector.dart';
 import '../../core/locale_provider.dart';
 import '../../core/media_upload_service.dart';
 import '../../core/splixa_design.dart';
@@ -40,7 +41,7 @@ class _SplixaProfileScreenState extends ConsumerState<SplixaProfileScreen> {
   Widget build(BuildContext context) {
     final profile = ref.watch(currentUserProfileProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(title: Text(tr(ref, 'profile_title'))),
       body: profile.when(
         data: (data) => _ProfileContent(profile: data),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -117,10 +118,9 @@ class _ProfileContent extends ConsumerWidget {
     final displayName = (profile['full_name'] as String?)?.trim();
     final avatarUrl = (profile['avatar_url'] as String?)?.trim();
     final bio = (profile['bio'] as String?)?.trim() ?? '';
-    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
     final email = user?.email?.isNotEmpty == true
         ? user!.email!
-        : 'Email not added';
+        : tr(ref, 'profile_email_missing');
 
     return SafeArea(
       top: false,
@@ -158,7 +158,7 @@ class _ProfileContent extends ConsumerWidget {
                                       ? displayName!
                                       : (username?.isNotEmpty == true
                                             ? username!
-                                            : 'Splixa user'),
+                                            : tr(ref, 'profile_user_fallback')),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: Theme.of(context).textTheme.titleLarge
@@ -224,7 +224,12 @@ class _ProfileContent extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 26),
+
+          // Grouped sections instead of one long undifferentiated menu: the
+          // user scans for a category first ("where do I change my password?")
+          // and destructive actions stay visually separated from routine ones.
+          _SectionHeader(label: tr(ref, 'profile_section_subscription')),
           SplixaCard(
             padding: EdgeInsets.zero,
             child: Column(
@@ -234,18 +239,40 @@ class _ProfileContent extends ConsumerWidget {
                       ? Icons.manage_accounts_rounded
                       : Icons.workspace_premium_rounded,
                   label: isPremium
-                      ? (isTurkish ? 'Aboneliği Yönet' : 'Manage Subscription')
-                      : (isTurkish ? "Splixa Pro'ya Geç" : 'Upgrade to Pro'),
+                      ? tr(ref, 'profile_manage_subscription')
+                      : tr(ref, 'profile_upgrade_pro'),
                   onTap: isPremium
-                      ? () => _manageSubscription(context)
+                      ? () => _manageSubscription(context, ref)
                       : () => context.push(
                           '/paywall?source=${PaywallSource.profile.analyticsValue}',
                         ),
                 ),
                 const _MenuDivider(),
                 _MenuRow(
+                  icon: isPremium
+                      ? Icons.picture_as_pdf_outlined
+                      : Icons.lock_rounded,
+                  label: isPremium
+                      ? tr(ref, 'profile_download_monthly_report')
+                      : tr(ref, 'profile_download_monthly_report_pro'),
+                  onTap: isPremium
+                      ? () => _downloadReport(context, ref)
+                      : () => context.push(
+                          '/paywall?source=${PaywallSource.advancedReports.analyticsValue}',
+                        ),
+                ),
+              ],
+            ),
+          ),
+
+          _SectionHeader(label: tr(ref, 'profile_section_account')),
+          SplixaCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                _MenuRow(
                   icon: Icons.edit_outlined,
-                  label: 'Edit Profile',
+                  label: tr(ref, 'profile_edit_tile'),
                   onTap: () => _editProfile(
                     context,
                     ref,
@@ -257,70 +284,116 @@ class _ProfileContent extends ConsumerWidget {
                 ),
                 const _MenuDivider(),
                 _MenuRow(
-                  icon: Icons.settings_outlined,
-                  label: 'Settings',
-                  onTap: () => _showSettings(context, ref),
-                ),
-                const _MenuDivider(),
-                _MenuRow(
-                  icon: Icons.person_add_alt_rounded,
-                  label: 'Invite Friends',
-                  onTap: () => context.go('/social'),
-                ),
-                const _MenuDivider(),
-                _MenuRow(
                   icon: Icons.lock_outline_rounded,
-                  label: 'Change Password',
+                  label: tr(ref, 'profile_change_password_tile'),
                   onTap: () => context.push('/update-password'),
                 ),
                 const _MenuDivider(),
                 _MenuRow(
-                  icon: isPremium
-                      ? Icons.picture_as_pdf_outlined
-                      : Icons.lock_rounded,
-                  label: isPremium
-                      ? (isTurkish
-                            ? 'Aylık Raporu İndir'
-                            : 'Download Monthly Report')
-                      : (isTurkish
-                            ? 'Aylık Raporu İndir · Pro'
-                            : 'Download Monthly Report · Pro'),
-                  onTap: isPremium
-                      ? () => _downloadReport(context, ref)
-                      : () => context.push(
-                          '/paywall?source=${PaywallSource.advancedReports.analyticsValue}',
-                        ),
+                  icon: Icons.person_add_alt_rounded,
+                  label: tr(ref, 'profile_invite_friends'),
+                  onTap: () => context.go('/social'),
                 ),
-                const _MenuDivider(),
-                _MenuRow(
-                  icon: Icons.support_agent_rounded,
-                  label: 'Contact Us',
-                  onTap: () => _message(
-                    context,
-                    'Support contact will be available here.',
+              ],
+            ),
+          ),
+
+          // Preferences are inline rather than behind a bottom sheet: the
+          // language row is the one a user who picked the wrong language needs
+          // to find without reading anything.
+          _SectionHeader(label: tr(ref, 'profile_section_preferences')),
+          SplixaCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  secondary: Icon(
+                    Icons.dark_mode_outlined,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
-                ),
-                const _MenuDivider(),
-                _MenuRow(
-                  icon: Icons.description_outlined,
-                  label: 'Terms',
-                  onTap: () => _openLegalPage(
-                    context,
-                    Uri.parse('https://splixa.net/terms'),
+                  title: Text(
+                    tr(ref, 'profile_dark_mode'),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
+                  value: ref.watch(appThemeModeProvider) == ThemeMode.dark,
+                  onChanged: (_) =>
+                      ref.read(appThemeModeProvider.notifier).toggle(),
                 ),
                 const _MenuDivider(),
-                _MenuRow(
-                  icon: Icons.shield_outlined,
-                  label: 'Privacy',
-                  onTap: () => _openLegalPage(
-                    context,
-                    Uri.parse('https://splixa.net/privacy'),
+                const AppLanguageTile(
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                ),
+                const _MenuDivider(),
+                ListTile(
+                  minTileHeight: 60,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  leading: Icon(
+                    Icons.payments_outlined,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  title: Text(
+                    tr(ref, 'profile_currency_tile'),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  trailing: DropdownButton<String>(
+                    value: ref.watch(currencyProvider),
+                    underline: const SizedBox.shrink(),
+                    items: const [
+                      DropdownMenuItem(value: '₺', child: Text('₺ (TRY)')),
+                      DropdownMenuItem(value: r'$', child: Text(r'$ (USD)')),
+                      DropdownMenuItem(value: '€', child: Text('€ (EUR)')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        ref.read(currencyProvider.notifier).setCurrency(value);
+                      }
+                    },
                   ),
                 ),
               ],
             ),
           ),
+
+          _SectionHeader(label: tr(ref, 'profile_section_support')),
+          SplixaCard(
+            padding: EdgeInsets.zero,
+            child: _MenuRow(
+              icon: Icons.support_agent_rounded,
+              label: tr(ref, 'profile_contact_us'),
+              onTap: () =>
+                  _message(context, tr(ref, 'profile_support_placeholder')),
+            ),
+          ),
+
+          _SectionHeader(label: tr(ref, 'profile_section_legal')),
+          SplixaCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                _MenuRow(
+                  icon: Icons.description_outlined,
+                  label: tr(ref, 'profile_terms'),
+                  onTap: () => _openLegalPage(
+                    context,
+                    Uri.parse('https://splixa.net/terms'),
+                    ref,
+                  ),
+                ),
+                const _MenuDivider(),
+                _MenuRow(
+                  icon: Icons.shield_outlined,
+                  label: tr(ref, 'profile_privacy'),
+                  onTap: () => _openLegalPage(
+                    context,
+                    Uri.parse('https://splixa.net/privacy'),
+                    ref,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           const SizedBox(height: 24),
           SizedBox(
             height: 54,
@@ -338,12 +411,12 @@ class _ProfileContent extends ConsumerWidget {
               ),
               onPressed: () => _logOut(context, ref),
               icon: const Icon(Icons.logout_rounded),
-              label: const Text('Log Out'),
+              label: Text(tr(ref, 'profile_logout')),
             ),
           ),
           const SizedBox(height: 28),
           Text(
-            'DANGER ZONE',
+            tr(ref, 'profile_danger_zone').toUpperCase(),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: Theme.of(context).colorScheme.error,
               fontWeight: FontWeight.w800,
@@ -360,7 +433,7 @@ class _ProfileContent extends ConsumerWidget {
               ),
               onPressed: () => _showDeleteAccountDialog(context, ref),
               icon: const Icon(Icons.delete_forever_outlined),
-              label: const Text('Delete Account and Data'),
+              label: Text(tr(ref, 'profile_delete_account_data')),
             ),
           ),
         ],
@@ -386,14 +459,14 @@ class _ProfileContent extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          title: const Text('Edit profile'),
+          title: Text(tr(ref, 'profile_edit_tile')),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Semantics(
                   button: true,
-                  label: 'Choose profile picture',
+                  label: tr(ref, 'profile_choose_picture'),
                   child: InkWell(
                     customBorder: const CircleBorder(),
                     onTap: isSaving
@@ -433,8 +506,8 @@ class _ProfileContent extends ConsumerWidget {
                               ? const Icon(Icons.person_rounded, size: 42)
                               : null,
                         ),
-                        Positioned(
-                          right: -2,
+                        PositionedDirectional(
+                          end: -2,
                           bottom: -2,
                           child: CircleAvatar(
                             radius: 16,
@@ -456,7 +529,7 @@ class _ProfileContent extends ConsumerWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Tap to choose a photo',
+                  tr(ref, 'profile_tap_choose_photo'),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -465,14 +538,18 @@ class _ProfileContent extends ConsumerWidget {
                 TextField(
                   controller: usernameController,
                   enabled: !isSaving,
-                  decoration: const InputDecoration(labelText: 'Username'),
+                  decoration: InputDecoration(
+                    labelText: tr(ref, 'profile_username_label'),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: emailController,
                   enabled: !isSaving,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'Email'),
+                  decoration: InputDecoration(
+                    labelText: tr(ref, 'profile_email_label'),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -494,7 +571,7 @@ class _ProfileContent extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
+              child: Text(tr(ref, 'common_cancel')),
             ),
             ElevatedButton(
               onPressed: isSaving
@@ -536,7 +613,7 @@ class _ProfileContent extends ConsumerWidget {
                       dimension: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Save'),
+                  : Text(tr(ref, 'common_save')),
             ),
           ],
         ),
@@ -545,62 +622,6 @@ class _ProfileContent extends ConsumerWidget {
     usernameController.dispose();
     emailController.dispose();
     bioController.dispose();
-  }
-
-  void _showSettings(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => Consumer(
-        builder: (context, sheetRef, _) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Settings',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 16),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Dark mode'),
-                  secondary: const Icon(Icons.dark_mode_outlined),
-                  value: sheetRef.watch(appThemeModeProvider) == ThemeMode.dark,
-                  onChanged: (_) =>
-                      sheetRef.read(appThemeModeProvider.notifier).toggle(),
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.attach_money_rounded),
-                  title: const Text('Currency'),
-                  trailing: DropdownButton<String>(
-                    value: sheetRef.watch(currencyProvider),
-                    underline: const SizedBox.shrink(),
-                    items: const [
-                      DropdownMenuItem(value: '₺', child: Text('₺ (TRY)')),
-                      DropdownMenuItem(value: r'$', child: Text(r'$ (USD)')),
-                      DropdownMenuItem(value: '€', child: Text('€ (EUR)')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        sheetRef
-                            .read(currencyProvider.notifier)
-                            .setCurrency(value);
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   Future<void> _downloadReport(BuildContext context, WidgetRef ref) async {
@@ -615,8 +636,9 @@ class _ProfileContent extends ConsumerWidget {
           .toList();
       await PdfExportService.generateAndShareMonthlyReport(
         currentMonth,
-        '${now.month}/${now.year}',
+        DateTime(now.year, now.month),
         language: ref.read(appLanguageProvider),
+        currencySymbol: ref.read(currencyProvider),
       );
     } catch (error) {
       if (!context.mounted) return;
@@ -634,8 +656,6 @@ class _ProfileContent extends ConsumerWidget {
     var confirmation = '';
     var isDeleting = false;
     String? errorMessage;
-    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
-
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -645,40 +665,18 @@ class _ProfileContent extends ConsumerWidget {
           return PopScope(
             canPop: !isDeleting,
             child: AlertDialog(
-              title: Text(
-                isTurkish
-                    ? 'Hesap ve veriler silinsin mi?'
-                    : 'Delete account and data?',
-              ),
+              title: Text(tr(ref, 'profile_delete_dialog_title')),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      isTurkish
-                          ? 'Bu işlem kalıcıdır. Profilin, kişisel işlemlerin, '
-                                'mesajların ve sosyal bağlantıların silinir. '
-                                'Paylaşılan finansal geçmiş, diğer üyelerin '
-                                'bakiyeleri bozulmaması için isimsiz olarak tutulur.'
-                          : 'This is permanent. Your profile, personal transactions, '
-                                'messages, and social connections will be deleted. '
-                                'Shared financial history is retained anonymously so '
-                                'other members’ balances remain correct.',
-                    ),
+                    Text(tr(ref, 'profile_delete_dialog_body')),
                     const SizedBox(height: 12),
-                    Text(
-                      isTurkish
-                          ? 'Başka üyeleri olan bir grubun yöneticisiysen önce '
-                                'grubu silmen veya sahipliği devretmen gerekir.'
-                          : 'If you manage a group with other members, you must '
-                                'delete it or transfer ownership first.',
-                    ),
+                    Text(tr(ref, 'profile_delete_group_warning')),
                     const SizedBox(height: 16),
                     Text(
-                      isTurkish
-                          ? 'Onaylamak için DELETE yaz:'
-                          : 'Type DELETE to confirm:',
+                      tr(ref, 'profile_delete_type_confirm'),
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 8),
@@ -710,7 +708,7 @@ class _ProfileContent extends ConsumerWidget {
                   onPressed: isDeleting
                       ? null
                       : () => Navigator.pop(dialogContext),
-                  child: Text(isTurkish ? 'Vazgeç' : 'Cancel'),
+                  child: Text(tr(ref, 'common_cancel')),
                 ),
                 FilledButton.icon(
                   style: FilledButton.styleFrom(
@@ -741,11 +739,8 @@ class _ProfileContent extends ConsumerWidget {
                                 final groups = error.groupNames.isEmpty
                                     ? ''
                                     : '\n${error.groupNames.join(', ')}';
-                                errorMessage = isTurkish
-                                    ? 'Önce yönettiğin grupları sil veya '
-                                          'sahipliğini devret:$groups'
-                                    : 'Delete or transfer your managed groups '
-                                          'first:$groups';
+                                errorMessage =
+                                    '${tr(ref, 'profile_delete_transfer_first')}$groups';
                               } else {
                                 errorMessage = error.message;
                               }
@@ -754,9 +749,7 @@ class _ProfileContent extends ConsumerWidget {
                             if (!dialogContext.mounted) return;
                             setDialogState(() {
                               isDeleting = false;
-                              errorMessage = isTurkish
-                                  ? 'Hesap silinemedi. Lütfen tekrar dene.'
-                                  : 'Account deletion failed. Please try again.';
+                              errorMessage = tr(ref, 'profile_delete_failed');
                             });
                           }
                         }
@@ -772,10 +765,8 @@ class _ProfileContent extends ConsumerWidget {
                       : const Icon(Icons.delete_forever_outlined),
                   label: Text(
                     isDeleting
-                        ? (isTurkish ? 'Siliniyor…' : 'Deleting…')
-                        : (isTurkish
-                              ? 'Kalıcı Olarak Sil'
-                              : 'Delete Permanently'),
+                        ? tr(ref, 'profile_deleting')
+                        : tr(ref, 'profile_delete_permanently'),
                   ),
                 ),
               ],
@@ -798,20 +789,45 @@ class _ProfileContent extends ConsumerWidget {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _openLegalPage(BuildContext context, Uri uri) async {
+  Future<void> _openLegalPage(
+    BuildContext context,
+    Uri uri,
+    WidgetRef ref,
+  ) async {
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!opened && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open this page.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(tr(ref, 'profile_link_failed'))));
     }
   }
 
-  Future<void> _manageSubscription(BuildContext context) async {
+  Future<void> _manageSubscription(BuildContext context, WidgetRef ref) async {
     final uri = !kIsWeb && defaultTargetPlatform == TargetPlatform.android
         ? Uri.parse('https://play.google.com/store/account/subscriptions')
         : Uri.parse('https://apps.apple.com/account/subscriptions');
-    await _openLegalPage(context, uri);
+    await _openLegalPage(context, uri, ref);
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(4, 22, 4, 10),
+      child: Text(
+        label.toUpperCase(),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.1,
+        ),
+      ),
+    );
   }
 }
 

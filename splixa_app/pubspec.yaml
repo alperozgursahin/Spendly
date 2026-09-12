@@ -1,7 +1,7 @@
 name: splixa_app
 description: "Splixa is a professional budget and group expense tracking app."
 publish_to: 'none'
-version: 0.5.0-alpha+5 # Play Store release candidate
+version: 0.6.0-alpha+6 # Phase 2: 12-locale global release
 
 environment:
   sdk: ^3.12.0

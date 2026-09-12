@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/analytics_service.dart';
+import '../../core/app_strings.dart';
+import '../../core/language_selector.dart';
 import '../../core/splixa_design.dart';
 
 class OnboardingController extends ChangeNotifier {
@@ -83,8 +85,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final copy = _OnboardingCopy.forLocale(Localizations.localeOf(context));
-    final pages = copy.pages;
+    const pages = _onboardingPages;
     final isLastPage = _currentPage == pages.length - 1;
 
     return Scaffold(
@@ -97,12 +98,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 children: [
                   const SplixaLogo(compact: true),
                   const Spacer(),
+                  // Language is offered once, on the first slide: it is the
+                  // one decision that changes every screen that follows, and
+                  // repeating it on later slides adds friction to a flow whose
+                  // only job is to get the user in.
+                  if (_currentPage == 0) ...[
+                    const AppLanguageButton(),
+                    const SizedBox(width: 6),
+                  ],
                   if (!isLastPage)
                     TextButton(
-                      onPressed: _isCompleting
-                          ? null
-                          : () => _finish(copy, 'skip'),
-                      child: Text(copy.skip),
+                      onPressed: _isCompleting ? null : () => _finish('skip'),
+                      child: Text(tr(ref, 'onboarding_skip')),
                     ),
                 ],
               ),
@@ -150,19 +157,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   ),
                   const SizedBox(height: 20),
                   SplixaPrimaryButton(
-                    label: isLastPage ? copy.startFree : copy.continueLabel,
+                    label: isLastPage
+                        ? tr(ref, 'onboarding_start_free')
+                        : tr(ref, 'onboarding_continue'),
                     icon: isLastPage
                         ? Icons.rocket_launch_rounded
                         : Icons.arrow_forward_rounded,
                     loading: _isCompleting,
                     onPressed: isLastPage
-                        ? () => _finish(copy, 'completed')
+                        ? () => _finish('completed')
                         : _nextPage,
                   ),
                   if (isLastPage) ...[
                     const SizedBox(height: 10),
                     Text(
-                      copy.noCard,
+                      tr(ref, 'onboarding_no_card'),
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -187,14 +196,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   void _trackStep(int index) {
     if (!_trackedSteps.add(index)) return;
-    final copy = _OnboardingCopy.forLocale(Localizations.localeOf(context));
-    final page = copy.pages[index];
+    final page = _onboardingPages[index];
     ref
         .read(analyticsServiceProvider)
         .onboardingStepViewed(step: index + 1, stepName: page.analyticsName);
   }
 
-  Future<void> _finish(_OnboardingCopy copy, String completionMethod) async {
+  Future<void> _finish(String completionMethod) async {
     if (_isCompleting) return;
     setState(() => _isCompleting = true);
 
@@ -207,14 +215,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _isCompleting = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(copy.persistenceError)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr(ref, 'onboarding_persistence_error'))),
+      );
     }
   }
 }
 
-class _OnboardingPage extends StatelessWidget {
+class _OnboardingPage extends ConsumerWidget {
   const _OnboardingPage({
     super.key,
     required this.page,
@@ -227,8 +235,11 @@ class _OnboardingPage extends StatelessWidget {
   final int totalSteps;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final proofPoints = page.proofKeys
+        .map((key) => tr(ref, key))
+        .toList(growable: false);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
@@ -291,7 +302,7 @@ class _OnboardingPage extends StatelessWidget {
           ),
           const SizedBox(height: 30),
           Text(
-            page.eyebrow,
+            tr(ref, '${page.keyPrefix}_eyebrow'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
               color: page.accent,
@@ -301,7 +312,7 @@ class _OnboardingPage extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            page.title,
+            tr(ref, '${page.keyPrefix}_title'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w900,
@@ -311,20 +322,20 @@ class _OnboardingPage extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            page.description,
+            tr(ref, '${page.keyPrefix}_description'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
               height: 1.5,
             ),
           ),
-          if (page.proofPoints.isNotEmpty) ...[
+          if (proofPoints.isNotEmpty) ...[
             const SizedBox(height: 22),
             Wrap(
               alignment: WrapAlignment.center,
               spacing: 8,
               runSpacing: 8,
-              children: page.proofPoints
+              children: proofPoints
                   .map(
                     (point) => Chip(
                       avatar: Icon(
@@ -376,171 +387,62 @@ class _OrbitIcon extends StatelessWidget {
 class _OnboardingPageData {
   const _OnboardingPageData({
     required this.analyticsName,
-    required this.eyebrow,
-    required this.title,
-    required this.description,
+    required this.keyPrefix,
     required this.icon,
     required this.supportingIcon,
     required this.secondaryIcon,
     required this.accent,
-    this.proofPoints = const [],
+    this.proofKeys = const [],
   });
 
   final String analyticsName;
-  final String eyebrow;
-  final String title;
-  final String description;
+
+  /// Localization key prefix; `<prefix>_eyebrow`, `_title` and `_description`
+  /// are resolved from `AppStrings` so every shipped locale renders this slide.
+  final String keyPrefix;
   final IconData icon;
   final IconData supportingIcon;
   final IconData secondaryIcon;
   final Color accent;
-  final List<String> proofPoints;
+  final List<String> proofKeys;
 }
 
-class _OnboardingCopy {
-  const _OnboardingCopy({
-    required this.pages,
-    required this.skip,
-    required this.continueLabel,
-    required this.startFree,
-    required this.noCard,
-    required this.persistenceError,
-  });
-
-  final List<_OnboardingPageData> pages;
-  final String skip;
-  final String continueLabel;
-  final String startFree;
-  final String noCard;
-  final String persistenceError;
-
-  static _OnboardingCopy forLocale(Locale locale) {
-    return locale.languageCode == 'tr' ? _turkish : _english;
-  }
-
-  static const _english = _OnboardingCopy(
-    skip: 'Skip',
-    continueLabel: 'Continue',
-    startFree: 'Start free',
-    noCard: 'No card required. Upgrade only when Pro saves you time.',
-    persistenceError: 'We could not save your choice. Please try again.',
-    pages: [
-      _OnboardingPageData(
-        analyticsName: 'unified_money_home',
-        eyebrow: 'PERSONAL + SHARED',
-        title: 'One calm home for every expense',
-        description:
-            'Track your own budget and shared group costs without switching '
-            'between apps or losing the full picture.',
-        icon: Icons.account_balance_wallet_rounded,
-        supportingIcon: Icons.person_rounded,
-        secondaryIcon: Icons.groups_rounded,
-        accent: SplixaColors.cyan,
-        proofPoints: ['Personal budget', 'Group expenses'],
-      ),
-      _OnboardingPageData(
-        analyticsName: 'clear_group_splits',
-        eyebrow: 'NO AWKWARD MATH',
-        title: 'Split the moment, not the friendship',
-        description:
-            'Choose equal, percentage, or exact shares. Everyone can approve, '
-            'pay, and settle with a clear history.',
-        icon: Icons.call_split_rounded,
-        supportingIcon: Icons.receipt_long_rounded,
-        secondaryIcon: Icons.done_all_rounded,
-        accent: Color(0xFF7C3AED),
-        proofPoints: ['Flexible splits', 'Clear approvals'],
-      ),
-      _OnboardingPageData(
-        analyticsName: 'trusted_multi_currency',
-        eyebrow: 'MONEY THAT ADDS UP',
-        title: 'Every currency keeps its story',
-        description:
-            'Splixa preserves the original amount and locked exchange rate, '
-            'so yesterday’s balance never changes behind your back.',
-        icon: Icons.currency_exchange_rounded,
-        supportingIcon: Icons.lock_clock_rounded,
-        secondaryIcon: Icons.history_rounded,
-        accent: Color(0xFF0284C7),
-        proofPoints: ['Locked rates', 'Reliable history'],
-      ),
-      _OnboardingPageData(
-        analyticsName: 'free_first_pro_value',
-        eyebrow: 'FREE TO START',
-        title: 'Do the essentials free. Save time with Pro.',
-        description:
-            'Build the habit first. When you want receipt scanning, custom '
-            'rates, deeper insights, and advanced reports, see what Pro '
-            'offers now and what is next on its roadmap.',
-        icon: Icons.auto_awesome_rounded,
-        supportingIcon: Icons.document_scanner_rounded,
-        secondaryIcon: Icons.insights_rounded,
-        accent: Color(0xFFD97706),
-        proofPoints: ['No forced trial', 'Cancel anytime'],
-      ),
-    ],
-  );
-
-  static const _turkish = _OnboardingCopy(
-    skip: 'Atla',
-    continueLabel: 'Devam et',
-    startFree: 'Ücretsiz başla',
-    noCard: 'Kart gerekmez. Yalnızca Pro zaman kazandırdığında yükselt.',
-    persistenceError: 'Tercihin kaydedilemedi. Lütfen tekrar dene.',
-    pages: [
-      _OnboardingPageData(
-        analyticsName: 'unified_money_home',
-        eyebrow: 'KİŞİSEL + ORTAK',
-        title: 'Her harcama için sakin ve tek bir yer',
-        description:
-            'Kişisel bütçeni ve grup harcamalarını uygulamalar arasında '
-            'kaybolmadan, bütün resmi görerek takip et.',
-        icon: Icons.account_balance_wallet_rounded,
-        supportingIcon: Icons.person_rounded,
-        secondaryIcon: Icons.groups_rounded,
-        accent: SplixaColors.cyan,
-        proofPoints: ['Kişisel bütçe', 'Grup harcamaları'],
-      ),
-      _OnboardingPageData(
-        analyticsName: 'clear_group_splits',
-        eyebrow: 'GERGİNLİK YOK, HESAP NET',
-        title: 'Anı paylaş, arkadaşlığı değil',
-        description:
-            'Eşit, yüzdelik veya kesin tutarla böl. Herkes onay, ödeme ve '
-            'kapanış adımlarını açık bir geçmişte görsün.',
-        icon: Icons.call_split_rounded,
-        supportingIcon: Icons.receipt_long_rounded,
-        secondaryIcon: Icons.done_all_rounded,
-        accent: Color(0xFF7C3AED),
-        proofPoints: ['Esnek bölüşüm', 'Açık onaylar'],
-      ),
-      _OnboardingPageData(
-        analyticsName: 'trusted_multi_currency',
-        eyebrow: 'GÜVENİLİR HESAPLAR',
-        title: 'Her para birimi hikâyesini korur',
-        description:
-            'Splixa orijinal tutarı ve kilitli döviz kurunu saklar; dünün '
-            'bakiyesi bugün kendiliğinden değişmez.',
-        icon: Icons.currency_exchange_rounded,
-        supportingIcon: Icons.lock_clock_rounded,
-        secondaryIcon: Icons.history_rounded,
-        accent: Color(0xFF0284C7),
-        proofPoints: ['Kilitli kurlar', 'Güvenilir geçmiş'],
-      ),
-      _OnboardingPageData(
-        analyticsName: 'free_first_pro_value',
-        eyebrow: 'BAŞLAMAK ÜCRETSİZ',
-        title: 'Temel işler ücretsiz. Pro ile zaman senin.',
-        description:
-            'Önce alışkanlığını kur. Fiş tarama, özel kur, derin içgörüler '
-            've gelişmiş raporlar için Pro’da bugün sunulanları ve sıradaki '
-            'yol haritasını gör.',
-        icon: Icons.auto_awesome_rounded,
-        supportingIcon: Icons.document_scanner_rounded,
-        secondaryIcon: Icons.insights_rounded,
-        accent: Color(0xFFD97706),
-        proofPoints: ['Zorunlu deneme yok', 'İstediğin zaman iptal'],
-      ),
-    ],
-  );
-}
+/// Slide structure is locale-independent; only the copy is translated.
+const _onboardingPages = <_OnboardingPageData>[
+  _OnboardingPageData(
+    analyticsName: 'unified_money_home',
+    keyPrefix: 'onboarding_p1',
+    icon: Icons.account_balance_wallet_rounded,
+    supportingIcon: Icons.person_rounded,
+    secondaryIcon: Icons.groups_rounded,
+    accent: SplixaColors.cyan,
+    proofKeys: ['onboarding_p1_proof_1', 'onboarding_p1_proof_2'],
+  ),
+  _OnboardingPageData(
+    analyticsName: 'clear_group_splits',
+    keyPrefix: 'onboarding_p2',
+    icon: Icons.call_split_rounded,
+    supportingIcon: Icons.receipt_long_rounded,
+    secondaryIcon: Icons.done_all_rounded,
+    accent: Color(0xFF7C3AED),
+    proofKeys: ['onboarding_p2_proof_1', 'onboarding_p2_proof_2'],
+  ),
+  _OnboardingPageData(
+    analyticsName: 'trusted_multi_currency',
+    keyPrefix: 'onboarding_p3',
+    icon: Icons.currency_exchange_rounded,
+    supportingIcon: Icons.lock_clock_rounded,
+    secondaryIcon: Icons.history_rounded,
+    accent: Color(0xFF0284C7),
+    proofKeys: ['onboarding_p3_proof_1', 'onboarding_p3_proof_2'],
+  ),
+  _OnboardingPageData(
+    analyticsName: 'free_first_pro_value',
+    keyPrefix: 'onboarding_p4',
+    icon: Icons.auto_awesome_rounded,
+    supportingIcon: Icons.document_scanner_rounded,
+    secondaryIcon: Icons.insights_rounded,
+    accent: Color(0xFFD97706),
+    proofKeys: ['onboarding_p4_proof_1', 'onboarding_p4_proof_2'],
+  ),
+];

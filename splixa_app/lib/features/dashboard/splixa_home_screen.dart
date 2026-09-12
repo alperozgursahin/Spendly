@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/app_formatting.dart';
 import '../../core/app_strings.dart';
 import '../../core/analytics_service.dart';
 import '../../core/app_theme_provider.dart';
 import '../../core/friendly_error.dart';
-import '../../core/locale_provider.dart';
 import '../../core/splixa_design.dart';
 import '../../widgets/informative_feature_sheet.dart';
 import '../auth/auth_provider.dart';
@@ -50,10 +50,7 @@ class SplixaHomeScreen extends ConsumerWidget {
                     _Header(unreadCount: unread),
                     const SizedBox(height: 28),
                     Text(
-                      tr(
-                        ref,
-                        'home_welcome',
-                      ).replaceFirst('{name}', displayName),
+                      trp(ref, 'home_welcome', {'name': displayName}),
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(
                             fontWeight: FontWeight.w800,
@@ -241,7 +238,6 @@ class _Header extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(appThemeModeProvider);
     final isDark = themeMode == ThemeMode.dark;
-    final language = ref.watch(appLanguageProvider);
 
     return Row(
       children: [
@@ -276,23 +272,6 @@ class _Header extends ConsumerWidget {
           onPressed: () => ref.read(appThemeModeProvider.notifier).toggle(),
           icon: Icon(
             isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-          ),
-        ),
-        Tooltip(
-          message: tr(ref, 'home_switch_language'),
-          child: TextButton(
-            style: TextButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              minimumSize: const Size(38, 36),
-              padding: const EdgeInsets.symmetric(horizontal: 5),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            onPressed: () => ref.read(appLanguageProvider.notifier).toggle(),
-            child: Text(language == AppLanguage.tr ? 'TR' : 'EN'),
           ),
         ),
         Badge(
@@ -384,7 +363,7 @@ class _GroupTile extends ConsumerWidget {
       subtitle: Text(
         count == null
             ? tr(ref, 'home_members_loading')
-            : tr(ref, 'home_members_count').replaceFirst('{count}', '$count'),
+            : trp(ref, 'home_members_count', {'count': AppFormat.count(count)}),
       ),
       trailing: Badge(
         isLabelVisible: unread > 0,

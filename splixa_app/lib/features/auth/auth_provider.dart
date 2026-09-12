@@ -7,6 +7,8 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/analytics_service.dart';
+import '../../core/app_strings.dart';
+import '../../core/locale_provider.dart';
 import '../dashboard/activity_provider.dart';
 import '../dashboard/heatmap_provider.dart';
 import '../filters/filters_provider.dart';
@@ -452,9 +454,12 @@ class AuthController {
   Future<void> deleteAccount() async {
     final outgoingUserId = _client.auth.currentUser?.id;
     if (outgoingUserId == null) {
-      throw const AccountDeletionException(
+      throw AccountDeletionException(
         code: 'UNAUTHORIZED',
-        message: 'Your session has expired. Please sign in again.',
+        message: AppStrings.of(
+          'profile_setup_session_expired',
+          currentAppLanguage,
+        ),
       );
     }
 
@@ -465,9 +470,12 @@ class AuthController {
       );
       final data = response.data;
       if (data is! Map || data['deleted'] != true) {
-        throw const AccountDeletionException(
+        throw AccountDeletionException(
           code: 'INVALID_RESPONSE',
-          message: 'The deletion service returned an invalid response.',
+          message: AppStrings.of(
+            'profile_delete_invalid_response',
+            currentAppLanguage,
+          ),
         );
       }
     } on FunctionException catch (error) {
@@ -509,14 +517,14 @@ class AuthController {
         code: errorBody['code']?.toString() ?? 'DELETION_FAILED',
         message:
             errorBody['message']?.toString() ??
-            'Account deletion could not be completed.',
+            AppStrings.of('profile_delete_failed', currentAppLanguage),
         groupNames: groupNames,
       );
     }
 
-    return const AccountDeletionException(
+    return AccountDeletionException(
       code: 'DELETION_FAILED',
-      message: 'Account deletion could not be completed. Please try again.',
+      message: AppStrings.of('profile_delete_failed', currentAppLanguage),
     );
   }
 

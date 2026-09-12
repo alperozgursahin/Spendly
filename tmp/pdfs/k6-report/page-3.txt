@@ -1,0 +1,22 @@
+Request Rate
+Request Waiting
+TLS handshaking
+Request Sending
+time: 2026-08-13 21:10:08
+http_req_failed: 0.0%
+time: 2026-08-13 21:10:08
+http_reqs: 9/s
+time: 2026-08-13 21:10:08
+avg: 167ms 520µs
+p90: 177ms 540µs
+p95: 180ms 50µs
+p99: 182ms 50µs
+time: 2026-08-13 21:10:08
+avg: 0ms
+p90: 0ms
+p95: 0ms
+p99: 0ms
+13.08.2026 21:11
+k6 report
+127.0.0.1:5665/report
+3/5

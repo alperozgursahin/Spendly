@@ -116,7 +116,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         IconButton.filledTonal(
                           onPressed: () => context.canPop()
                               ? context.pop()
-                              : context.go('/onboarding'),
+                              : context.go('/onboarding?replay=1'),
                           icon: const Icon(Icons.arrow_back_rounded),
                         ),
                         const Spacer(),
@@ -194,7 +194,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     Align(
-                      alignment: Alignment.centerRight,
+                      alignment: AlignmentDirectional.centerEnd,
                       child: TextButton(
                         onPressed: () => context.push('/forgot-password'),
                         child: Text(tr(ref, 'login_forgot_password')),

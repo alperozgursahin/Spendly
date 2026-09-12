@@ -174,8 +174,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     final isMe = m['sender_id'] == curUserId;
                     return Align(
                       alignment: isMe
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
+                          ? AlignmentDirectional.centerEnd
+                          : AlignmentDirectional.centerStart,
                       child: Container(
                         margin: const EdgeInsets.symmetric(
                           horizontal: 16,

@@ -4,6 +4,12 @@
 *.log
 *.pyc
 *.swp
+.splixa-k6/
+splixa_test_users.json
+splixa_test_users.example.json
+splixa_k6_summary.json
+splixa_scale_summary.json
+splixa-scale-report.html
 .buildlog/
 .history
 

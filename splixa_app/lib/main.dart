@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/foundation.dart';
 import 'core/analytics_service.dart';
+import 'core/app_formatting.dart';
 import 'core/locale_provider.dart';
 import 'core/app_theme_provider.dart';
 import 'core/app_strings.dart';
@@ -72,6 +73,10 @@ void main() async {
   await dotenv.load(fileName: 'env.config');
 
   await AnalyticsService.instance.initialize();
+  // Date symbols for every shipped locale, so exports and notifications can
+  // format for a language other than the one currently on screen.
+  await AppFormat.ensureInitialized();
+  final languageController = await AppLanguageNotifier.load();
   final onboardingController = await OnboardingController.load();
 
   await Supabase.initialize(
@@ -110,6 +115,7 @@ void main() async {
   runApp(
     ProviderScope(
       overrides: [
+        appLanguageProvider.overrideWith((ref) => languageController),
         onboardingControllerProvider.overrideWith(
           (ref) => onboardingController,
         ),
@@ -169,7 +175,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isAuth && !needsGoogleProfile && path == '/complete-profile') {
         return '/dashboard';
       }
-      if (hasCompletedOnboarding && path == '/onboarding') {
+      // `?replay=1` is how a user deliberately returns to the intro (the back
+      // arrow on the login screen). Without it, navigating to /onboarding after
+      // completion bounces straight back and the button looks broken.
+      final isOnboardingReplay =
+          state.uri.queryParameters['replay'] == '1' && !isAuth;
+      if (hasCompletedOnboarding &&
+          path == '/onboarding' &&
+          !isOnboardingReplay) {
         return isAuth ? '/dashboard' : '/login';
       }
       if (!isAuth && !isPublicAuthRoute) return '/login';
@@ -465,13 +478,20 @@ class _MyAppState extends ConsumerState<MyApp> {
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: themeMode,
-      locale: Locale(language == AppLanguage.en ? 'en' : 'tr'),
-      supportedLocales: const [Locale('tr'), Locale('en')],
+      locale: language.locale,
+      supportedLocales: supportedAppLocales,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      // GlobalWidgetsLocalizations already derives direction from the locale;
+      // pinning it here keeps RTL correct even if a delegate has not resolved
+      // yet on the first frame after a live language switch.
+      builder: (context, child) => Directionality(
+        textDirection: language.textDirection,
+        child: child ?? const SizedBox.shrink(),
+      ),
       routerConfig: router,
     );
   }

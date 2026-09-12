@@ -6,7 +6,7 @@ import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import 'group_provider.dart';
 
-class GroupChatScreen extends StatelessWidget {
+class GroupChatScreen extends ConsumerWidget {
   final String groupId;
   final String groupName;
 
@@ -17,9 +17,11 @@ class GroupChatScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: Text('$groupName Chat')),
+      appBar: AppBar(
+        title: Text(trp(ref, 'groups_chat_title', {'group': groupName})),
+      ),
       body: GroupChatView(groupId: groupId),
     );
   }
@@ -131,8 +133,8 @@ class _GroupChatViewState extends ConsumerState<GroupChatView> {
 
                   return Align(
                     alignment: isMe
-                        ? Alignment.centerRight
-                        : Alignment.centerLeft,
+                        ? AlignmentDirectional.centerEnd
+                        : AlignmentDirectional.centerStart,
                     child: Container(
                       constraints: BoxConstraints(
                         maxWidth: MediaQuery.of(context).size.width * 0.75,

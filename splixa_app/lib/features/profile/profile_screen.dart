@@ -135,8 +135,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       final language = ref.read(appLanguageProvider);
                       await PdfExportService.generateAndShareMonthlyReport(
                         currentMonthTransactions,
-                        '${now.month}/${now.year}',
+                        DateTime(now.year, now.month),
                         language: language,
+                        currencySymbol: ref.read(currencyProvider),
                       );
                     } catch (e) {
                       if (!context.mounted) return;

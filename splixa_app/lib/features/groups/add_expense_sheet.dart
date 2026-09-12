@@ -141,7 +141,6 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     final profileCurrency = ref.watch(currencyProvider);
     final currency = _selectedCurrency ?? profileCurrency;
     final isPremium = ref.watch(premiumProvider);
-    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
 
     return Padding(
       padding: EdgeInsets.only(
@@ -167,9 +166,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
             ),
             icon: const Icon(Icons.document_scanner_rounded),
             label: Text(
-              isTurkish
-                  ? 'Fiş Tara ✨${isPremium ? '' : ' · Pro'}'
-                  : 'Scan Receipt ✨${isPremium ? '' : ' · Pro'}',
+              '${tr(ref, 'groups_scan_receipt')} ✨${isPremium ? '' : ' · Pro'}',
             ),
           ),
           const SizedBox(height: 16),
@@ -200,9 +197,8 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
             value: currency,
             labelText: tr(ref, 'common_currency'),
             customRateUnlocked: isPremium,
-            customRateTooltip: isTurkish
-                ? 'Özel döviz kuru${isPremium ? '' : ' · Pro'}'
-                : 'Custom exchange rate${isPremium ? '' : ' · Pro'}',
+            customRateTooltip:
+                '${tr(ref, 'groups_custom_exchange_rate')}${isPremium ? '' : ' · Pro'}',
             onCustomRatePressed: () => _handleProFeature(
               source: PaywallSource.customExchangeRate,
               isPremium: isPremium,
@@ -300,15 +296,8 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       return;
     }
 
-    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isTurkish
-              ? 'Bu Pro aracı yakında kullanıma açılacak.'
-              : 'This Pro tool is coming soon.',
-        ),
-      ),
+      SnackBar(content: Text(tr(ref, 'groups_pro_tool_coming_soon'))),
     );
   }
 
@@ -456,8 +445,8 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
           contentPadding: EdgeInsets.zero,
           subtitle: Align(
             alignment: _splitType == 'percentage'
-                ? Alignment.centerLeft
-                : Alignment.centerRight,
+                ? AlignmentDirectional.centerStart
+                : AlignmentDirectional.centerEnd,
             child: trailingWidget,
           ),
         ),

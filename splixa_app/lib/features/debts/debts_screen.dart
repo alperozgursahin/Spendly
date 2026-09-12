@@ -519,7 +519,10 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(left: 4, bottom: 6),
+                  padding: const EdgeInsetsDirectional.only(
+                    start: 4,
+                    bottom: 6,
+                  ),
                   child: Text(
                     tr(ref, 'debts_filter_group_label'),
                     style: TextStyle(
@@ -597,7 +600,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                 ),
                 const SizedBox(height: 8),
                 Align(
-                  alignment: Alignment.centerRight,
+                  alignment: AlignmentDirectional.centerEnd,
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.filter_alt),
                     label: Text(tr(ref, 'common_filter')),

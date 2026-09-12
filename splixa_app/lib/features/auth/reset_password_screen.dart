@@ -103,10 +103,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      tr(
-                        ref,
-                        'reset_password_code_prompt',
-                      ).replaceFirst('{email}', widget.email),
+                      trp(ref, 'reset_password_code_prompt', {
+                        'email': widget.email,
+                      }),
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyLarge,
                     ),

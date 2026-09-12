@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class MainScaffold extends StatelessWidget {
+import 'core/app_strings.dart';
+
+class MainScaffold extends ConsumerWidget {
   const MainScaffold({super.key, required this.child});
 
   final Widget child;
@@ -21,7 +24,7 @@ class MainScaffold extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).uri.toString();
     return Scaffold(
       body: child,
@@ -41,26 +44,28 @@ class MainScaffold extends StatelessWidget {
                     context.go('/profile');
                 }
               },
-              destinations: const [
+              destinations: [
                 NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded),
-                  label: 'Home',
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home_rounded),
+                  label: tr(ref, 'nav_dashboard'),
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.people_outline_rounded),
-                  selectedIcon: Icon(Icons.people_rounded),
-                  label: 'Friends',
+                  icon: const Icon(Icons.people_outline_rounded),
+                  selectedIcon: const Icon(Icons.people_rounded),
+                  label: tr(ref, 'nav_social'),
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.account_balance_wallet_outlined),
-                  selectedIcon: Icon(Icons.account_balance_wallet_rounded),
-                  label: 'Debts',
+                  icon: const Icon(Icons.account_balance_wallet_outlined),
+                  selectedIcon: const Icon(
+                    Icons.account_balance_wallet_rounded,
+                  ),
+                  label: tr(ref, 'nav_debts'),
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.person_outline_rounded),
-                  selectedIcon: Icon(Icons.person_rounded),
-                  label: 'Profile',
+                  icon: const Icon(Icons.person_outline_rounded),
+                  selectedIcon: const Icon(Icons.person_rounded),
+                  label: tr(ref, 'nav_profile'),
                 ),
               ],
             )

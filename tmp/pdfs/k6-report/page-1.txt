@@ -1,0 +1,26 @@
+Report: 2026-08-13 21:08:27
+Overview
+This chapter provides an overview of the most important metrics of the test run. Graphs plot the value of metrics over time.
+HTTP Performance overview
+VUs
+Transfer Rate
+HTTP Request Duration
+time: 2026-08-13 21:10:08
+Request Rate: 9/s
+Request Duration p(95): 180ms 50µs
+Request Failed
+time: 2026-08-13 21:10:08
+vus: 10
+http_reqs: 9/s
+time: 2026-08-13 21:10:08
+data_received: 7.55 kB/s
+data_sent: 2.75 kB/s
+2026-08-13 21:10:08
+Request Rate
+Request Duration p(95) 180ms 5
+Request Failed
+0
+13.08.2026 21:11
+k6 report
+127.0.0.1:5665/report
+1/5

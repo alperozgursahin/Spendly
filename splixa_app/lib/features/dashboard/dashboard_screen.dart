@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/analytics_service.dart';
 import '../../core/friendly_error.dart';
 import '../../core/app_strings.dart';
-import '../../core/locale_provider.dart';
 import '../../core/app_theme_provider.dart';
 import '../auth/auth_provider.dart';
 import '../transactions/transaction_provider.dart';
@@ -61,7 +60,6 @@ class DashboardScreen extends ConsumerWidget {
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
               const Spacer(),
-              _buildLanguageToggle(context, ref),
               const SizedBox(width: 8),
               _buildThemeToggle(context, ref),
               IconButton(
@@ -109,11 +107,10 @@ class DashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         leadingWidth: 132,
         leading: Padding(
-          padding: const EdgeInsets.only(left: 12),
+          padding: const EdgeInsetsDirectional.only(start: 12),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildLanguageToggle(context, ref),
               const SizedBox(width: 8),
               _buildThemeToggle(context, ref),
             ],
@@ -160,45 +157,6 @@ class DashboardScreen extends ConsumerWidget {
     }
     context.push(
       '/paywall?source=${PaywallSource.advancedAnalytics.analyticsValue}',
-    );
-  }
-
-  Widget _buildLanguageToggle(BuildContext context, WidgetRef ref) {
-    final language = ref.watch(appLanguageProvider);
-    final colorScheme = Theme.of(context).colorScheme;
-
-    Widget option(String label, AppLanguage value) {
-      final isSelected = language == value;
-      return GestureDetector(
-        onTap: () => ref.read(appLanguageProvider.notifier).setLanguage(value),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: isSelected ? colorScheme.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: isSelected ? Colors.white : colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [option('TR', AppLanguage.tr), option('EN', AppLanguage.en)],
-      ),
     );
   }
 
@@ -260,7 +218,10 @@ class DashboardScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(left: 4, bottom: 6),
+                  padding: const EdgeInsetsDirectional.only(
+                    start: 4,
+                    bottom: 6,
+                  ),
                   child: Text(
                     tr(ref, 'common_category'),
                     style: TextStyle(
@@ -356,7 +317,7 @@ class DashboardScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 10),
                 Align(
-                  alignment: Alignment.centerRight,
+                  alignment: AlignmentDirectional.centerEnd,
                   child: ElevatedButton.icon(
                     onPressed: () {
                       final notifier = ref.read(
@@ -664,7 +625,6 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
     final profileCurrency = ref.watch(currencyProvider);
     final currency = selectedCurrency ?? profileCurrency;
     final isPremium = ref.watch(premiumProvider);
-    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
 
     return Card(
       elevation: 0,
@@ -749,9 +709,8 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
               labelText: tr(ref, 'common_currency'),
               compact: true,
               customRateUnlocked: isPremium,
-              customRateTooltip: isTurkish
-                  ? 'Özel döviz kuru${isPremium ? '' : ' · Pro'}'
-                  : 'Custom exchange rate${isPremium ? '' : ' · Pro'}',
+              customRateTooltip:
+                  '${tr(ref, 'groups_custom_exchange_rate')}${isPremium ? '' : ' · Pro'}',
               onCustomRatePressed: () => _handleCustomRate(isPremium),
               onChanged: (value) {
                 setState(() => selectedCurrency = value);
@@ -850,15 +809,8 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
       return;
     }
 
-    final isTurkish = Localizations.localeOf(context).languageCode == 'tr';
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isTurkish
-              ? 'Özel kur düzenleyicisi yakında kullanıma açılacak.'
-              : 'The custom rate editor is coming soon.',
-        ),
-      ),
+      SnackBar(content: Text(tr(ref, 'dashboard_custom_rate_coming_soon'))),
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/app_formatting.dart';
 import '../../core/app_strings.dart';
 import '../../core/locale_provider.dart';
 import '../auth/auth_provider.dart';
@@ -66,10 +67,12 @@ final activityProvider = FutureProvider<List<ActivityItem>>((ref) async {
       final amount = gt['amount'];
       activities.add(
         ActivityItem(
-          description: AppStrings.of(
-            'activity_added_expense',
-            language,
-          ).replaceAll('{group}', groupName).replaceAll('{amount}', '$amount'),
+          description: AppStrings.of('activity_added_expense', language)
+              .replaceAll('{group}', groupName)
+              .replaceAll(
+                '{amount}',
+                AppFormat.amount((amount as num?) ?? 0, language),
+              ),
           createdAt: DateTime.parse(gt['created_at']),
           icon: Icons.receipt_long,
         ),

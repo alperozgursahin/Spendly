@@ -4,6 +4,16 @@ import 'app_strings.dart';
 import 'locale_provider.dart';
 import '../features/auth/native_google_auth.dart';
 
+/// Domain failures carry a localization key instead of user-facing prose.
+class FriendlyException implements Exception {
+  const FriendlyException(this.key);
+
+  final String key;
+
+  @override
+  String toString() => 'FriendlyException($key)';
+}
+
 /// Converts a caught error into a short, non-technical message suitable for
 /// showing directly to end users (SnackBar, inline error text), translated
 /// via [currentAppLanguage] since this has no [WidgetRef] to read from.
@@ -13,6 +23,9 @@ import '../features/auth/native_google_auth.dart';
 /// shown as-is. Anything from Supabase (auth/database) or unrecognized gets
 /// a generic, friendly fallback instead of leaking raw exception text.
 String friendlyErrorMessage(Object error) {
+  if (error is FriendlyException) {
+    return AppStrings.of(error.key, currentAppLanguage);
+  }
   if (error is NativeGoogleAuthException) {
     return _friendlyGoogleAuthMessage(error);
   }
@@ -20,10 +33,7 @@ String friendlyErrorMessage(Object error) {
   if (error is PostgrestException) return _friendlyPostgrestMessage(error);
 
   if (error is Exception) {
-    final raw = error.toString();
-    const prefix = 'Exception: ';
-    if (raw.startsWith(prefix)) return raw.substring(prefix.length);
-    return raw;
+    return AppStrings.of('error_generic_short', currentAppLanguage);
   }
 
   return AppStrings.of('error_generic_short', currentAppLanguage);

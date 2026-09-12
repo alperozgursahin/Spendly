@@ -64,7 +64,7 @@ class _InviteFriendModalState extends ConsumerState<InviteFriendModal> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 16, bottom: 32, left: 16, right: 16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.7,
       ),

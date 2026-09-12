@@ -37,7 +37,12 @@ class GroupInfoScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           Semantics(
             button: isCreator,
-            label: isCreator ? 'Change group picture' : 'Group picture',
+            label: tr(
+              ref,
+              isCreator
+                  ? 'group_info_change_picture'
+                  : 'group_info_group_picture',
+            ),
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: isCreator
@@ -63,8 +68,8 @@ class GroupInfoScreen extends ConsumerWidget {
                           ),
                   ),
                   if (isCreator)
-                    Positioned(
-                      right: -2,
+                    PositionedDirectional(
+                      end: -2,
                       bottom: -2,
                       child: CircleAvatar(
                         radius: 17,
@@ -113,10 +118,12 @@ class GroupInfoScreen extends ConsumerWidget {
                             : const Icon(Icons.person),
                       ),
                       title: Text(memberLabel),
-                      subtitle: isAdminMember ? const Text('Admin') : null,
+                      subtitle: isAdminMember
+                          ? Text(tr(ref, 'group_info_admin'))
+                          : null,
                       trailing: isCreator && !isMe && !isAdminMember
                           ? IconButton(
-                              tooltip: 'Remove member',
+                              tooltip: tr(ref, 'group_info_remove_member'),
                               color: Theme.of(context).colorScheme.error,
                               icon: const Icon(Icons.person_remove_outlined),
                               onPressed: () => _confirmRemoveMember(
@@ -218,18 +225,18 @@ class GroupInfoScreen extends ConsumerWidget {
   }) {
     final memberName = member.username?.isNotEmpty == true
         ? '@${member.username}'
-        : 'this member';
+        : tr(ref, 'group_info_this_member');
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Remove member?'),
+        title: Text(tr(ref, 'group_info_remove_member_title')),
         content: Text(
-          '$memberName will lose access to this group and its chat.',
+          trp(ref, 'group_info_remove_member_body', {'member': memberName}),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text(tr(ref, 'common_cancel')),
           ),
           TextButton(
             style: TextButton.styleFrom(
@@ -253,7 +260,7 @@ class GroupInfoScreen extends ConsumerWidget {
                 );
               }
             },
-            child: const Text('Remove'),
+            child: Text(tr(ref, 'group_info_remove')),
           ),
         ],
       ),

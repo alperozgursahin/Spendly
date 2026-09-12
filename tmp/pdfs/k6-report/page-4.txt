@@ -1,0 +1,29 @@
+Request Connecting
+Request Receiving
+Request Blocked
+Summary
+This chapter provides a summary of the test run metrics. The tables contains the aggregated values of the metrics for the entire test run.
+time: 2026-08-13 21:10:08
+avg: 232µs 920ns
+p90: 448µs 540ns
+p95: 541µs 410ns
+p99: 615µs 720ns
+time: 2026-08-13 21:10:08
+avg: 0ms
+p90: 0ms
+p95: 0ms
+p99: 0ms
+time: 2026-08-13 21:10:08
+avg: 0ms
+p90: 0ms
+p95: 0ms
+p99: 0ms
+time: 2026-08-13 21:10:08
+avg: 0ms
+p90: 0ms
+p95: 0ms
+p99: 0ms
+13.08.2026 21:11
+k6 report
+127.0.0.1:5665/report
+4/5

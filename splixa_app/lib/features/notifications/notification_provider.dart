@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/app_formatting.dart';
 import '../../core/app_strings.dart';
 import '../../core/locale_provider.dart';
 import 'notification_model.dart';
@@ -159,7 +160,7 @@ Future<List<AppNotificationModel>> _buildNotifications(
           .replaceAll('{sender}', senderName)
           .replaceAll('{group}', groupName)
           .replaceAll('{desc}', description)
-          .replaceAll('{amount}', amount.toStringAsFixed(2));
+          .replaceAll('{amount}', AppFormat.amount(amount, language));
     }
 
     var title = AppStrings.of('notif_new_expense_title', language);

@@ -5,7 +5,9 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/analytics_service.dart';
+import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
+import '../../core/locale_provider.dart';
 import '../../core/splixa_design.dart';
 import 'premium_provider.dart';
 
@@ -34,7 +36,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final copy = _PaywallCopy.forLocale(Localizations.localeOf(context));
+    final copy = _PaywallCopy(ref.watch(appLanguageProvider));
     final offerings = ref.watch(offeringsProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -548,183 +550,86 @@ class _BenefitCopy {
   final String description;
 }
 
+/// Paywall copy resolved from the shared localization catalog.
+///
+/// Prices are never part of this class: every amount shown on the paywall
+/// comes from RevenueCat's `StoreProduct.priceString`, which is already
+/// formatted in the store account's currency and locale.
 class _PaywallCopy {
-  const _PaywallCopy({
-    required this.appBarTitle,
-    required this.close,
-    required this.title,
-    required this.subtitle,
-    required this.benefitsTitle,
-    required this.benefits,
-    required this.choosePlan,
-    required this.bestValue,
-    required this.continueFree,
-    required this.restore,
-    required this.restoreSuccess,
-    required this.restoreNone,
-    required this.welcome,
-    required this.purchaseFailed,
-    required this.noPackages,
-    required this.retry,
-    required this.terms,
-    required this.privacy,
-    required this.storeDisclosure,
-    required this.linkFailed,
-    required this.isTurkish,
-  });
+  const _PaywallCopy(this.language);
 
-  final String appBarTitle;
-  final String close;
-  final String title;
-  final String subtitle;
-  final String benefitsTitle;
-  final List<_BenefitCopy> benefits;
-  final String choosePlan;
-  final String bestValue;
-  final String continueFree;
-  final String restore;
-  final String restoreSuccess;
-  final String restoreNone;
-  final String welcome;
-  final String purchaseFailed;
-  final String noPackages;
-  final String retry;
-  final String terms;
-  final String privacy;
-  final String storeDisclosure;
-  final String linkFailed;
-  final bool isTurkish;
+  final AppLanguage language;
 
-  static _PaywallCopy forLocale(Locale locale) {
-    return locale.languageCode == 'tr' ? _turkish : _english;
-  }
+  String _s(String key) => AppStrings.of(key, language);
+  String _f(String key, Map<String, String> values) =>
+      AppStrings.format(key, language, values);
+
+  String get appBarTitle => _s('paywall_appbar_title');
+  String get close => _s('paywall_close');
+  String get title => _s('paywall_hero_title');
+  String get subtitle => _s('paywall_hero_subtitle');
+  String get benefitsTitle => _s('paywall_benefits_title');
+  String get choosePlan => _s('paywall_choose_plan');
+  String get bestValue => _s('paywall_best_value');
+  String get continueFree => _s('paywall_continue_free');
+  String get restore => _s('paywall_restore');
+  String get restoreSuccess => _s('paywall_restore_restored');
+  String get restoreNone => _s('paywall_restore_none');
+  String get welcome => _s('paywall_welcome_message');
+  String get purchaseFailed => _s('paywall_purchase_failed_message');
+  String get noPackages => _s('paywall_no_packages_available');
+  String get retry => _s('paywall_retry');
+  String get terms => _s('paywall_terms_link');
+  String get privacy => _s('paywall_privacy_link');
+  String get storeDisclosure => _s('paywall_store_disclosure');
+  String get linkFailed => _s('paywall_link_failed');
+
+  List<_BenefitCopy> get benefits => [
+    _BenefitCopy(
+      Icons.groups_rounded,
+      _s('paywall_benefit_1_title'),
+      _s('paywall_benefit_1_body'),
+    ),
+    _BenefitCopy(
+      Icons.insights_rounded,
+      _s('paywall_benefit_2_title'),
+      _s('paywall_benefit_2_body'),
+    ),
+    _BenefitCopy(
+      Icons.file_download_rounded,
+      _s('paywall_benefit_3_title'),
+      _s('paywall_benefit_3_body'),
+    ),
+    _BenefitCopy(
+      Icons.auto_awesome_rounded,
+      _s('paywall_benefit_4_title'),
+      _s('paywall_benefit_4_body'),
+    ),
+  ];
 
   String planName(Package package) => switch (package.packageType) {
-    PackageType.annual => isTurkish ? 'Yıllık Pro' : 'Yearly Pro',
-    PackageType.monthly => isTurkish ? 'Aylık Pro' : 'Monthly Pro',
+    PackageType.annual => _s('paywall_plan_annual'),
+    PackageType.monthly => _s('paywall_plan_monthly'),
     _ => package.storeProduct.title,
   };
 
   String period(Package package) => switch (package.packageType) {
-    PackageType.annual => isTurkish ? '/ yıl' : '/ year',
-    PackageType.monthly => isTurkish ? '/ ay' : '/ month',
+    PackageType.annual => _s('paywall_period_annual'),
+    PackageType.monthly => _s('paywall_period_monthly'),
     _ => '',
   };
 
   String monthlyEquivalent(String price) =>
-      isTurkish ? 'Aylık karşılığı $price' : '$price monthly equivalent';
+      _f('paywall_monthly_equivalent', {'price': price});
 
-  String continueWith(Package package) => isTurkish
-      ? '${planName(package)} ile devam et'
-      : 'Continue with ${planName(package)}';
+  String continueWith(Package package) =>
+      _f('paywall_continue_with_plan', {'plan': planName(package)});
 
   String renewalDisclosure(Package package) {
     final price = package.storeProduct.priceString;
-    final cadence = package.packageType == PackageType.annual
-        ? (isTurkish ? 'yıllık' : 'yearly')
-        : (isTurkish ? 'aylık' : 'monthly');
-    return isTurkish
-        ? 'Şimdi $price tahsil edilir. Abonelik iptal edilene kadar $cadence '
-              'olarak otomatik yenilenir.'
-        : '$price is charged now. The subscription renews $cadence until '
-              'cancelled.';
+    final key = package.packageType == PackageType.annual
+        ? 'paywall_renewal_annual'
+        : 'paywall_renewal_monthly';
+    return _f(key, {'price': price});
   }
-
-  static const _english = _PaywallCopy(
-    appBarTitle: 'Splixa Pro',
-    close: 'Close',
-    title: 'Turn money admin into a two-minute task',
-    subtitle:
-        'Keep Splixa’s core free. Go Pro when automation, control, and deeper '
-        'answers are worth more than the time they save.',
-    benefitsTitle: 'What Pro unlocks',
-    benefits: [
-      _BenefitCopy(
-        Icons.groups_rounded,
-        'Unlimited groups',
-        'Keep every trip, household, and project active without a group cap.',
-      ),
-      _BenefitCopy(
-        Icons.insights_rounded,
-        'See the patterns behind spending',
-        'Explore category distribution and activity patterns at a glance.',
-      ),
-      _BenefitCopy(
-        Icons.file_download_rounded,
-        'Export polished monthly reports',
-        'Turn your personal records into a shareable PDF in one tap.',
-      ),
-      _BenefitCopy(
-        Icons.auto_awesome_rounded,
-        'Roadmap preview: less typing, more control',
-        'Receipt scanning and custom exchange rates are coming next.',
-      ),
-    ],
-    choosePlan: 'Choose your plan',
-    bestValue: 'BEST VALUE',
-    continueFree: 'Not now — continue with free',
-    restore: 'Restore purchases',
-    restoreSuccess: 'Your Pro access has been restored.',
-    restoreNone: 'No active Pro purchase was found for this store account.',
-    welcome: 'Welcome to Splixa Pro.',
-    purchaseFailed: 'The purchase was cancelled or could not be completed.',
-    noPackages: 'Plans are temporarily unavailable. Please try again.',
-    retry: 'Try again',
-    terms: 'Terms of Use',
-    privacy: 'Privacy Policy',
-    storeDisclosure:
-        'Payment is charged to your store account. Manage or cancel from your '
-        'App Store or Google Play subscription settings.',
-    linkFailed: 'The page could not be opened.',
-    isTurkish: false,
-  );
-
-  static const _turkish = _PaywallCopy(
-    appBarTitle: 'Splixa Pro',
-    close: 'Kapat',
-    title: 'Para işlerini iki dakikalık bir göreve dönüştür',
-    subtitle:
-        'Splixa’nın temeli ücretsiz kalsın. Otomasyon, kontrol ve derin '
-        'yanıtlar kazandırdığı zamandan değerli olduğunda Pro’ya geç.',
-    benefitsTitle: 'Pro ile açılanlar',
-    benefits: [
-      _BenefitCopy(
-        Icons.groups_rounded,
-        'Limitsiz grup',
-        'Her geziyi, evi ve projeyi grup sınırı olmadan aktif tut.',
-      ),
-      _BenefitCopy(
-        Icons.insights_rounded,
-        'Harcamaların ardındaki deseni gör',
-        'Kategori dağılımını ve harcama hareketlerini tek bakışta incele.',
-      ),
-      _BenefitCopy(
-        Icons.file_download_rounded,
-        'Düzenli aylık raporlar çıkar',
-        'Kişisel kayıtlarını tek dokunuşla paylaşılabilir PDF’e dönüştür.',
-      ),
-      _BenefitCopy(
-        Icons.auto_awesome_rounded,
-        'Yol haritası: daha az yazma, daha çok kontrol',
-        'Fiş tarama ve özel döviz kurları sıradaki Pro araçlarıdır.',
-      ),
-    ],
-    choosePlan: 'Planını seç',
-    bestValue: 'EN AVANTAJLI',
-    continueFree: 'Şimdi değil — ücretsiz devam et',
-    restore: 'Satın alımları geri yükle',
-    restoreSuccess: 'Pro erişimin geri yüklendi.',
-    restoreNone: 'Bu mağaza hesabında etkin Pro satın alımı bulunamadı.',
-    welcome: 'Splixa Pro’ya hoş geldin.',
-    purchaseFailed: 'Satın alma iptal edildi veya tamamlanamadı.',
-    noPackages: 'Planlara geçici olarak ulaşılamıyor. Tekrar dene.',
-    retry: 'Tekrar dene',
-    terms: 'Kullanım Koşulları',
-    privacy: 'Gizlilik Politikası',
-    storeDisclosure:
-        'Ödeme mağaza hesabından alınır. Aboneliğini App Store veya Google '
-        'Play abonelik ayarlarından yönetebilir ya da iptal edebilirsin.',
-    linkFailed: 'Sayfa açılamadı.',
-    isTurkish: true,
-  );
 }

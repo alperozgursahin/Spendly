@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/auth_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/friendly_error.dart';
+
 final socialServiceProvider = Provider((ref) {
   return SocialService(Supabase.instance.client);
 });
@@ -10,7 +12,7 @@ final currentUserProfileProvider = FutureProvider<Map<String, dynamic>>((
   ref,
 ) async {
   final userId = ref.watch(currentUserIdProvider);
-  if (userId == null) throw Exception('No user found');
+  if (userId == null) throw const FriendlyException('error_not_found');
 
   final db = Supabase.instance.client;
   var res = await db.from('profiles').select().eq('id', userId).maybeSingle();
@@ -81,7 +83,7 @@ class SocialService {
         .eq('username', username)
         .maybeSingle();
     if (existing != null && existing['id'] != userId) {
-      throw Exception('Bu kullanıcı adı çoktan alınmış.');
+      throw const FriendlyException('profile_setup_username_taken');
     }
 
     await db.from('profiles').update({'username': username}).eq('id', userId);
@@ -95,7 +97,7 @@ class SocialService {
     required String bio,
   }) async {
     final user = db.auth.currentUser;
-    if (user == null) throw Exception('Yetkisiz işlem');
+    if (user == null) throw const FriendlyException('error_forbidden');
 
     if (newUsername != currentUsername) {
       final existing = await db
@@ -104,7 +106,7 @@ class SocialService {
           .eq('username', newUsername)
           .maybeSingle();
       if (existing != null && existing['id'] != user.id) {
-        throw Exception('Bu kullanıcı adı çoktan alınmış.');
+        throw const FriendlyException('profile_setup_username_taken');
       }
     }
 
@@ -150,11 +152,13 @@ class SocialService {
         .select('id')
         .eq('username', targetUsername)
         .maybeSingle();
-    if (targetUser == null) throw Exception('Kullanıcı bulunamadı.');
+    if (targetUser == null) {
+      throw const FriendlyException('social_user_not_found');
+    }
 
     final targetUserId = targetUser['id'];
     if (currentUserId == targetUserId) {
-      throw Exception('Kendinize istek gönderemezsiniz.');
+      throw const FriendlyException('social_cannot_add_self');
     }
 
     final existingQuery = await db
@@ -167,9 +171,9 @@ class SocialService {
     if (existingQuery.isNotEmpty) {
       final status = existingQuery.first['status'];
       if (status == 'pending') {
-        throw Exception('Zaten bekleyen bir arkadaşlık isteği var.');
+        throw const FriendlyException('social_request_already_pending');
       } else if (status == 'accepted') {
-        throw Exception('Bu kullanıcıyla zaten arkadaşsınız.');
+        throw const FriendlyException('social_already_friends');
       }
     }
 

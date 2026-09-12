@@ -2,6 +2,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
+import '../../../core/app_formatting.dart';
 import '../../../core/app_strings.dart';
 import '../../../core/locale_provider.dart';
 import '../../transactions/transaction_model.dart';
@@ -9,8 +10,9 @@ import '../../transactions/transaction_model.dart';
 class PdfExportService {
   static Future<void> generateAndShareMonthlyReport(
     List<TransactionModel> transactions,
-    String monthYear, {
-    AppLanguage language = AppLanguage.tr,
+    DateTime month, {
+    AppLanguage language = fallbackAppLanguage,
+    String currencySymbol = '\u20ba',
   }) async {
     final fontRegular = await PdfGoogleFonts.robotoRegular();
     final fontBold = await PdfGoogleFonts.robotoBold();
@@ -30,10 +32,14 @@ class PdfExportService {
       }
     }
 
+    // Number grouping follows the report language; the symbol is whatever
+    // currency the user selected, never one inferred from the locale.
     final currencyFormatter = NumberFormat.currency(
-      symbol: '\$',
+      locale: language.code,
+      symbol: currencySymbol,
       decimalDigits: 2,
     );
+    final monthYear = AppFormat.monthYear(month, language);
 
     pdf.addPage(
       pw.MultiPage(
@@ -100,7 +106,7 @@ class PdfExportService {
               ],
               data: transactions.map((t) {
                 return [
-                  DateFormat('yyyy-MM-dd').format(t.date),
+                  AppFormat.shortDate(t.date, language),
                   categoryLabelForLanguage(language, t.category),
                   (t.type == 'income'
                           ? AppStrings.of('common_income', language)
@@ -125,7 +131,9 @@ class PdfExportService {
       ),
     );
 
-    final safeMonthYear = monthYear.replaceAll('/', '-');
+    // Filenames stay ASCII-safe and sortable regardless of report language.
+    final safeMonthYear =
+        '${month.year}-${month.month.toString().padLeft(2, '0')}';
     final bytes = await pdf.save();
     await Printing.sharePdf(
       bytes: bytes,

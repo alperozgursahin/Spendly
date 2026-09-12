@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/analytics_service.dart';
+import '../../core/friendly_error.dart';
 import '../auth/auth_provider.dart';
 import 'financial_models.dart';
 import 'group_model.dart';
@@ -401,7 +402,7 @@ class GroupService {
         .eq('id', groupId)
         .maybeSingle();
     if (group == null || group['created_by'] != actorId) {
-      throw Exception('Only the group admin can perform this action.');
+      throw const FriendlyException('group_admin_only');
     }
   }
 

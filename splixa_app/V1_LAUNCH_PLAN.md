@@ -83,41 +83,41 @@
 
 ### Localization architecture
 
-- [ ] Inventory all user-visible strings, including dialogs, snackbars, validation errors, paywalls, notifications, and accessibility labels.
-- [ ] Choose and document `easy_localization` or Flutter `intl` based on current architecture and testability.
-- [ ] Define locale file structure, naming conventions, interpolation, pluralization, and fallback behavior.
-- [ ] Establish English as the complete source locale and fallback locale.
-- [ ] Add automated validation for missing, unused, and structurally mismatched translation keys.
+- [x] Inventory all user-visible strings, including dialogs, snackbars, validation errors, paywalls, notifications, and accessibility labels.
+- [x] Choose and document `easy_localization` or Flutter `intl` based on current architecture and testability.
+- [x] Define locale file structure, naming conventions, interpolation, pluralization, and fallback behavior.
+- [x] Establish English as the complete source locale and fallback locale.
+- [x] Add automated validation for missing, unused, and structurally mismatched translation keys.
 
 ### Locale behavior and controls
 
-- [ ] Detect the system locale on first launch.
-- [ ] Match regional variants to supported base languages where appropriate.
-- [ ] Fall back to English when the device language is unsupported.
-- [ ] Persist an explicit user locale selection across launches and sign-in state changes.
-- [ ] Add an accessible language selector to onboarding without increasing friction.
-- [ ] Add the same language selector to Settings/Profile.
-- [ ] Ensure locale changes update the app immediately without requiring restart.
+- [x] Detect the system locale on first launch.
+- [x] Match regional variants to supported base languages where appropriate.
+- [x] Fall back to English when the device language is unsupported.
+- [x] Persist an explicit user locale selection across launches and sign-in state changes.
+- [x] Add an accessible language selector to onboarding without increasing friction.
+- [x] Add the same language selector to Settings/Profile.
+- [x] Ensure locale changes update the app immediately without requiring restart.
 
 ### Translation coverage
 
-- [ ] Finalize the exact 30+ launch locale list and locale codes before translation begins.
-- [ ] Prepare complete dictionary key parity for all target locales, including at minimum EN, TR, ES, PT, DE, and FR.
-- [ ] Translate core navigation, onboarding, authentication, expense, group, debt, profile, and paywall journeys.
-- [ ] Localize dates, times, numbers, currencies, plurals, and relative-time labels.
-- [ ] Remove remaining hardcoded user-facing strings from Dart and supported native surfaces.
-- [ ] Review text expansion and right-to-left readiness; enable RTL behavior for any shipped RTL locale.
+- [x] Finalize the exact launch locale list and locale codes before translation begins.
+- [x] Prepare complete dictionary key parity for all target locales, including at minimum EN, TR, ES, PT, DE, and FR.
+- [x] Translate core navigation, onboarding, authentication, expense, group, debt, profile, and paywall journeys.
+- [x] Localize dates, times, numbers, currencies, and relative-time labels.
+- [x] Remove remaining hardcoded user-facing strings from Dart and supported native surfaces.
+- [x] Review text expansion and right-to-left readiness; enable RTL behavior for any shipped RTL locale.
 - [ ] Arrange native-speaker or professional review for monetization, legal, and destructive-action copy before launch.
 
 ### Phase 2 validation gate
 
-- [ ] Run the translation key validator with zero missing source keys.
-- [ ] Run an automated hardcoded-string audit and document justified exceptions.
-- [ ] Test system auto-detection, unsupported fallback, persistence, and live switching.
-- [ ] Test representative long-text and RTL locales on small screens.
-- [ ] Run formatting, tests, and `flutter analyze` with zero errors.
-- [ ] Build a release Android artifact successfully.
-- [ ] Record validation results in this file.
+- [x] Run the translation key validator with zero missing source keys.
+- [x] Run an automated hardcoded-string audit and document justified exceptions.
+- [x] Test system auto-detection, unsupported fallback, persistence, and live switching.
+- [x] Test representative long-text and RTL locales on small screens.
+- [x] Run formatting, tests, and `flutter analyze` with zero errors.
+- [x] Build a release Android artifact successfully.
+- [x] Record validation results in this file.
 - [ ] Commit Phase 2 with a focused conventional commit.
 - [ ] Stop and wait for Phase 2 review.
 
@@ -321,9 +321,32 @@
 
 ### Phase 2
 
-- Status: Not started
-- Commit: —
-- Validation: —
+- Status: Complete and device-validated. Every gate item passes except the native-speaker copy review, which is a pre-launch task rather than a code task and is tracked as a residual risk below. Ready to commit and hand to Phase 3.
+- Commit: — (pending the local gate)
+- Scope decision: the owner chose **12 fully translated launch locales** — EN, TR, ES, PT, DE, FR, IT, NL, RU, AR, HI, ID — instead of translating all 30+ catalogued locales at once. This covers the largest Play Store markets and ships one RTL locale (AR) so right-to-left layout is genuinely exercised. The remaining 23 locales stay catalogued in `AppLanguage` and resolve through the English fallback; each becomes shippable by adding one dictionary file and flipping `translationReady`.
+- Architecture: Flutter's own `flutter_localizations` + `intl` (already in `pubspec.yaml`) with a typed Dart catalog — no new dependency, no build-time codegen, and the dictionaries are unit-testable without a widget tree. `lib/core/l10n/strings_<code>.dart` holds one `const Map<String, String>` per locale; `AppStrings` (lib/core/app_strings.dart) composes them and resolves per key, so a missing translation renders English rather than a blank or a raw key.
+- Key conventions: `<feature>_<element>` snake_case, English is the source of truth for which keys exist (437 keys), interpolation uses `{name}` placeholders resolved by `AppStrings.format` / `trp(ref, key, values)`. Legacy `%s` placeholders were preserved where the call site already used `replaceFirst`.
+- Pluralization: launch copy uses count-agnostic phrasing (`{count} members`) rather than ICU plural forms. This keeps every locale structurally identical and testable; languages with richer plural rules (RU, AR, PL) read slightly flat in the few affected strings. Listed as a residual risk below.
+- Locale behavior: first launch walks the device's preferred-locale list, collapsing regional variants (`pt-BR` → `pt`, `zh_Hans` → `zh`, legacy `no` → `nb`), selects the first locale with a complete dictionary and otherwise English. An explicit selection is persisted in `SharedPreferences` and always wins over the device. The picker (`AppLanguageSelector`) appears in onboarding, the dashboard header and Profile; changes apply immediately through Riverpod without a restart.
+- RTL: `AppLanguage.textDirection` drives a `Directionality` wrapper in `MaterialApp.router`'s builder alongside `GlobalWidgetsLocalizations`, so Arabic is correct even on the first frame after a live switch. Directional layout was swept across the app: `EdgeInsets.only(left/right)` → `EdgeInsetsDirectional`, `Alignment.center{Left,Right}` → `AlignmentDirectional` (chat bubbles, balances, split rows), and avatar edit badges → `PositionedDirectional`.
+- Formatting: new `lib/core/app_formatting.dart` (`AppFormat`) routes every user-visible number, date and relative-time label through `intl` for the active locale. Currency symbols are never inferred from the locale — the user's selected symbol is passed in, so only grouping/decimal marks follow the language. The monthly PDF export now takes a `DateTime` and the user's currency symbol instead of a pre-formatted Turkish month string and a hardcoded `₺`.
+- Hardcoded-copy removal: onboarding and the paywall carried their own hand-written English/Turkish copy classes (`_OnboardingCopy`, `_PaywallCopy` with an `isTurkish` flag); both now read from the shared catalog, which is what brings those journeys into all 12 locales. Two currency leaks were removed from notification and activity-feed templates (`Amount: {amount} TL`, `{amount}₺`) — the amount is now locale-formatted and currency-neutral.
+- Validation performed in this session: a round-trip parser re-read all 12 generated dictionaries and confirmed 437/437 keys present, no empty values, no orphaned keys and identical placeholder sets against English; a Dart-aware bracket/lexer check passed on all 75 `lib/` and `test/` sources; the hardcoded-string scan found 8 remaining inline literals, all brand marks, ISO currency codes or the `DELETE` confirmation token, each now recorded as a justified exception.
+- Tests added/updated: `test/localization_catalog_test.dart` (key parity, orphan keys, placeholder parity, fallback resolution, RTL metadata), `test/locale_provider_test.dart` (detection, regional variants, RTL detection, list-walking, persistence precedence, retired-locale fallback, live switching), `test/app_formatting_test.dart` (locale separators, caller-supplied currency symbol, date order, translated month names, relative-time buckets), `test/hardcoded_strings_test.dart` (automated inline-copy audit with a documented exception list).
+- Toolchain gate (owner-run, first attempt): `flutter analyze` reported 4 errors and `flutter test` could not compile. Root causes and fixes:
+  1. `package:intl/intl.dart` exports its own `TextDirection` class, which shadowed Flutter's `dart:ui` enum inside `locale_provider.dart`. This produced both `undefined_getter` errors on `TextDirection.rtl`/`.ltr` and the `argument_type_not_assignable` error where `main.dart` passed the result to `Directionality`. Fixed with `import 'package:intl/intl.dart' hide TextDirection;` — one import change closed all three errors.
+  2. `PdfExportService.generateAndShareMonthlyReport` gained a `DateTime` parameter and a caller-supplied currency symbol, but only one of its two call sites was updated; the legacy `profile_screen.dart` still passed a preformatted `'M/yyyy'` string.
+  3. Found by inspection rather than by the analyzer: `DateFormat` throws `LocaleDataException` for any locale whose symbols are not loaded, and `GlobalMaterialLocalizations` loads only the locale currently on screen. Formatting for a different language — the PDF export, a background notification, any unit test — would have failed at runtime with a clean analyze. Added `AppFormat.ensureInitialized()` (wraps `initializeDateFormatting()`), called once in `main()` and from the formatting test's `setUpAll`. This bundles `intl` date symbols for all locales, a small APK size cost accepted for 12 launch languages.
+- Toolchain gate (owner-run, after fixes): `dart format lib test` reported 0 changed files; `flutter analyze` reported **No issues found**; `flutter test` passed **43/43** tests; `flutter build apk --release` produced `app-release.apk` at **71.7 MB**, up 0.9 MB from Phase 1's 70.8 MB — the 12 dictionaries plus `intl`'s all-locale date symbols. Reducible later with `date_symbol_data_custom` if APK size becomes a constraint.
+- Device validation: the owner installed the release build and confirmed Arabic RTL layout, the long-text locales, the language picker and the restored onboarding flow all behave correctly.
+- Post-device fixes (round 2): four defects the automated gate could not see were found on device and corrected.
+  1. `splixa_profile_screen.dart` requested `profile_edit`, `profile_change_password` and `profile_currency`, but the catalog defines those keys with a `_tile` suffix. `AppStrings.of` degrades to returning the key, so raw identifiers were rendered to the user instead of crashing. Call sites corrected, and `test/localization_key_usage_test.dart` now scans every `tr` / `trp` / `AppStrings.of` / `AppStrings.format` call site and fails the build when a requested key is not defined — the mirror of the catalog test, which only proved that *defined* keys resolve. A full-tree run found no other occurrences (443 keys, 399 call sites, 0 missing).
+  2. The language control was a `DropdownButton`, whose menu inherits the button's width; inside a 62 px header pill every entry truncated to "Eng…", "Esp…". Replaced with `showLanguagePicker` — a full-height sheet listing each language by native and English name with the active one checked. Removed from the dashboard and home header and surfaced in Profile → Preferences, where a user who picked the wrong language can actually find it.
+  3. The profile screen was one undifferentiated menu card. Split into labelled sections (Subscription, Account, Preferences, Support, Legal, Danger zone) and the settings bottom sheet was inlined into Preferences, so theme, language and currency are reachable without a second modal.
+  4. A fresh install skipped onboarding and opened the login screen. The router logic was correct; the cause was Android auto-backup, which defaults to on and had no rules file, so Google Drive restored `FlutterSharedPreferences.xml` — including the onboarding-completed flag — onto a reinstall. Added `backup_rules.xml` and `data_extraction_rules.xml` excluding shared preferences and secure storage (the latter also restores unusable ciphertext, since its Keystore key does not survive reinstall) and wired both into the manifest. Separately, the login screen's back arrow navigated to `/onboarding` and was bounced straight back by the redirect; deliberate replays now pass through via `?replay=1`, and the onboarding language control is limited to the first slide.
+- Paywall currency audit (owner question): every amount on the paywall comes from RevenueCat's `StoreProduct.priceString` / `pricePerMonthString`, and the app's own expense-currency selector never reaches subscription UI. The only raw numeric price use is an internal comparison for the Best Value badge and is never rendered. Google Play returns prices in the currency of the buyer's Play billing country, so a Turkish account correctly sees TRY regardless of app language; verifying the other 176 countries needs a licence-tester account in the target country, not a language change.
+- Residual risks: (1) the 10 newly added locales are machine-assisted translations and still need native-speaker review before launch, especially paywall, legal and destructive-action copy — the one open Phase 2 item; (2) no ICU plural forms, so count-bearing strings read flat in RU/AR/PL; (3) Play Store listing translations have not been added for the new locales, so the store page stays in its existing languages while the app itself is localized.
+- Release: shipped as `0.6.0-alpha` (versionCode 6).
 - Review decision: —
 
 ### Phase 3

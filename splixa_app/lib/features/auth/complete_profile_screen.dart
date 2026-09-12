@@ -124,7 +124,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const Align(
-                        alignment: Alignment.centerLeft,
+                        alignment: AlignmentDirectional.centerStart,
                         child: SplixaLogo(compact: true),
                       ),
                       const Spacer(),

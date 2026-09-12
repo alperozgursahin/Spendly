@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'friendly_error.dart';
+
 final mediaUploadServiceProvider = Provider<MediaUploadService>((ref) {
   return MediaUploadService(Supabase.instance.client);
 });
@@ -39,11 +41,11 @@ class MediaUploadService {
     required String storagePath,
   }) async {
     final bytes = await image.readAsBytes();
-    if (bytes.isEmpty) throw Exception('The selected image is empty.');
+    if (bytes.isEmpty) throw const FriendlyException('media_image_empty');
 
     const maxBytes = 8 * 1024 * 1024;
     if (bytes.length > maxBytes) {
-      throw Exception('Please choose an image smaller than 8 MB.');
+      throw const FriendlyException('media_image_too_large');
     }
 
     final extension = _safeExtension(image.name);

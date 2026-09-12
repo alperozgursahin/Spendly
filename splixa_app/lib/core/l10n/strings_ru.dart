@@ -1,0 +1,552 @@
+// GENERATED-STYLE LOCALE CATALOG — edit by hand, keep keys in sync.
+//
+// Key order mirrors lib/core/l10n/strings_en.dart, the source locale.
+// Every key present in `enStrings` must exist here; `localization_catalog_test`
+// fails the build otherwise. Placeholders such as {name} must be preserved
+// verbatim — only the surrounding words are translated.
+
+// Launch locale — machine-assisted translation, pending native review.
+const Map<String, String> ruStrings = {
+  // --- Common / shared ---
+  'language_selector_label': 'Язык приложения',
+  'common_all': 'Все',
+  'common_reset': 'Сбросить',
+  'common_filter': 'Фильтр',
+  'common_save': 'Сохранить',
+  'common_cancel': 'Отмена',
+  'common_delete': 'Удалить',
+  'common_edit': 'Изменить',
+  'common_add': 'Добавить',
+  'common_close': 'Закрыть',
+  'common_send': 'Отправить',
+  'common_you': 'Вы',
+  'common_user': 'Пользователь',
+  'common_loading': 'Загрузка...',
+  'common_error_generic': 'Что-то пошло не так. Попробуйте ещё раз.',
+  'common_date': 'Дата',
+  'common_category': 'Категория',
+  'common_expense': 'Расход',
+  'common_income': 'Доход',
+  'common_currency': 'Валюта',
+  'exchange_rate_unavailable':
+      'Не удалось загрузить актуальный курс валют. Проверьте подключение и попробуйте ещё раз.',
+  // --- Category names (shared across dashboard, statistics, add-expense) ---
+  'category_market': 'Продукты',
+  'category_food': 'Еда',
+  'category_transport': 'Транспорт',
+  'category_entertainment': 'Развлечения',
+  'category_salary': 'Зарплата',
+  'category_dues': 'Взносы',
+  'category_bill': 'Счёт',
+  'category_other': 'Другое',
+  // --- Month abbreviations ---
+  'month_jan': 'янв',
+  'month_feb': 'фев',
+  'month_mar': 'мар',
+  'month_apr': 'апр',
+  'month_may': 'май',
+  'month_jun': 'июн',
+  'month_jul': 'июл',
+  'month_aug': 'авг',
+  'month_sep': 'сен',
+  'month_oct': 'окт',
+  'month_nov': 'ноя',
+  'month_dec': 'дек',
+  // --- Dashboard ---
+  'dashboard_title': 'Обзор',
+  'dashboard_statistics': 'Статистика',
+  'dashboard_notifications': 'Уведомления',
+  'dashboard_activity_feed': 'Активность',
+  'dashboard_recent_transactions': 'Последние операции',
+  'dashboard_no_activity': 'Активности пока нет.',
+  'dashboard_no_transactions':
+      'Последних операций пока нет. Нажмите +, чтобы добавить первую!',
+  'dashboard_net_balance': 'Чистый баланс',
+  'dashboard_amount_hint': 'Сумма',
+  'dashboard_custom_category_hint': 'Введите свою категорию...',
+  'dashboard_pick_date': 'Выбрать дату',
+  'dashboard_transaction_added': 'Операция добавлена!',
+  'home_welcome': 'Здравствуйте, {name}',
+  'home_default_name': 'рады видеть',
+  'home_subtitle': 'Наведём порядок в ваших финансах сегодня.',
+  'home_new_group': 'Новая',
+  'home_group_name_hint': 'например, Летняя поездка',
+  'home_groups_empty':
+      'Групп пока нет. Нажмите + Новая, чтобы начать делить расходы!',
+  'home_members_loading': 'Загрузка участников…',
+  'home_members_count': 'участников: {count}',
+  'home_quick_add': 'Добавить операцию',
+  'home_switch_to_light': 'Переключиться на светлую тему',
+  'home_switch_to_dark': 'Переключиться на тёмную тему',
+  'home_switch_language': 'Сменить язык',
+  'home_minimize_title': 'Минимизация переводов',
+  'home_minimize_description':
+      'Splixa упрощает балансы группы, чтобы все рассчитались за минимальное число переводов.',
+  'minimize_without_title': 'Без минимизации переводов',
+  'minimize_without_description':
+      'Нужны два отдельных перевода. Участник B получает деньги только для того, чтобы передать ту же сумму участнику C.',
+  'minimize_with_title': 'С минимизацией переводов',
+  'minimize_with_description':
+      'Splixa убирает посредника. Участник A платит напрямую участнику C и закрывает те же балансы одним переводом.',
+  'minimize_person_a': 'Участник A',
+  'minimize_person_b': 'Участник B',
+  'minimize_person_c': 'Участник C',
+  'minimize_pays_100': 'Платит 100',
+  'minimize_one_fewer': 'На 1 перевод меньше',
+  // --- Statistics ---
+  'statistics_title': 'Статистика',
+  'statistics_category_distribution': 'Расходы по категориям (этот месяц)',
+  'statistics_no_expenses_this_month': 'В этом месяце расходов нет.',
+  'statistics_heatmap_title': 'Карта активности',
+  'statistics_heatmap_activity_count': 'событий',
+  // --- Auth: login ---
+  'login_title': 'Вход в Splixa',
+  'login_username_required': 'Введите имя пользователя.',
+  'login_password_required': 'Введите пароль.',
+  'login_username_label': 'Имя пользователя (@username)',
+  'login_password_label': 'Пароль',
+  'login_forgot_password': 'Забыли пароль?',
+  'login_submit': 'Войти',
+  'login_or': 'или',
+  'login_google_continue': 'Продолжить с Google',
+  'login_no_account': 'Нет аккаунта? Зарегистрируйтесь',
+  'login_welcome': 'Добро пожаловать в Splixa',
+  'login_identifier_subtitle':
+      'Войдите по e-mail или имени пользователя и паролю.',
+  'login_identifier_label': 'E-mail или имя пользователя',
+  'login_identifier_hint': 'you@example.com или @username',
+  'login_identifier_required': 'Введите e-mail или имя пользователя.',
+  // --- Auth: register ---
+  'register_title': 'Регистрация в Splixa',
+  'register_username_too_short':
+      'Имя пользователя должно быть не короче 3 символов.',
+  'register_email_invalid': 'Введите корректный адрес электронной почты.',
+  'register_password_too_short': 'Пароль должен быть не короче 6 символов.',
+  'register_success': 'Регистрация завершена! Теперь войдите в аккаунт.',
+  'register_email_label': 'E-mail',
+  'register_submit': 'Зарегистрироваться',
+  'register_have_account': 'Уже есть аккаунт? Войдите',
+  // --- Auth: Google profile completion ---
+  'profile_setup_title': 'Как к вам обращаться?',
+  'profile_setup_subtitle':
+      'Выберите уникальное имя пользователя, чтобы друзья могли найти вас в Splixa.',
+  'profile_setup_username_label': 'Имя пользователя',
+  'profile_setup_username_hint': 'ваше_имя',
+  'profile_setup_username_helper':
+      'От 3 до 30 символов: только латинские буквы, цифры и подчёркивание.',
+  'profile_setup_continue': 'Перейти в Splixa',
+  'profile_setup_use_other_account': 'Использовать другой аккаунт',
+  'profile_setup_username_taken': 'Это имя уже занято. Попробуйте другое.',
+  'profile_setup_session_expired': 'Сессия истекла. Войдите снова.',
+  'profile_setup_timeout': 'Время запроса истекло. Попробуйте ещё раз.',
+  'profile_setup_failed':
+      'Не удалось сохранить имя пользователя. Попробуйте ещё раз.',
+  // --- Auth: forgot / update password ---
+  'forgot_password_title': 'Восстановление пароля',
+  'forgot_password_email_invalid':
+      'Введите корректный адрес электронной почты.',
+  'forgot_password_sent_message':
+      'Мы отправили восьмизначный код восстановления на вашу почту.',
+  'forgot_password_back_to_login': 'Вернуться ко входу',
+  'forgot_password_prompt':
+      'Введите e-mail вашего аккаунта, и мы отправим восьмизначный код восстановления.',
+  'forgot_password_email_label': 'E-mail',
+  'forgot_password_send_link': 'Отправить код восстановления',
+  'forgot_password_send_code': 'Отправить код восстановления',
+  'login_verification_title': 'Двухэтапная проверка',
+  'login_verification_prompt':
+      'Введите восьмизначный код подтверждения, отправленный на {email}.',
+  'login_verification_submit': 'Подтвердить и войти',
+  'auth_code_label': 'Восьмизначный код',
+  'auth_code_eight_digits_required': 'Код должен состоять из 8 цифр.',
+  'auth_code_resend': 'Отправить код повторно',
+  'auth_code_resending': 'Отправка...',
+  'auth_code_resent': 'Новый код подтверждения отправлен на вашу почту.',
+  'auth_code_invalid_or_expired': 'Код неверен или срок его действия истёк.',
+  'reset_password_code_title': 'Сброс пароля',
+  'reset_password_code_prompt':
+      'Введите код восстановления, отправленный на {email}, и новый пароль.',
+  'reset_password_code_submit': 'Проверить код и изменить пароль',
+  'update_password_title': 'Новый пароль',
+  'update_password_too_short': 'Пароль должен быть не короче 6 символов.',
+  'update_password_success': 'Пароль успешно обновлён!',
+  'update_password_prompt': 'Задайте новый пароль для своего аккаунта.',
+  'update_password_new_label': 'Новый пароль',
+  'update_password_submit': 'Обновить пароль',
+  // --- Groups: list ---
+  'groups_title': 'Группы',
+  'groups_empty_title': 'Вы пока не состоите ни в одной группе.',
+  'groups_empty_subtitle':
+      'Нажмите кнопку + в правом нижнем углу, чтобы создать первую группу.',
+  'groups_tap_for_details': 'Нажмите, чтобы открыть детали группы',
+  'groups_create_new_group': 'Создать группу',
+  'groups_name_label': 'Название группы',
+  'groups_create_button': 'Создать',
+  // --- Groups: detail screen ---
+  'groups_participants_suffix': 'участников',
+  'groups_participants_load_error': 'Не удалось загрузить участников',
+  'groups_chat_tooltip': 'Чат группы',
+  'groups_invite_friend_tooltip': 'Пригласить друга',
+  'groups_paid_verb': 'заплатил(а)',
+  'groups_tab_pending': 'Ожидают',
+  'groups_tab_active': 'Активные',
+  'groups_tab_archived': 'Архив',
+  'groups_no_transactions': 'Операций пока нет. Добавьте первый расход.',
+  'groups_empty_pending': 'Нет расходов, ожидающих подтверждения.',
+  'groups_empty_active': 'Активных расходов нет.',
+  'groups_empty_archived': 'Архивных расходов нет.',
+  'groups_add_expense': 'Добавить расход',
+  'groups_archive_all_button': 'Архивировать всё',
+  'groups_action_failed': 'Не удалось выполнить действие. Попробуйте ещё раз.',
+  'groups_archive_failed':
+      'Не удалось архивировать расход. Попробуйте ещё раз.',
+  'groups_status_payer': 'Плательщик',
+  'groups_status_pending': 'Ожидает подтверждения',
+  'groups_status_approved_self': 'Подтверждено',
+  'groups_status_active_debt': 'Активный долг',
+  'groups_status_payment_pending_payer': 'Ожидает подтверждения оплаты',
+  'groups_status_payment_reported': 'Оплата отмечена',
+  'groups_status_settled': 'Оплачено',
+  'groups_status_rejected': 'Отклонено',
+  'groups_action_approve': 'Подтвердить',
+  'groups_action_mark_paid': 'Отметить как оплаченное',
+  'groups_action_confirm_payment': 'Подтвердить оплату',
+  'groups_balance_title': 'Баланс группы',
+  'groups_no_active_debt': 'Активных долгов нет.',
+  'groups_creditor_label': 'Получает',
+  'groups_debtor_label': 'Должен',
+  'groups_filter_payer_label': 'Оплатил',
+  // --- Groups: info screen ---
+  'group_info_change_picture': 'Изменить фото группы',
+  'group_info_group_picture': 'Фото группы',
+  'group_info_admin': 'Администратор',
+  'group_info_remove_member': 'Удалить участника',
+  'group_info_this_member': 'этот участник',
+  'group_info_remove_member_title': 'Удалить участника?',
+  'group_info_remove_member_body':
+      '{member} потеряет доступ к этой группе и её чату.',
+  'group_info_remove': 'Удалить',
+  'group_info_title': 'О группе',
+  'group_info_leave_button': 'Покинуть группу',
+  'group_info_delete_button': 'Удалить группу',
+  'group_info_leave_confirm':
+      'Точно покинуть группу "%s"? Ваши прошлые расходы останутся в группе.',
+  'group_info_leave_confirm_button': 'Покинуть',
+  'group_info_delete_confirm':
+      'Точно удалить группу "%s" вместе со всеми расходами и данными об участниках? Действие необратимо.',
+  // --- Groups: chat ---
+  'groups_chat_title': 'Чат группы {group}',
+  'groups_chat_suffix': 'Чат',
+  'groups_chat_empty': 'Сообщений пока нет. Напишите первое!',
+  'groups_chat_input_hint': 'Напишите сообщение...',
+  // --- Groups: add expense sheet ---
+  'groups_scan_receipt': 'Сканировать чек',
+  'groups_custom_exchange_rate': 'Свой курс обмена',
+  'groups_pro_tool_coming_soon': 'Этот инструмент Pro скоро появится.',
+  'dashboard_custom_rate_coming_soon':
+      'Редактор собственного курса скоро появится.',
+  'groups_expense_desc_label': 'За что?',
+  'groups_total_amount_label': 'Общая сумма',
+  'groups_split_equal': 'Поровну (=)',
+  'groups_split_percentage': 'Проценты (%)',
+  'groups_split_exact': 'Сумма',
+  'groups_split_for_whom': 'Для кого этот расход?',
+  'groups_auto_badge': 'авто',
+  'groups_expense_validation_generic':
+      'Введите корректные данные и выберите хотя бы 1 человека.',
+  'groups_percentage_validation':
+      'Не более 1 человека можно оставить без процента, а сумма должна быть равна 100.',
+  'groups_percentage_total_validation':
+      'Сумма процентов должна быть равна 100.',
+  'groups_exact_validation':
+      'Не более 1 человека можно оставить без суммы, а итог должен совпадать с суммой расхода.',
+  // --- Groups: invite friend modal ---
+  'groups_invited_snackbar': 'Приглашение отправлено!',
+  'groups_invite_modal_title': 'Пригласить друга в группу',
+  'groups_invite_search_hint': 'Поиск среди ваших друзей',
+  'groups_no_friends_to_invite': 'Некого приглашать.',
+  'groups_no_friends_hint': 'Сначала добавьте друзей на вкладке «Social».',
+  'groups_no_search_match': 'По вашему запросу друзей не найдено.',
+  // --- Debts ---
+  'debts_back_tooltip': 'Назад',
+  'debts_title': 'Долги',
+  'debts_tab_mine': 'Мои долги',
+  'debts_tab_owed_to_me': 'Мне должны',
+  'debts_tab_approvals': 'Подтверждения',
+  'debts_tab_summary': 'Сводка',
+  'debts_user_info_unavailable': 'Не удалось получить данные пользователя.',
+  'debts_not_in_any_group': 'Вы пока не состоите ни в одной группе.',
+  'debts_owed_by_prefix': 'Долг перед',
+  'debts_owed_to_me_prefix': 'Должен нам',
+  'debts_no_active_debt': 'У вас нет активных долгов.',
+  'debts_no_active_credit': 'Сейчас вам никто не должен.',
+  'debts_total_debt_label': 'Всего долгов',
+  'debts_total_credit_label': 'Всего к получению',
+  'debts_awaiting_my_approval': 'Ожидают вашего подтверждения',
+  'debts_no_awaiting_my_approval':
+      'Нет долгов, ожидающих вашего подтверждения.',
+  'debts_awaiting_other_approval': 'Ожидают подтверждения другой стороны',
+  'debts_no_awaiting_other_approval':
+      'Нет долгов, ожидающих подтверждения другой стороны.',
+  'debts_reject_tooltip': 'Отклонить',
+  'debts_no_settlement': 'Нет долгов к закрытию.',
+  'debts_settled_debt_subtitle': 'Закрытый долг',
+  'debts_total_prefix': 'Итого',
+  'debts_filter_group_label': 'Группа',
+  'debts_clear_filters_tooltip': 'Очистить фильтры',
+  // --- Notifications ---
+  'notifications_login_required': 'Войдите, чтобы увидеть уведомления.',
+  'notifications_empty_title': 'У вас пока нет уведомлений.',
+  'notifications_empty_subtitle':
+      'Здесь появятся новости о расходах и подтверждениях из ваших групп.',
+  // --- Notifications: dynamically built messages ---
+  'notif_new_expense_title': 'Новый расход',
+  'notif_new_expense_message':
+      '{sender} добавил(а) вас к расходу "{desc}" в группе {group}. Сумма: {amount}. Ожидается ваше подтверждение.',
+  'notif_payment_confirmation_title': 'Оплата отмечена',
+  'notif_payment_confirmation_message':
+      '{sender} отметил(а) оплату по "{desc}" в группе {group}.',
+  'notif_debt_approved_title': 'Долг подтверждён',
+  'notif_debt_approved_message':
+      '{sender} подтвердил(а) долг по "{desc}" в группе {group}.',
+  'notif_debt_rejected_title': 'Долг отклонён',
+  'notif_debt_rejected_message':
+      '{sender} отклонил(а) долг по "{desc}" в группе {group}.',
+  'notif_debt_settled_title': 'Оплата подтверждена',
+  'notif_debt_settled_message':
+      '{sender} подтвердил(а) вашу оплату по "{desc}" в группе {group}. Долг закрыт.',
+  'notif_default_group': 'Группа',
+  'notif_default_user': 'Пользователь',
+  'notif_default_expense_desc': 'расход',
+  // --- Profile ---
+  'profile_title': 'Профиль',
+  'profile_email_missing': 'E-mail не добавлен',
+  'profile_user_fallback': 'Пользователь Splixa',
+  'profile_manage_subscription': 'Управление подпиской',
+  'profile_upgrade_pro': 'Перейти на Pro',
+  'profile_settings': 'Настройки',
+  'profile_invite_friends': 'Пригласить друзей',
+  'profile_download_monthly_report': 'Скачать месячный отчёт',
+  'profile_download_monthly_report_pro': 'Скачать месячный отчёт · Pro',
+  'profile_contact_us': 'Связаться с нами',
+  'profile_support_placeholder': 'Контакты поддержки появятся здесь.',
+  'profile_terms': 'Условия',
+  'profile_privacy': 'Конфиденциальность',
+  'profile_choose_picture': 'Выбрать фото профиля',
+  'profile_tap_choose_photo': 'Нажмите, чтобы выбрать фото',
+  'profile_username_label': 'Имя пользователя',
+  'profile_email_label': 'E-mail',
+  'profile_dark_mode': 'Тёмная тема',
+  'profile_link_failed': 'Не удалось открыть эту страницу.',
+  'profile_delete_dialog_title': 'Удалить аккаунт и данные?',
+  'profile_delete_dialog_body':
+      'Это необратимо. Ваш профиль, личные операции, сообщения и социальные связи будут удалены. Общая финансовая история сохраняется анонимно, чтобы балансы других участников оставались верными.',
+  'profile_delete_group_warning':
+      'Если вы управляете группой с другими участниками, сначала удалите её или передайте права владельца.',
+  'profile_delete_type_confirm': 'Введите DELETE для подтверждения:',
+  'profile_delete_transfer_first':
+      'Сначала удалите или передайте группы, которыми вы управляете:',
+  'profile_delete_failed': 'Не удалось удалить аккаунт. Попробуйте ещё раз.',
+  'profile_delete_invalid_response':
+      'Сервис удаления вернул некорректный ответ.',
+  'profile_deleting': 'Удаление…',
+  'profile_delete_permanently': 'Удалить навсегда',
+  'profile_membership_pro': 'PRO',
+  'profile_membership_standard': 'СТАНДАРТ',
+  'profile_unknown_username': '@неизвестно',
+  'profile_edit_tile': 'Изменить профиль',
+  'profile_currency_tile': 'Валюта',
+  'profile_change_password_tile': 'Изменить пароль',
+  'profile_download_report_tile': 'Скачать месячный отчёт (PDF)',
+  'profile_pdf_error': 'Не удалось создать PDF: %s',
+  'profile_logout': 'Выйти',
+  'profile_danger_zone': 'Опасная зона',
+  'profile_delete_account_data': 'Удалить аккаунт и данные',
+  'profile_delete_account_title': 'Удалить аккаунт',
+  'profile_delete_account_confirm':
+      'Точно удалить аккаунт и все его данные навсегда? Действие необратимо.',
+  'profile_avatar_url_label': 'Ссылка на аватар (необязательно)',
+  'profile_update_success': 'Профиль обновлён.',
+  'profile_bio_label': 'О себе',
+  'profile_bio_hint': 'Расскажите немного о себе...',
+  'profile_bio_empty': 'Информация о себе пока не добавлена.',
+  // --- Profile: PDF export ---
+  'pdf_title': 'Месячный отчёт - %s',
+  'pdf_total_income': 'Всего доходов',
+  'pdf_total_expense': 'Всего расходов',
+  'pdf_net_balance': 'Чистый баланс',
+  'pdf_transaction_details': 'Детали операций',
+  'pdf_no_transactions': 'В этом месяце операций нет.',
+  'pdf_header_type': 'Тип',
+  // --- Social ---
+  'social_title': 'Social',
+  'social_request_sent_snackbar': 'Запрос отправлен!',
+  'social_user_not_found': 'Пользователь не найден.',
+  'social_search_results_header': 'Результаты поиска',
+  'social_add_friend_tooltip': 'Добавить в друзья',
+  'social_search_hint': 'Поиск пользователей по @username',
+  'social_search_tooltip': 'Искать пользователей',
+  'social_no_friends_title': 'У вас пока нет друзей.',
+  'social_no_friends_subtitle':
+      'Найдите имя пользователя в строке поиска выше и отправьте заявку в друзья.',
+  'social_request_sent_prefix': 'Заявка отправлена: %s',
+  'social_pending_status': 'Ожидание...',
+  'social_incoming_request_prefix': 'Заявка вам: %s',
+  'social_friend_prefix': 'Друг: %s',
+  'social_default_chat_title': 'Друг',
+  // --- Social: other user profile ---
+  'other_profile_title': 'Профиль пользователя',
+  'other_profile_unknown': 'Неизвестно',
+  'other_profile_no_shared_groups': 'Общих групп нет',
+  'other_profile_shared_groups_count': 'У вас %s общих групп',
+  'other_profile_send_message': 'Написать сообщение',
+  // --- Subscriptions: paywall ---
+  'paywall_title': 'Перейти на Splixa Pro',
+  'paywall_subtitle':
+      'Создавайте группы без ограничений, открывайте всю статистику и наслаждайтесь финансовой свободой!',
+  'paywall_no_packages': 'Сейчас доступных пакетов нет.',
+  'paywall_restore_purchases': 'Восстановить покупки',
+  'paywall_restore_success': 'Покупки восстановлены!',
+  'paywall_processing_purchase': 'Обработка покупки...',
+  'paywall_welcome_pro': 'Добро пожаловать в Splixa Pro!',
+  'paywall_purchase_failed': 'Операция отменена или не выполнена.',
+  'paywall_benefit_unlimited_groups': 'Создавайте группы без ограничений',
+  'paywall_benefit_statistics': 'Открывайте всю статистику и отчёты',
+  'paywall_benefit_freedom': 'Наслаждайтесь финансовой свободой',
+  'paywall_no_packages_hint': 'Пакеты скоро появятся здесь.',
+  'paywall_footer_note': 'Подписку можно отменить в любой момент.',
+  // --- Friendly error messages ---
+  'error_generic_short': 'Что-то пошло не так. Попробуйте ещё раз.',
+  'error_auth_generic': 'Возникла проблема. Попробуйте ещё раз.',
+  'error_google_cancelled':
+      'Вход через Google отменён или устройство не удалось проверить. Попробуйте ещё раз.',
+  'error_google_configuration': 'Вход через Google настроен неверно.',
+  'error_google_unavailable':
+      'Вход через Google недоступен на этом устройстве.',
+  'error_google_timeout':
+      'Время входа через Google истекло. Попробуйте ещё раз.',
+  'error_google_failed':
+      'Не удалось завершить вход через Google. Попробуйте ещё раз.',
+  'error_invalid_credentials': 'Неверное имя пользователя или пароль.',
+  'error_email_not_confirmed':
+      'Ваш адрес электронной почты ещё не подтверждён.',
+  'error_email_already_registered': 'Аккаунт с таким e-mail уже существует.',
+  'error_password_too_short':
+      'Пароль слишком короткий. Выберите более длинный.',
+  'error_rate_limited': 'Слишком много попыток. Повторите чуть позже.',
+  'error_duplicate_record': 'Такая запись уже существует.',
+  'error_forbidden': 'У вас нет прав на это действие.',
+  'error_not_found': 'Запись не найдена.',
+  'error_server_generic':
+      'Возникла проблема связи с сервером. Попробуйте ещё раз.',
+  // --- Main scaffold (bottom nav) ---
+  'nav_dashboard': 'Обзор',
+  'nav_debts': 'Долги',
+  'nav_groups': 'Группы',
+  'nav_social': 'Social',
+  'nav_profile': 'Профиль',
+  // --- Router fallback titles (used when navigation `extra` is absent) ---
+  'route_fallback_group_detail': 'Детали группы',
+  'route_fallback_group_info': 'О группе',
+  'route_fallback_group': 'Группа',
+  'route_fallback_chat': 'Чат',
+  // --- Activity feed descriptions ---
+  'activity_someone': 'Кто-то',
+  'activity_a_group': 'Группа',
+  'activity_became_friends': 'Вы подружились с {name}.',
+  'activity_added_expense': 'Вы добавили расход на {amount} в группе {group}.',
+
+  // --- Onboarding ---
+  'onboarding_skip': 'Пропустить',
+  'onboarding_continue': 'Далее',
+  'onboarding_start_free': 'Начать бесплатно',
+  'onboarding_no_card':
+      'Карта не нужна. Переходите на Pro, только когда он экономит ваше время.',
+  'onboarding_persistence_error':
+      'Не удалось сохранить ваш выбор. Попробуйте ещё раз.',
+  'onboarding_p1_eyebrow': 'ЛИЧНОЕ + ОБЩЕЕ',
+  'onboarding_p1_title': 'Одно спокойное место для каждого расхода',
+  'onboarding_p1_description':
+      'Ведите личный бюджет и общие групповые траты, не переключаясь между приложениями и не теряя общей картины.',
+  'onboarding_p1_proof_1': 'Личный бюджет',
+  'onboarding_p1_proof_2': 'Групповые расходы',
+  'onboarding_p2_eyebrow': 'БЕЗ НЕЛОВКИХ ПОДСЧЁТОВ',
+  'onboarding_p2_title': 'Делите момент, а не дружбу',
+  'onboarding_p2_description':
+      'Выбирайте равные доли, проценты или точные суммы. Каждый может подтвердить, заплатить и закрыть долг с понятной историей.',
+  'onboarding_p2_proof_1': 'Гибкое деление',
+  'onboarding_p2_proof_2': 'Понятные подтверждения',
+  'onboarding_p3_eyebrow': 'ЦИФРЫ, КОТОРЫЕ СХОДЯТСЯ',
+  'onboarding_p3_title': 'Каждая валюта хранит свою историю',
+  'onboarding_p3_description':
+      'Splixa сохраняет исходную сумму и зафиксированный курс, поэтому вчерашний баланс никогда не меняется за вашей спиной.',
+  'onboarding_p3_proof_1': 'Зафиксированные курсы',
+  'onboarding_p3_proof_2': 'Надёжная история',
+  'onboarding_p4_eyebrow': 'НАЧАТЬ БЕСПЛАТНО',
+  'onboarding_p4_title': 'Главное — бесплатно. С Pro экономьте время.',
+  'onboarding_p4_description':
+      'Сначала выработайте привычку. Когда понадобятся сканирование чеков, свои курсы, более глубокая аналитика и расширенные отчёты, посмотрите, что Pro даёт сейчас и что появится дальше.',
+  'onboarding_p4_proof_1': 'Без обязательного пробного периода',
+  'onboarding_p4_proof_2': 'Отмена в любой момент',
+
+  // --- Subscriptions: paywall copy ---
+  'paywall_appbar_title': 'Splixa Pro',
+  'paywall_close': 'Закрыть',
+  'paywall_hero_title': 'Превратите денежные дела в двухминутную задачу',
+  'paywall_hero_subtitle':
+      'Основа Splixa останется бесплатной. Переходите на Pro, когда автоматизация, контроль и глубокие ответы станут ценнее сэкономленного времени.',
+  'paywall_benefits_title': 'Что открывает Pro',
+  'paywall_benefit_1_title': 'Группы без ограничений',
+  'paywall_benefit_1_body':
+      'Держите активными все поездки, дом и проекты без лимита на число групп.',
+  'paywall_benefit_2_title': 'Видите закономерности своих трат',
+  'paywall_benefit_2_body':
+      'Изучайте распределение по категориям и динамику активности с одного взгляда.',
+  'paywall_benefit_3_title': 'Выгружайте аккуратные месячные отчёты',
+  'paywall_benefit_3_body':
+      'Превращайте личные записи в PDF для отправки одним нажатием.',
+  'paywall_benefit_4_title': 'Что дальше: меньше ввода, больше контроля',
+  'paywall_benefit_4_body':
+      'Сканирование чеков и собственные курсы валют появятся следующими.',
+  'paywall_choose_plan': 'Выберите тариф',
+  'paywall_best_value': 'ВЫГОДНЕЕ ВСЕГО',
+  'paywall_continue_free': 'Не сейчас — продолжить бесплатно',
+  'paywall_restore': 'Восстановить покупки',
+  'paywall_restore_restored': 'Доступ к Pro восстановлен.',
+  'paywall_restore_none':
+      'Для этого аккаунта магазина активных покупок Pro не найдено.',
+  'paywall_welcome_message': 'Добро пожаловать в Splixa Pro.',
+  'paywall_purchase_failed_message': 'Покупка отменена или не была завершена.',
+  'paywall_no_packages_available':
+      'Тарифы временно недоступны. Попробуйте ещё раз.',
+  'paywall_retry': 'Повторить',
+  'paywall_terms_link': 'Условия использования',
+  'paywall_privacy_link': 'Политика конфиденциальности',
+  'paywall_store_disclosure':
+      'Оплата списывается с вашего аккаунта в магазине. Управлять подпиской или отменить её можно в настройках подписок App Store или Google Play.',
+  'paywall_link_failed': 'Не удалось открыть страницу.',
+  'paywall_plan_annual': 'Pro на год',
+  'paywall_plan_monthly': 'Pro на месяц',
+  'paywall_period_annual': '/ год',
+  'paywall_period_monthly': '/ месяц',
+  'paywall_monthly_equivalent': '{price} в пересчёте на месяц',
+  'paywall_continue_with_plan': 'Продолжить с тарифом {plan}',
+  'paywall_renewal_annual':
+      'Сейчас спишется {price}. Подписка продлевается ежегодно до отмены.',
+  'paywall_renewal_monthly':
+      'Сейчас спишется {price}. Подписка продлевается ежемесячно до отмены.',
+
+  // --- Relative time (activity feed, chat, notifications) ---
+  'time_just_now': 'Только что',
+  'time_minutes_ago': '{count} мин назад',
+  'time_hours_ago': '{count} ч назад',
+  'time_days_ago': '{count} дн назад',
+
+  // --- Profile sections & language picker ---
+  'profile_section_account': 'Аккаунт',
+  'profile_section_subscription': 'Подписка',
+  'profile_section_preferences': 'Настройки',
+  'profile_section_support': 'Поддержка',
+  'profile_section_legal': 'Правовая информация',
+  'language_picker_title': 'Выберите язык',
+};

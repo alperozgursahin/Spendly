@@ -233,12 +233,15 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                       child: Badge(
                         isLabelVisible: unreadChatCount > 0,
                         label: Text('$unreadChatCount'),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.chat_bubble_outline_rounded, size: 18),
-                            SizedBox(width: 7),
-                            Text('Chat'),
+                            const Icon(
+                              Icons.chat_bubble_outline_rounded,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 7),
+                            Text(tr(ref, 'route_fallback_chat')),
                           ],
                         ),
                       ),
@@ -439,7 +442,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                   item.allNonPayerSharesSettled) ...[
                 const SizedBox(height: 12),
                 Align(
-                  alignment: Alignment.centerRight,
+                  alignment: AlignmentDirectional.centerEnd,
                   child: _processingActions.contains('$transactionId:archive')
                       ? const SizedBox(
                           width: 20,
@@ -831,7 +834,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                       : Colors.red.shade700;
 
                   return Container(
-                    margin: const EdgeInsets.only(right: 8),
+                    margin: const EdgeInsetsDirectional.only(end: 8),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 8,
@@ -888,7 +891,10 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(left: 4, bottom: 6),
+                  padding: const EdgeInsetsDirectional.only(
+                    start: 4,
+                    bottom: 6,
+                  ),
                   child: Text(
                     tr(ref, 'groups_filter_payer_label'),
                     style: TextStyle(
@@ -959,7 +965,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                 ),
                 const SizedBox(height: 8),
                 Align(
-                  alignment: Alignment.centerRight,
+                  alignment: AlignmentDirectional.centerEnd,
                   child: Wrap(
                     spacing: 8,
                     children: [

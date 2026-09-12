@@ -88,10 +88,9 @@ class _LoginVerificationScreenState
                     const SplixaLogo(),
                     const SizedBox(height: 28),
                     Text(
-                      tr(
-                        ref,
-                        'login_verification_prompt',
-                      ).replaceFirst('{email}', widget.email),
+                      trp(ref, 'login_verification_prompt', {
+                        'email': widget.email,
+                      }),
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyLarge,
                     ),

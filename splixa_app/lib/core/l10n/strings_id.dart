@@ -1,0 +1,555 @@
+// GENERATED-STYLE LOCALE CATALOG — edit by hand, keep keys in sync.
+//
+// Key order mirrors lib/core/l10n/strings_en.dart, the source locale.
+// Every key present in `enStrings` must exist here; `localization_catalog_test`
+// fails the build otherwise. Placeholders such as {name} must be preserved
+// verbatim — only the surrounding words are translated.
+
+// Launch locale — machine-assisted translation, pending native review.
+const Map<String, String> idStrings = {
+  // --- Common / shared ---
+  'language_selector_label': 'Bahasa aplikasi',
+  'common_all': 'Semua',
+  'common_reset': 'Atur ulang',
+  'common_filter': 'Filter',
+  'common_save': 'Simpan',
+  'common_cancel': 'Batal',
+  'common_delete': 'Hapus',
+  'common_edit': 'Edit',
+  'common_add': 'Tambah',
+  'common_close': 'Tutup',
+  'common_send': 'Kirim',
+  'common_you': 'Kamu',
+  'common_user': 'Pengguna',
+  'common_loading': 'Memuat...',
+  'common_error_generic': 'Terjadi kesalahan. Silakan coba lagi.',
+  'common_date': 'Tanggal',
+  'common_category': 'Kategori',
+  'common_expense': 'Pengeluaran',
+  'common_income': 'Pemasukan',
+  'common_currency': 'Mata uang',
+  'exchange_rate_unavailable':
+      'Kurs terbaru tidak dapat dimuat. Periksa koneksimu lalu coba lagi.',
+  // --- Category names (shared across dashboard, statistics, add-expense) ---
+  'category_market': 'Belanja',
+  'category_food': 'Makanan',
+  'category_transport': 'Transportasi',
+  'category_entertainment': 'Hiburan',
+  'category_salary': 'Gaji',
+  'category_dues': 'Iuran',
+  'category_bill': 'Tagihan',
+  'category_other': 'Lainnya',
+  // --- Month abbreviations ---
+  'month_jan': 'Jan',
+  'month_feb': 'Feb',
+  'month_mar': 'Mar',
+  'month_apr': 'Apr',
+  'month_may': 'Mei',
+  'month_jun': 'Jun',
+  'month_jul': 'Jul',
+  'month_aug': 'Agu',
+  'month_sep': 'Sep',
+  'month_oct': 'Okt',
+  'month_nov': 'Nov',
+  'month_dec': 'Des',
+  // --- Dashboard ---
+  'dashboard_title': 'Dasbor',
+  'dashboard_statistics': 'Statistik',
+  'dashboard_notifications': 'Notifikasi',
+  'dashboard_activity_feed': 'Aktivitas',
+  'dashboard_recent_transactions': 'Transaksi terbaru',
+  'dashboard_no_activity': 'Belum ada aktivitas.',
+  'dashboard_no_transactions':
+      'Belum ada transaksi terbaru. Ketuk + untuk menambah yang pertama!',
+  'dashboard_net_balance': 'Saldo bersih',
+  'dashboard_amount_hint': 'Jumlah',
+  'dashboard_custom_category_hint': 'Tulis kategori sendiri...',
+  'dashboard_pick_date': 'Pilih tanggal',
+  'dashboard_transaction_added': 'Transaksi ditambahkan!',
+  'home_welcome': 'Halo, {name}',
+  'home_default_name': 'kamu',
+  'home_subtitle': 'Yuk rapikan keuanganmu hari ini.',
+  'home_new_group': 'Baru',
+  'home_group_name_hint': 'mis. Liburan musim panas',
+  'home_groups_empty':
+      'Belum ada grup. Ketuk + Baru untuk mulai berbagi biaya!',
+  'home_members_loading': 'Memuat anggota…',
+  'home_members_count': '{count} anggota',
+  'home_quick_add': 'Tambah transaksi',
+  'home_switch_to_light': 'Beralih ke tema terang',
+  'home_switch_to_dark': 'Beralih ke tema gelap',
+  'home_switch_language': 'Ganti bahasa',
+  'home_minimize_title': 'Memperkecil jumlah transaksi',
+  'home_minimize_description':
+      'Splixa menyederhanakan saldo grup agar semua orang bisa melunasi dengan pembayaran sesedikit mungkin.',
+  'minimize_without_title': 'Tanpa memperkecil transaksi',
+  'minimize_without_description':
+      'Butuh dua pembayaran terpisah. Orang B menerima uang hanya untuk meneruskan jumlah yang sama ke orang C.',
+  'minimize_with_title': 'Dengan transaksi yang diperkecil',
+  'minimize_with_description':
+      'Splixa menghilangkan perantara. Orang A membayar langsung ke orang C dan melunasi saldo yang sama dengan satu pembayaran.',
+  'minimize_person_a': 'Orang A',
+  'minimize_person_b': 'Orang B',
+  'minimize_person_c': 'Orang C',
+  'minimize_pays_100': 'Membayar 100',
+  'minimize_one_fewer': '1 transaksi lebih sedikit',
+  // --- Statistics ---
+  'statistics_title': 'Statistik',
+  'statistics_category_distribution': 'Rincian kategori (bulan ini)',
+  'statistics_no_expenses_this_month':
+      'Kamu tidak punya pengeluaran bulan ini.',
+  'statistics_heatmap_title': 'Peta aktivitas',
+  'statistics_heatmap_activity_count': 'aktivitas',
+  // --- Auth: login ---
+  'login_title': 'Masuk ke Splixa',
+  'login_username_required': 'Masukkan nama penggunamu.',
+  'login_password_required': 'Masukkan kata sandimu.',
+  'login_username_label': 'Nama pengguna (@username)',
+  'login_password_label': 'Kata sandi',
+  'login_forgot_password': 'Lupa kata sandi?',
+  'login_submit': 'Masuk',
+  'login_or': 'atau',
+  'login_google_continue': 'Lanjutkan dengan Google',
+  'login_no_account': 'Belum punya akun? Daftar',
+  'login_welcome': 'Selamat datang di Splixa',
+  'login_identifier_subtitle':
+      'Masuk dengan email atau nama pengguna dan kata sandimu.',
+  'login_identifier_label': 'Email atau nama pengguna',
+  'login_identifier_hint': 'kamu@contoh.com atau @username',
+  'login_identifier_required': 'Masukkan email atau nama penggunamu.',
+  // --- Auth: register ---
+  'register_title': 'Daftar di Splixa',
+  'register_username_too_short': 'Nama pengguna minimal 3 karakter.',
+  'register_email_invalid': 'Masukkan alamat email yang valid.',
+  'register_password_too_short': 'Kata sandi minimal 6 karakter.',
+  'register_success': 'Pendaftaran berhasil! Silakan masuk.',
+  'register_email_label': 'Email',
+  'register_submit': 'Daftar',
+  'register_have_account': 'Sudah punya akun? Masuk',
+  // --- Auth: Google profile completion ---
+  'profile_setup_title': 'Kami sebaiknya memanggilmu apa?',
+  'profile_setup_subtitle':
+      'Pilih nama pengguna yang unik agar teman-teman bisa menemukanmu di Splixa.',
+  'profile_setup_username_label': 'Nama pengguna',
+  'profile_setup_username_hint': 'nama_penggunamu',
+  'profile_setup_username_helper':
+      '3–30 karakter; hanya huruf, angka, dan garis bawah.',
+  'profile_setup_continue': 'Lanjut ke Splixa',
+  'profile_setup_use_other_account': 'Gunakan akun lain',
+  'profile_setup_username_taken':
+      'Nama pengguna itu sudah dipakai. Coba yang lain.',
+  'profile_setup_session_expired': 'Sesimu telah berakhir. Silakan masuk lagi.',
+  'profile_setup_timeout':
+      'Permintaan melebihi batas waktu. Silakan coba lagi.',
+  'profile_setup_failed':
+      'Nama penggunamu tidak dapat disimpan. Silakan coba lagi.',
+  // --- Auth: forgot / update password ---
+  'forgot_password_title': 'Lupa kata sandi',
+  'forgot_password_email_invalid': 'Masukkan alamat email yang valid.',
+  'forgot_password_sent_message':
+      'Kode pemulihan 8 digit telah dikirim ke emailmu.',
+  'forgot_password_back_to_login': 'Kembali ke halaman masuk',
+  'forgot_password_prompt':
+      'Masukkan alamat email akunmu dan kami akan mengirim kode pemulihan 8 digit.',
+  'forgot_password_email_label': 'Email',
+  'forgot_password_send_link': 'Kirim kode pemulihan',
+  'forgot_password_send_code': 'Kirim kode pemulihan',
+  'login_verification_title': 'Verifikasi dua langkah',
+  'login_verification_prompt':
+      'Masukkan kode verifikasi 8 digit yang dikirim ke {email}.',
+  'login_verification_submit': 'Verifikasi dan masuk',
+  'auth_code_label': 'Kode 8 digit',
+  'auth_code_eight_digits_required': 'Kode harus terdiri dari 8 digit.',
+  'auth_code_resend': 'Kirim ulang kode',
+  'auth_code_resending': 'Mengirim...',
+  'auth_code_resent': 'Kode verifikasi baru telah dikirim ke emailmu.',
+  'auth_code_invalid_or_expired': 'Kode tidak valid atau sudah kedaluwarsa.',
+  'reset_password_code_title': 'Atur ulang kata sandi',
+  'reset_password_code_prompt':
+      'Masukkan kode pemulihan yang dikirim ke {email} dan kata sandi barumu.',
+  'reset_password_code_submit': 'Verifikasi kode dan perbarui kata sandi',
+  'update_password_title': 'Atur kata sandi baru',
+  'update_password_too_short': 'Kata sandi minimal 6 karakter.',
+  'update_password_success': 'Kata sandimu berhasil diperbarui!',
+  'update_password_prompt': 'Silakan atur kata sandi baru untuk akunmu.',
+  'update_password_new_label': 'Kata sandi baru',
+  'update_password_submit': 'Perbarui kata sandi',
+  // --- Groups: list ---
+  'groups_title': 'Grup',
+  'groups_empty_title': 'Kamu belum tergabung di grup mana pun.',
+  'groups_empty_subtitle':
+      'Ketuk tombol + di kanan bawah untuk membuat grup pertamamu.',
+  'groups_tap_for_details': 'Ketuk untuk melihat detail grup',
+  'groups_create_new_group': 'Buat grup baru',
+  'groups_name_label': 'Nama grup',
+  'groups_create_button': 'Buat',
+  // --- Groups: detail screen ---
+  'groups_participants_suffix': 'peserta',
+  'groups_participants_load_error': 'Peserta tidak dapat dimuat',
+  'groups_chat_tooltip': 'Obrolan grup',
+  'groups_invite_friend_tooltip': 'Undang teman',
+  'groups_paid_verb': 'membayar',
+  'groups_tab_pending': 'Menunggu',
+  'groups_tab_active': 'Aktif',
+  'groups_tab_archived': 'Arsip',
+  'groups_no_transactions':
+      'Belum ada transaksi. Tambahkan pengeluaran pertama.',
+  'groups_empty_pending': 'Tidak ada pengeluaran yang menunggu persetujuan.',
+  'groups_empty_active': 'Tidak ada pengeluaran aktif.',
+  'groups_empty_archived': 'Tidak ada pengeluaran yang diarsipkan.',
+  'groups_add_expense': 'Tambah pengeluaran',
+  'groups_archive_all_button': 'Arsipkan semua',
+  'groups_action_failed':
+      'Tindakan tidak dapat diselesaikan. Silakan coba lagi.',
+  'groups_archive_failed':
+      'Pengeluaran tidak dapat diarsipkan. Silakan coba lagi.',
+  'groups_status_payer': 'Pembayar',
+  'groups_status_pending': 'Menunggu persetujuan',
+  'groups_status_approved_self': 'Disetujui',
+  'groups_status_active_debt': 'Utang aktif',
+  'groups_status_payment_pending_payer': 'Menunggu konfirmasi pembayaran',
+  'groups_status_payment_reported': 'Pembayaran dilaporkan',
+  'groups_status_settled': 'Lunas',
+  'groups_status_rejected': 'Ditolak',
+  'groups_action_approve': 'Setujui',
+  'groups_action_mark_paid': 'Tandai lunas',
+  'groups_action_confirm_payment': 'Konfirmasi pembayaran',
+  'groups_balance_title': 'Saldo grup',
+  'groups_no_active_debt': 'Tidak ada utang aktif.',
+  'groups_creditor_label': 'Menerima',
+  'groups_debtor_label': 'Berutang',
+  'groups_filter_payer_label': 'Dibayar oleh',
+  // --- Groups: info screen ---
+  'group_info_change_picture': 'Ubah foto grup',
+  'group_info_group_picture': 'Foto grup',
+  'group_info_admin': 'Admin',
+  'group_info_remove_member': 'Keluarkan anggota',
+  'group_info_this_member': 'anggota ini',
+  'group_info_remove_member_title': 'Keluarkan anggota?',
+  'group_info_remove_member_body':
+      '{member} akan kehilangan akses ke grup ini dan obrolannya.',
+  'group_info_remove': 'Keluarkan',
+  'group_info_title': 'Info grup',
+  'group_info_leave_button': 'Keluar dari grup',
+  'group_info_delete_button': 'Hapus grup',
+  'group_info_leave_confirm':
+      'Yakin ingin keluar dari "%s"? Pengeluaranmu sebelumnya akan tetap ada di grup.',
+  'group_info_leave_confirm_button': 'Keluar',
+  'group_info_delete_confirm':
+      'Yakin ingin menghapus "%s" secara permanen beserta seluruh data pengeluaran dan keanggotaannya? Tindakan ini tidak dapat dibatalkan.',
+  // --- Groups: chat ---
+  'groups_chat_title': 'Obrolan {group}',
+  'groups_chat_suffix': 'Obrolan',
+  'groups_chat_empty': 'Belum ada pesan. Tulis yang pertama!',
+  'groups_chat_input_hint': 'Tulis pesan...',
+  // --- Groups: add expense sheet ---
+  'groups_scan_receipt': 'Pindai struk',
+  'groups_custom_exchange_rate': 'Kurs khusus',
+  'groups_pro_tool_coming_soon': 'Fitur Pro ini segera hadir.',
+  'dashboard_custom_rate_coming_soon': 'Editor kurs khusus segera hadir.',
+  'groups_expense_desc_label': 'Untuk apa?',
+  'groups_total_amount_label': 'Jumlah total',
+  'groups_split_equal': 'Sama rata (=)',
+  'groups_split_percentage': 'Persentase (%)',
+  'groups_split_exact': 'Jumlah',
+  'groups_split_for_whom': 'Pengeluaran ini untuk siapa?',
+  'groups_auto_badge': 'otomatis',
+  'groups_expense_validation_generic':
+      'Masukkan data yang valid dan pilih minimal 1 orang.',
+  'groups_percentage_validation':
+      'Maksimal 1 orang boleh dikosongkan persentasenya, dan totalnya harus 100.',
+  'groups_percentage_total_validation': 'Jumlah persentase harus 100.',
+  'groups_exact_validation':
+      'Maksimal 1 orang boleh dikosongkan jumlahnya, dan totalnya harus sama dengan jumlah pengeluaran.',
+  // --- Groups: invite friend modal ---
+  'groups_invited_snackbar': 'Undangan terkirim!',
+  'groups_invite_modal_title': 'Undang teman ke grup',
+  'groups_invite_search_hint': 'Cari di antara temanmu',
+  'groups_no_friends_to_invite': 'Tidak ada teman yang bisa diundang.',
+  'groups_no_friends_hint': 'Tambahkan teman dulu dari tab Social.',
+  'groups_no_search_match': 'Tidak ada teman yang cocok dengan pencarianmu.',
+  // --- Debts ---
+  'debts_back_tooltip': 'Kembali',
+  'debts_title': 'Utang',
+  'debts_tab_mine': 'Utangku',
+  'debts_tab_owed_to_me': 'Piutangku',
+  'debts_tab_approvals': 'Persetujuan',
+  'debts_tab_summary': 'Ringkasan',
+  'debts_user_info_unavailable': 'Informasi pengguna tidak dapat diambil.',
+  'debts_not_in_any_group': 'Kamu belum tergabung di grup mana pun.',
+  'debts_owed_by_prefix': 'Utang kepada',
+  'debts_owed_to_me_prefix': 'Berutang kepada kami',
+  'debts_no_active_debt': 'Kamu tidak punya utang aktif.',
+  'debts_no_active_credit': 'Saat ini tidak ada yang berutang padamu.',
+  'debts_total_debt_label': 'Total utang',
+  'debts_total_credit_label': 'Total piutang',
+  'debts_awaiting_my_approval': 'Menunggu persetujuanmu',
+  'debts_no_awaiting_my_approval':
+      'Tidak ada utang yang menunggu persetujuanmu.',
+  'debts_awaiting_other_approval': 'Menunggu persetujuan pihak lain',
+  'debts_no_awaiting_other_approval':
+      'Tidak ada utang yang menunggu persetujuan pihak lain.',
+  'debts_reject_tooltip': 'Tolak',
+  'debts_no_settlement': 'Tidak ada utang yang perlu dilunasi.',
+  'debts_settled_debt_subtitle': 'Utang lunas',
+  'debts_total_prefix': 'Total',
+  'debts_filter_group_label': 'Grup',
+  'debts_clear_filters_tooltip': 'Hapus filter',
+  // --- Notifications ---
+  'notifications_login_required': 'Masuk untuk melihat notifikasimu.',
+  'notifications_empty_title': 'Kamu belum punya notifikasi.',
+  'notifications_empty_subtitle':
+      'Pembaruan pengeluaran dan persetujuan dari grupmu akan muncul di sini.',
+  // --- Notifications: dynamically built messages ---
+  'notif_new_expense_title': 'Pengeluaran baru',
+  'notif_new_expense_message':
+      '{sender} menambahkanmu ke pengeluaran "{desc}" di grup {group}. Jumlah: {amount}. Menunggu persetujuanmu.',
+  'notif_payment_confirmation_title': 'Pembayaran dilaporkan',
+  'notif_payment_confirmation_message':
+      '{sender} melaporkan pembayaran untuk "{desc}" di grup {group}.',
+  'notif_debt_approved_title': 'Utang disetujui',
+  'notif_debt_approved_message':
+      '{sender} menyetujui utang untuk "{desc}" di grup {group}.',
+  'notif_debt_rejected_title': 'Utang ditolak',
+  'notif_debt_rejected_message':
+      '{sender} menolak utang untuk "{desc}" di grup {group}.',
+  'notif_debt_settled_title': 'Pembayaran dikonfirmasi',
+  'notif_debt_settled_message':
+      '{sender} mengonfirmasi pembayaranmu untuk "{desc}" di grup {group}. Utangnya sudah lunas.',
+  'notif_default_group': 'Sebuah grup',
+  'notif_default_user': 'Seorang pengguna',
+  'notif_default_expense_desc': 'pengeluaran',
+  // --- Profile ---
+  'profile_title': 'Profil',
+  'profile_email_missing': 'Email belum ditambahkan',
+  'profile_user_fallback': 'Pengguna Splixa',
+  'profile_manage_subscription': 'Kelola langganan',
+  'profile_upgrade_pro': 'Tingkatkan ke Pro',
+  'profile_settings': 'Pengaturan',
+  'profile_invite_friends': 'Undang teman',
+  'profile_download_monthly_report': 'Unduh laporan bulanan',
+  'profile_download_monthly_report_pro': 'Unduh laporan bulanan · Pro',
+  'profile_contact_us': 'Hubungi kami',
+  'profile_support_placeholder': 'Kontak dukungan akan tersedia di sini.',
+  'profile_terms': 'Ketentuan',
+  'profile_privacy': 'Privasi',
+  'profile_choose_picture': 'Pilih foto profil',
+  'profile_tap_choose_photo': 'Ketuk untuk memilih foto',
+  'profile_username_label': 'Nama pengguna',
+  'profile_email_label': 'Email',
+  'profile_dark_mode': 'Mode gelap',
+  'profile_link_failed': 'Halaman ini tidak dapat dibuka.',
+  'profile_delete_dialog_title': 'Hapus akun dan data?',
+  'profile_delete_dialog_body':
+      'Tindakan ini permanen. Profil, transaksi pribadi, pesan, dan koneksi sosialmu akan dihapus. Riwayat keuangan bersama tetap disimpan secara anonim agar saldo anggota lain tetap benar.',
+  'profile_delete_group_warning':
+      'Jika kamu mengelola grup yang berisi anggota lain, hapus dulu grup itu atau alihkan kepemilikannya.',
+  'profile_delete_type_confirm': 'Ketik DELETE untuk mengonfirmasi:',
+  'profile_delete_transfer_first':
+      'Hapus atau alihkan dulu grup yang kamu kelola:',
+  'profile_delete_failed': 'Penghapusan akun gagal. Silakan coba lagi.',
+  'profile_delete_invalid_response':
+      'Layanan penghapusan mengembalikan respons yang tidak valid.',
+  'profile_deleting': 'Menghapus…',
+  'profile_delete_permanently': 'Hapus permanen',
+  'profile_membership_pro': 'PRO',
+  'profile_membership_standard': 'STANDAR',
+  'profile_unknown_username': '@takdikenal',
+  'profile_edit_tile': 'Edit profil',
+  'profile_currency_tile': 'Mata uang',
+  'profile_change_password_tile': 'Ubah kata sandi',
+  'profile_download_report_tile': 'Unduh laporan bulanan (PDF)',
+  'profile_pdf_error': 'PDF tidak dapat dibuat: %s',
+  'profile_logout': 'Keluar',
+  'profile_danger_zone': 'Zona berisiko',
+  'profile_delete_account_data': 'Hapus akun dan data',
+  'profile_delete_account_title': 'Hapus akun',
+  'profile_delete_account_confirm':
+      'Yakin ingin menghapus akunmu beserta seluruh datanya secara permanen? Tindakan ini tidak dapat dibatalkan.',
+  'profile_avatar_url_label': 'URL avatar (opsional)',
+  'profile_update_success': 'Profil berhasil diperbarui.',
+  'profile_bio_label': 'Bio',
+  'profile_bio_hint': 'Ceritakan sedikit tentang dirimu...',
+  'profile_bio_empty': 'Belum ada bio yang ditambahkan.',
+  // --- Profile: PDF export ---
+  'pdf_title': 'Laporan bulanan - %s',
+  'pdf_total_income': 'Total pemasukan',
+  'pdf_total_expense': 'Total pengeluaran',
+  'pdf_net_balance': 'Saldo bersih',
+  'pdf_transaction_details': 'Rincian transaksi',
+  'pdf_no_transactions': 'Tidak ada transaksi pada bulan ini.',
+  'pdf_header_type': 'Jenis',
+  // --- Social ---
+  'social_title': 'Social',
+  'social_request_sent_snackbar': 'Permintaan terkirim!',
+  'social_user_not_found': 'Pengguna tidak ditemukan.',
+  'social_search_results_header': 'Hasil pencarian',
+  'social_add_friend_tooltip': 'Tambah teman',
+  'social_search_hint': 'Cari pengguna lewat @username',
+  'social_search_tooltip': 'Cari pengguna',
+  'social_no_friends_title': 'Kamu belum punya teman.',
+  'social_no_friends_subtitle':
+      'Gunakan kotak pencarian di atas untuk mencari nama pengguna dan mengirim permintaan pertemanan.',
+  'social_request_sent_prefix': 'Permintaan terkirim: %s',
+  'social_pending_status': 'Menunggu...',
+  'social_incoming_request_prefix': 'Permintaan untukmu: %s',
+  'social_friend_prefix': 'Teman: %s',
+  'social_default_chat_title': 'Teman',
+  // --- Social: other user profile ---
+  'other_profile_title': 'Profil pengguna',
+  'other_profile_unknown': 'Tidak diketahui',
+  'other_profile_no_shared_groups': 'Tidak ada grup bersama',
+  'other_profile_shared_groups_count': 'Kalian berbagi %s grup',
+  'other_profile_send_message': 'Kirim pesan',
+  // --- Subscriptions: paywall ---
+  'paywall_title': 'Tingkatkan ke Splixa Pro',
+  'paywall_subtitle':
+      'Buat grup tanpa batas, akses semua statistik, dan nikmati kebebasan finansialmu!',
+  'paywall_no_packages': 'Saat ini tidak ada paket yang tersedia.',
+  'paywall_restore_purchases': 'Pulihkan pembelian',
+  'paywall_restore_success': 'Pembelian dipulihkan!',
+  'paywall_processing_purchase': 'Memproses pembelian...',
+  'paywall_welcome_pro': 'Selamat datang di Splixa Pro!',
+  'paywall_purchase_failed': 'Transaksi dibatalkan atau gagal.',
+  'paywall_benefit_unlimited_groups': 'Buat grup tanpa batas',
+  'paywall_benefit_statistics': 'Akses semua statistik dan laporan',
+  'paywall_benefit_freedom': 'Nikmati kebebasan finansialmu',
+  'paywall_no_packages_hint': 'Paket akan segera muncul di sini.',
+  'paywall_footer_note': 'Langgananmu bisa dibatalkan kapan saja.',
+  // --- Friendly error messages ---
+  'error_generic_short': 'Terjadi kesalahan. Silakan coba lagi.',
+  'error_auth_generic': 'Terjadi masalah. Silakan coba lagi.',
+  'error_google_cancelled':
+      'Masuk dengan Google dibatalkan atau perangkat tidak dapat diverifikasi. Coba lagi.',
+  'error_google_configuration':
+      'Masuk dengan Google belum dikonfigurasi dengan benar.',
+  'error_google_unavailable':
+      'Masuk dengan Google tidak tersedia di perangkat ini.',
+  'error_google_timeout':
+      'Masuk dengan Google melebihi batas waktu. Silakan coba lagi.',
+  'error_google_failed':
+      'Masuk dengan Google tidak dapat diselesaikan. Coba lagi.',
+  'error_invalid_credentials': 'Nama pengguna atau kata sandi salah.',
+  'error_email_not_confirmed': 'Alamat emailmu belum diverifikasi.',
+  'error_email_already_registered': 'Akun dengan email ini sudah ada.',
+  'error_password_too_short':
+      'Kata sandi terlalu pendek. Pilih yang lebih panjang.',
+  'error_rate_limited': 'Terlalu banyak percobaan. Coba lagi sebentar lagi.',
+  'error_duplicate_record': 'Data ini sudah ada.',
+  'error_forbidden': 'Kamu tidak punya izin untuk melakukan ini.',
+  'error_not_found': 'Data tidak ditemukan.',
+  'error_server_generic':
+      'Terjadi masalah saat berkomunikasi dengan server. Silakan coba lagi.',
+  // --- Main scaffold (bottom nav) ---
+  'nav_dashboard': 'Dasbor',
+  'nav_debts': 'Utang',
+  'nav_groups': 'Grup',
+  'nav_social': 'Social',
+  'nav_profile': 'Profil',
+  // --- Router fallback titles (used when navigation `extra` is absent) ---
+  'route_fallback_group_detail': 'Detail grup',
+  'route_fallback_group_info': 'Info grup',
+  'route_fallback_group': 'Grup',
+  'route_fallback_chat': 'Obrolan',
+  // --- Activity feed descriptions ---
+  'activity_someone': 'Seseorang',
+  'activity_a_group': 'Sebuah grup',
+  'activity_became_friends': 'Kamu dan {name} sekarang berteman.',
+  'activity_added_expense': 'Kamu menambahkan pengeluaran {amount} di {group}.',
+
+  // --- Onboarding ---
+  'onboarding_skip': 'Lewati',
+  'onboarding_continue': 'Lanjut',
+  'onboarding_start_free': 'Mulai gratis',
+  'onboarding_no_card':
+      'Tidak perlu kartu. Tingkatkan ke Pro hanya saat itu menghemat waktumu.',
+  'onboarding_persistence_error':
+      'Pilihanmu tidak dapat disimpan. Silakan coba lagi.',
+  'onboarding_p1_eyebrow': 'PRIBADI + BERSAMA',
+  'onboarding_p1_title': 'Satu tempat tenang untuk setiap pengeluaran',
+  'onboarding_p1_description':
+      'Pantau anggaran pribadimu dan biaya grup bersama tanpa berpindah aplikasi atau kehilangan gambaran besarnya.',
+  'onboarding_p1_proof_1': 'Anggaran pribadi',
+  'onboarding_p1_proof_2': 'Pengeluaran grup',
+  'onboarding_p2_eyebrow': 'TANPA HITUNGAN CANGGUNG',
+  'onboarding_p2_title': 'Bagi momennya, bukan persahabatannya',
+  'onboarding_p2_description':
+      'Pilih pembagian sama rata, persentase, atau jumlah pasti. Semua orang bisa menyetujui, membayar, dan melunasi dengan riwayat yang jelas.',
+  'onboarding_p2_proof_1': 'Pembagian fleksibel',
+  'onboarding_p2_proof_2': 'Persetujuan yang jelas',
+  'onboarding_p3_eyebrow': 'ANGKA YANG SELALU COCOK',
+  'onboarding_p3_title': 'Setiap mata uang menyimpan ceritanya',
+  'onboarding_p3_description':
+      'Splixa menyimpan jumlah asli dan kurs yang dikunci, jadi saldo kemarin tidak pernah berubah diam-diam.',
+  'onboarding_p3_proof_1': 'Kurs terkunci',
+  'onboarding_p3_proof_2': 'Riwayat yang andal',
+  'onboarding_p4_eyebrow': 'MULAI GRATIS',
+  'onboarding_p4_title': 'Yang penting gratis. Hemat waktu dengan Pro.',
+  'onboarding_p4_description':
+      'Bangun kebiasaannya dulu. Saat kamu butuh pemindaian struk, kurs khusus, wawasan lebih dalam, dan laporan lanjutan, lihat apa yang Pro tawarkan sekarang dan apa yang akan datang.',
+  'onboarding_p4_proof_1': 'Tanpa uji coba paksa',
+  'onboarding_p4_proof_2': 'Batalkan kapan saja',
+
+  // --- Subscriptions: paywall copy ---
+  'paywall_appbar_title': 'Splixa Pro',
+  'paywall_close': 'Tutup',
+  'paywall_hero_title': 'Ubah urusan uang jadi tugas dua menit',
+  'paywall_hero_subtitle':
+      'Inti Splixa tetap gratis. Beralih ke Pro saat otomatisasi, kendali, dan jawaban yang lebih dalam bernilai lebih dari waktu yang dihemat.',
+  'paywall_benefits_title': 'Yang dibuka oleh Pro',
+  'paywall_benefit_1_title': 'Grup tanpa batas',
+  'paywall_benefit_1_body':
+      'Biarkan setiap perjalanan, rumah tangga, dan proyek tetap aktif tanpa batas jumlah grup.',
+  'paywall_benefit_2_title': 'Lihat pola di balik pengeluaranmu',
+  'paywall_benefit_2_body':
+      'Telusuri sebaran kategori dan pola aktivitas dalam sekali lihat.',
+  'paywall_benefit_3_title': 'Ekspor laporan bulanan yang rapi',
+  'paywall_benefit_3_body':
+      'Ubah catatan pribadimu menjadi PDF siap bagikan dalam satu ketukan.',
+  'paywall_benefit_4_title':
+      'Bocoran peta jalan: lebih sedikit mengetik, lebih banyak kendali',
+  'paywall_benefit_4_body':
+      'Pemindaian struk dan kurs khusus menyusul berikutnya.',
+  'paywall_choose_plan': 'Pilih paketmu',
+  'paywall_best_value': 'PALING HEMAT',
+  'paywall_continue_free': 'Nanti saja — lanjut dengan versi gratis',
+  'paywall_restore': 'Pulihkan pembelian',
+  'paywall_restore_restored': 'Akses Pro-mu telah dipulihkan.',
+  'paywall_restore_none':
+      'Tidak ditemukan pembelian Pro yang aktif untuk akun toko ini.',
+  'paywall_welcome_message': 'Selamat datang di Splixa Pro.',
+  'paywall_purchase_failed_message':
+      'Pembelian dibatalkan atau tidak dapat diselesaikan.',
+  'paywall_no_packages_available':
+      'Paket sementara tidak tersedia. Silakan coba lagi.',
+  'paywall_retry': 'Coba lagi',
+  'paywall_terms_link': 'Ketentuan Penggunaan',
+  'paywall_privacy_link': 'Kebijakan Privasi',
+  'paywall_store_disclosure':
+      'Pembayaran ditagihkan ke akun tokomu. Kelola atau batalkan dari pengaturan langganan App Store atau Google Play.',
+  'paywall_link_failed': 'Halaman tidak dapat dibuka.',
+  'paywall_plan_annual': 'Pro tahunan',
+  'paywall_plan_monthly': 'Pro bulanan',
+  'paywall_period_annual': '/ tahun',
+  'paywall_period_monthly': '/ bulan',
+  'paywall_monthly_equivalent': 'setara {price} per bulan',
+  'paywall_continue_with_plan': 'Lanjut dengan {plan}',
+  'paywall_renewal_annual':
+      '{price} ditagihkan sekarang. Langganan diperpanjang setiap tahun sampai dibatalkan.',
+  'paywall_renewal_monthly':
+      '{price} ditagihkan sekarang. Langganan diperpanjang setiap bulan sampai dibatalkan.',
+
+  // --- Relative time (activity feed, chat, notifications) ---
+  'time_just_now': 'Baru saja',
+  'time_minutes_ago': '{count} mnt lalu',
+  'time_hours_ago': '{count} jam lalu',
+  'time_days_ago': '{count} hr lalu',
+
+  // --- Profile sections & language picker ---
+  'profile_section_account': 'Akun',
+  'profile_section_subscription': 'Langganan',
+  'profile_section_preferences': 'Preferensi',
+  'profile_section_support': 'Dukungan',
+  'profile_section_legal': 'Legal',
+  'language_picker_title': 'Pilih bahasamu',
+};

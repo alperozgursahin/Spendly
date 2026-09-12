@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 11 and below (android:fullBackupContent).
+
+  Splixa's local state is deliberately NOT restored onto a reinstall:
+
+  * shared_preferences holds the onboarding-completed flag. Restoring it made a
+    fresh install skip the intro and land on the login screen, which is how this
+    exclusion was found.
+  * flutter_secure_storage is backed by EncryptedSharedPreferences, whose
+    Keystore key does not survive a reinstall. Restoring the ciphertext without
+    the key leaves reads failing rather than simply empty.
+
+  Nothing here is user content — account data lives in Supabase and comes back
+  on sign-in — so excluding it costs the user nothing and removes a whole class
+  of "works on a clean device, not on mine" bugs.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="FlutterSharedPreferences.xml" />
+    <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+</full-backup-content>

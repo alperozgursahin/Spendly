@@ -13,7 +13,9 @@ final otherUserProfileProvider =
           .select('id, username')
           .eq('id', userId)
           .maybeSingle();
-      if (res == null) throw Exception('Kullanıcı bulunamadı');
+      if (res == null) {
+        throw const FriendlyException('social_user_not_found');
+      }
       return res;
     });
 

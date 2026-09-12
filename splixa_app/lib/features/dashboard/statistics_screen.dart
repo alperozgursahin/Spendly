@@ -130,7 +130,7 @@ class StatisticsScreen extends ConsumerWidget {
                   Container(
                     width: 10,
                     height: 10,
-                    margin: const EdgeInsets.only(right: 8),
+                    margin: const EdgeInsetsDirectional.only(end: 8),
                     decoration: BoxDecoration(
                       color: colors[idx % colors.length],
                       shape: BoxShape.circle,
