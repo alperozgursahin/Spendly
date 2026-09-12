@@ -1,0 +1,120 @@
+<en-US>
+Splixa now speaks 12 languages.
+
+• The app picks your device language automatically and falls back to English.
+• Arabic is fully right-to-left.
+• Dates, numbers and amounts follow your language's own format.
+• Change language any time from Profile › Preferences.
+• Profile redesigned into clear sections: Subscription, Account, Preferences, Support, Legal.
+• Fixed: the intro was skipped after reinstalling.
+</en-US>
+<tr-TR>
+Splixa artık 12 dil konuşuyor.
+
+• Uygulama cihaz dilini otomatik seçer, desteklenmiyorsa İngilizce'ye döner.
+• Arapça tam sağdan sola desteklenir.
+• Tarih, sayı ve tutarlar dilinin kendi biçimine göre gösterilir.
+• Dili istediğin zaman Profil › Tercihler'den değiştir.
+• Profil sayfası bölümlere ayrıldı: Abonelik, Hesap, Tercihler, Destek, Yasal.
+• Düzeltildi: uygulamayı yeniden kurunca tanıtım ekranı atlanıyordu.
+</tr-TR>
+<es-ES>
+Splixa ya habla 12 idiomas.
+
+• La app detecta el idioma de tu dispositivo y recurre al inglés si no está disponible.
+• Árabe totalmente de derecha a izquierda.
+• Fechas, números e importes con el formato propio de tu idioma.
+• Cambia de idioma cuando quieras en Perfil › Preferencias.
+• Perfil reorganizado en secciones: Suscripción, Cuenta, Preferencias, Soporte, Legal.
+• Corregido: la introducción se saltaba al reinstalar.
+</es-ES>
+<pt-BR>
+O Splixa agora fala 12 idiomas.
+
+• O app detecta o idioma do seu aparelho e usa inglês como alternativa.
+• Árabe totalmente da direita para a esquerda.
+• Datas, números e valores no formato do seu idioma.
+• Mude o idioma quando quiser em Perfil › Preferências.
+• Perfil reorganizado em seções: Assinatura, Conta, Preferências, Suporte, Jurídico.
+• Corrigido: a introdução era pulada ao reinstalar.
+</pt-BR>
+<de-DE>
+Splixa spricht jetzt 12 Sprachen.
+
+• Die App übernimmt deine Gerätesprache und fällt sonst auf Englisch zurück.
+• Arabisch vollständig von rechts nach links.
+• Datum, Zahlen und Beträge im Format deiner Sprache.
+• Sprache jederzeit unter Profil › Einstellungen ändern.
+• Profil in klare Bereiche gegliedert: Abo, Konto, Einstellungen, Support, Rechtliches.
+• Behoben: Die Einführung wurde nach einer Neuinstallation übersprungen.
+</de-DE>
+<fr-FR>
+Splixa parle désormais 12 langues.
+
+• L'app reprend la langue de ton appareil et bascule sur l'anglais sinon.
+• Arabe entièrement de droite à gauche.
+• Dates, nombres et montants au format de ta langue.
+• Change de langue quand tu veux dans Profil › Préférences.
+• Profil réorganisé en sections : Abonnement, Compte, Préférences, Assistance, Mentions légales.
+• Corrigé : l'intro était ignorée après une réinstallation.
+</fr-FR>
+<it-IT>
+Splixa ora parla 12 lingue.
+
+• L'app rileva la lingua del dispositivo e usa l'inglese come riserva.
+• Arabo completamente da destra a sinistra.
+• Date, numeri e importi nel formato della tua lingua.
+• Cambia lingua quando vuoi da Profilo › Preferenze.
+• Profilo riorganizzato in sezioni: Abbonamento, Account, Preferenze, Assistenza, Note legali.
+• Corretto: l'introduzione veniva saltata dopo la reinstallazione.
+</it-IT>
+<nl-NL>
+Splixa spreekt nu 12 talen.
+
+• De app neemt je apparaattaal over en valt anders terug op Engels.
+• Arabisch volledig van rechts naar links.
+• Datums, getallen en bedragen in de notatie van jouw taal.
+• Wijzig je taal wanneer je wilt via Profiel › Voorkeuren.
+• Profiel opnieuw ingedeeld: Abonnement, Account, Voorkeuren, Ondersteuning, Juridisch.
+• Opgelost: de introductie werd overgeslagen na opnieuw installeren.
+</nl-NL>
+<ru-RU>
+Splixa теперь говорит на 12 языках.
+
+• Приложение определяет язык устройства, иначе использует английский.
+• Арабский полностью справа налево.
+• Даты, числа и суммы в формате вашего языка.
+• Сменить язык можно в любой момент: Профиль › Настройки.
+• Профиль разделён на разделы: Подписка, Аккаунт, Настройки, Поддержка, Правовая информация.
+• Исправлено: вступление пропускалось после переустановки.
+</ru-RU>
+<ar>
+‏Splixa يتحدث الآن 12 لغة.
+
+• يختار التطبيق لغة جهازك تلقائيًا ويعود إلى الإنجليزية عند عدم توفرها.
+• دعم كامل للكتابة من اليمين إلى اليسار في العربية.
+• التواريخ والأرقام والمبالغ بتنسيق لغتك.
+• غيّر اللغة في أي وقت من الملف الشخصي ‹ التفضيلات.
+• أُعيد تنظيم الملف الشخصي: الاشتراك، الحساب، التفضيلات، الدعم، الشؤون القانونية.
+• إصلاح: كانت المقدمة تُتخطى بعد إعادة التثبيت.
+</ar>
+<hi-IN>
+Splixa अब 12 भाषाएँ बोलता है।
+
+• ऐप आपके डिवाइस की भाषा अपने आप चुनता है, न मिलने पर अंग्रेज़ी।
+• अरबी पूरी तरह दाएँ-से-बाएँ।
+• तारीख़, अंक और रकम आपकी भाषा के अपने प्रारूप में।
+• भाषा कभी भी बदलें: प्रोफ़ाइल › प्राथमिकताएँ।
+• प्रोफ़ाइल अब साफ़ हिस्सों में: सदस्यता, खाता, प्राथमिकताएँ, सहायता, कानूनी।
+• ठीक किया: दोबारा इंस्टॉल करने पर परिचय छूट जाता था।
+</hi-IN>
+<id>
+Splixa kini berbicara 12 bahasa.
+
+• Aplikasi mengikuti bahasa perangkatmu dan beralih ke Inggris bila tidak tersedia.
+• Bahasa Arab sepenuhnya kanan-ke-kiri.
+• Tanggal, angka, dan jumlah mengikuti format bahasamu.
+• Ganti bahasa kapan saja di Profil › Preferensi.
+• Profil ditata ulang menjadi bagian: Langganan, Akun, Preferensi, Dukungan, Legal.
+• Diperbaiki: intro terlewat setelah pemasangan ulang.
+</id>
