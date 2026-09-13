@@ -22,6 +22,7 @@ const Map<String, String> deStrings = {
   'common_you': 'Du',
   'common_user': 'Nutzer',
   'common_loading': 'Wird geladen...',
+  'common_retry': 'Erneut versuchen',
   'common_error_generic': 'Etwas ist schiefgelaufen. Bitte versuche es erneut.',
   'common_date': 'Datum',
   'common_category': 'Kategorie',
@@ -482,27 +483,27 @@ const Map<String, String> deStrings = {
   'onboarding_persistence_error':
       'Deine Auswahl konnte nicht gespeichert werden. Bitte versuche es erneut.',
   'onboarding_p1_eyebrow': 'PRIVAT + GEMEINSAM',
-  'onboarding_p1_title': 'Ein ruhiger Ort für jede Ausgabe',
+  'onboarding_p1_title': 'Allein erfassen. Gemeinsam teilen.',
   'onboarding_p1_description':
-      'Behalte dein eigenes Budget und gemeinsame Gruppenkosten im Blick, ohne zwischen Apps zu wechseln oder den Überblick zu verlieren.',
+      'Dein Budget und alle gemeinsamen Ausgaben an einem Ort.',
   'onboarding_p1_proof_1': 'Eigenes Budget',
   'onboarding_p1_proof_2': 'Gruppenausgaben',
   'onboarding_p2_eyebrow': 'KEIN UNANGENEHMES RECHNEN',
-  'onboarding_p2_title': 'Teilt den Moment, nicht die Freundschaft',
+  'onboarding_p2_title': 'Fair teilen. Klar abrechnen.',
   'onboarding_p2_description':
-      'Wähle gleiche Anteile, Prozente oder exakte Beträge. Alle können freigeben, zahlen und mit klarer Historie ausgleichen.',
+      'Gleich, prozentual oder exakt — alle kennen den nächsten Schritt.',
   'onboarding_p2_proof_1': 'Flexible Aufteilung',
   'onboarding_p2_proof_2': 'Klare Freigaben',
   'onboarding_p3_eyebrow': 'ZAHLEN, DIE AUFGEHEN',
-  'onboarding_p3_title': 'Jede Währung behält ihre Geschichte',
+  'onboarding_p3_title': 'Frei reisen. Jeden Kurs behalten.',
   'onboarding_p3_description':
-      'Splixa bewahrt den ursprünglichen Betrag und den festgehaltenen Wechselkurs, damit sich der Saldo von gestern nie heimlich ändert.',
+      'Originalbeträge und feste Kurse halten den gestrigen Saldo verlässlich.',
   'onboarding_p3_proof_1': 'Feste Kurse',
   'onboarding_p3_proof_2': 'Verlässliche Historie',
   'onboarding_p4_eyebrow': 'KOSTENLOS STARTEN',
-  'onboarding_p4_title': 'Das Wichtigste gratis. Mit Pro sparst du Zeit.',
+  'onboarding_p4_title': 'Gratis starten. Pro nutzen, wenn es sich lohnt.',
   'onboarding_p4_description':
-      'Bau dir zuerst die Gewohnheit auf. Wenn du Belegscan, eigene Kurse, tiefere Einblicke und erweiterte Berichte willst, sieh dir an, was Pro heute bietet und was als Nächstes kommt.',
+      'Schalte schnelle Erfassung, tiefere Einblicke und erweiterte Berichte frei, wenn du sie brauchst.',
   'onboarding_p4_proof_1': 'Keine Zwangstestphase',
   'onboarding_p4_proof_2': 'Jederzeit kündbar',
 

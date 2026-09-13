@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
+import '../../core/splixa_loading.dart';
 import '../auth/auth_provider.dart';
 import 'chat_screen.dart';
 import 'social_provider.dart';
@@ -106,9 +107,10 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
 
   Widget _buildSearchResults() {
     if (_isSearching) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(child: CircularProgressIndicator()),
+      return const SplixaSkeletonView(
+        type: SplixaSkeletonType.compact,
+        itemCount: 1,
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       );
     }
 
@@ -358,8 +360,15 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
                   },
                 );
               },
-              error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
-              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, st) => SplixaErrorState(
+                message: friendlyErrorMessage(e),
+                onRetry: () => ref.invalidate(friendsStreamProvider),
+              ),
+              loading: () => const SplixaSkeletonView(
+                type: SplixaSkeletonType.list,
+                itemCount: 5,
+                padding: EdgeInsets.all(16),
+              ),
             ),
           ),
         ],

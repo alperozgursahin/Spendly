@@ -22,6 +22,7 @@ const Map<String, String> idStrings = {
   'common_you': 'Kamu',
   'common_user': 'Pengguna',
   'common_loading': 'Memuat...',
+  'common_retry': 'Coba lagi',
   'common_error_generic': 'Terjadi kesalahan. Silakan coba lagi.',
   'common_date': 'Tanggal',
   'common_category': 'Kategori',
@@ -466,27 +467,27 @@ const Map<String, String> idStrings = {
   'onboarding_persistence_error':
       'Pilihanmu tidak dapat disimpan. Silakan coba lagi.',
   'onboarding_p1_eyebrow': 'PRIBADI + BERSAMA',
-  'onboarding_p1_title': 'Satu tempat tenang untuk setiap pengeluaran',
+  'onboarding_p1_title': 'Catat sendiri. Bagi bersama.',
   'onboarding_p1_description':
-      'Pantau anggaran pribadimu dan biaya grup bersama tanpa berpindah aplikasi atau kehilangan gambaran besarnya.',
+      'Anggaranmu dan semua pengeluaran bersama dalam satu tempat.',
   'onboarding_p1_proof_1': 'Anggaran pribadi',
   'onboarding_p1_proof_2': 'Pengeluaran grup',
   'onboarding_p2_eyebrow': 'TANPA HITUNGAN CANGGUNG',
-  'onboarding_p2_title': 'Bagi momennya, bukan persahabatannya',
+  'onboarding_p2_title': 'Bagi dengan adil. Lunasi dengan jelas.',
   'onboarding_p2_description':
-      'Pilih pembagian sama rata, persentase, atau jumlah pasti. Semua orang bisa menyetujui, membayar, dan melunasi dengan riwayat yang jelas.',
+      'Rata, persentase, atau pasti—semua tahu langkah berikutnya.',
   'onboarding_p2_proof_1': 'Pembagian fleksibel',
   'onboarding_p2_proof_2': 'Persetujuan yang jelas',
   'onboarding_p3_eyebrow': 'ANGKA YANG SELALU COCOK',
-  'onboarding_p3_title': 'Setiap mata uang menyimpan ceritanya',
+  'onboarding_p3_title': 'Bepergian bebas. Simpan setiap kurs.',
   'onboarding_p3_description':
-      'Splixa menyimpan jumlah asli dan kurs yang dikunci, jadi saldo kemarin tidak pernah berubah diam-diam.',
+      'Jumlah asli dan kurs terkunci menjaga saldo kemarin tetap benar.',
   'onboarding_p3_proof_1': 'Kurs terkunci',
   'onboarding_p3_proof_2': 'Riwayat yang andal',
   'onboarding_p4_eyebrow': 'MULAI GRATIS',
-  'onboarding_p4_title': 'Yang penting gratis. Hemat waktu dengan Pro.',
+  'onboarding_p4_title': 'Mulai gratis. Pilih Pro saat sepadan.',
   'onboarding_p4_description':
-      'Bangun kebiasaannya dulu. Saat kamu butuh pemindaian struk, kurs khusus, wawasan lebih dalam, dan laporan lanjutan, lihat apa yang Pro tawarkan sekarang dan apa yang akan datang.',
+      'Buka input cepat, wawasan mendalam, dan laporan lanjutan saat dibutuhkan.',
   'onboarding_p4_proof_1': 'Tanpa uji coba paksa',
   'onboarding_p4_proof_2': 'Batalkan kapan saja',
 

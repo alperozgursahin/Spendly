@@ -10,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/foundation.dart';
 import 'core/analytics_service.dart';
 import 'core/app_formatting.dart';
+import 'core/experiment_service.dart';
 import 'core/locale_provider.dart';
 import 'core/app_theme_provider.dart';
 import 'core/app_strings.dart';
@@ -38,6 +39,7 @@ import 'features/profile/splixa_profile_screen.dart';
 import 'main_scaffold.dart';
 
 import 'features/subscriptions/revenuecat_config.dart';
+import 'features/subscriptions/premium_provider.dart';
 
 class GoRouterRefreshStream extends ChangeNotifier {
   factory GoRouterRefreshStream(
@@ -73,15 +75,24 @@ void main() async {
   await dotenv.load(fileName: 'env.config');
 
   await AnalyticsService.instance.initialize();
+  await ExperimentService.instance.initialize();
+  await AnalyticsService.instance.setExperimentContext(
+    onboardingVariant: ExperimentService.instance.onboardingVariant,
+    paywallVariant: ExperimentService.instance.paywallVariant,
+  );
   // Date symbols for every shipped locale, so exports and notifications can
   // format for a language other than the one currently on screen.
   await AppFormat.ensureInitialized();
   final languageController = await AppLanguageNotifier.load();
+  await AnalyticsService.instance.setAppLanguage(currentAppLanguage.code);
   final onboardingController = await OnboardingController.load();
 
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL'] ?? '',
     anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
+  );
+  await AnalyticsService.instance.identifyUser(
+    Supabase.instance.client.auth.currentUser?.id,
   );
 
   final revenueCatKey = kIsWeb
@@ -194,33 +205,44 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/onboarding',
+        name: 'onboarding',
         builder: (context, state) => const OnboardingScreen(),
       ),
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/login',
+        name: 'login',
+        builder: (context, state) => const LoginScreen(),
+      ),
       GoRoute(
         path: '/complete-profile',
+        name: 'complete_profile',
         builder: (context, state) => const CompleteProfileScreen(),
       ),
       GoRoute(
         path: '/register',
+        name: 'register',
         builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(
         path: '/forgot-password',
+        name: 'forgot_password',
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(
         path: '/verify-login',
+        name: 'verify_login',
         builder: (context, state) =>
             LoginVerificationScreen(email: state.extra as String? ?? ''),
       ),
       GoRoute(
         path: '/reset-password',
+        name: 'reset_password',
         builder: (context, state) =>
             ResetPasswordScreen(email: state.extra as String? ?? ''),
       ),
       GoRoute(
         path: '/update-password',
+        name: 'update_password',
         builder: (context, state) => const UpdatePasswordScreen(),
       ),
       ShellRoute(
@@ -230,28 +252,34 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/dashboard',
+            name: 'dashboard',
             builder: (context, state) => const SplixaHomeScreen(),
             routes: [
               GoRoute(
                 path: 'statistics',
+                name: 'statistics',
                 builder: (context, state) => const StatisticsScreen(),
               ),
             ],
           ),
           GoRoute(
             path: '/notifications',
+            name: 'notifications',
             builder: (context, state) => const NotificationsScreen(),
           ),
           GoRoute(
             path: '/debts',
+            name: 'debts',
             builder: (context, state) => const DebtsScreen(),
           ),
           GoRoute(
             path: '/groups',
+            name: 'groups',
             builder: (context, state) => const GroupsScreen(),
             routes: [
               GoRoute(
                 path: ':id',
+                name: 'group_detail',
                 builder: (context, state) {
                   final groupId = state.pathParameters['id']!;
                   final groupName =
@@ -268,6 +296,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: 'info',
+                    name: 'group_info',
                     builder: (context, state) {
                       final groupId = state.pathParameters['id']!;
                       final groupName =
@@ -284,6 +313,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                   GoRoute(
                     path: 'chat',
+                    name: 'group_chat',
                     builder: (context, state) {
                       final groupId = state.pathParameters['id']!;
                       final groupName =
@@ -304,10 +334,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/social',
+            name: 'social',
             builder: (context, state) => const SocialScreen(),
             routes: [
               GoRoute(
                 path: 'chat/:id',
+                name: 'direct_chat',
                 builder: (context, state) {
                   final targetUserId = state.pathParameters['id']!;
                   final username =
@@ -321,6 +353,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'user/:id',
+                name: 'user_profile',
                 builder: (context, state) {
                   return OtherUserProfileScreen(
                     userId: state.pathParameters['id']!,
@@ -331,12 +364,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/profile',
+            name: 'profile',
             builder: (context, state) => const SplixaProfileScreen(),
           ),
         ],
       ),
       GoRoute(
         path: '/paywall',
+        name: 'paywall',
         builder: (context, state) => PaywallScreen(
           source: PaywallSource.fromAnalyticsValue(
             state.uri.queryParameters['source'],
@@ -363,6 +398,8 @@ class _MyAppState extends ConsumerState<MyApp> {
   static const _darkScaffold = Color(0xFF0F172A);
   static const _darkSurface = Color(0xFF1E293B);
   static const _darkBorder = Color(0xFF334155);
+  String? _trackedLanguage;
+  bool? _trackedProState;
 
   ThemeData _buildTheme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
@@ -472,6 +509,20 @@ class _MyAppState extends ConsumerState<MyApp> {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(appThemeModeProvider);
     final language = ref.watch(appLanguageProvider);
+    final isPro = ref.watch(premiumProvider);
+
+    if (_trackedLanguage != language.code) {
+      _trackedLanguage = language.code;
+      unawaited(
+        ref.read(analyticsServiceProvider).setAppLanguage(language.code),
+      );
+    }
+    if (_trackedProState != isPro) {
+      _trackedProState = isPro;
+      unawaited(
+        ref.read(analyticsServiceProvider).setSubscriptionTier(isPro: isPro),
+      );
+    }
 
     return MaterialApp.router(
       title: 'Splixa',

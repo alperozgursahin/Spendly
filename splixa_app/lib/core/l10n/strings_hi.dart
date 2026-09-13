@@ -22,6 +22,7 @@ const Map<String, String> hiStrings = {
   'common_you': 'आप',
   'common_user': 'उपयोगकर्ता',
   'common_loading': 'लोड हो रहा है...',
+  'common_retry': 'फिर कोशिश करें',
   'common_error_generic': 'कुछ गलत हो गया। कृपया फिर कोशिश करें।',
   'common_date': 'तारीख़',
   'common_category': 'श्रेणी',
@@ -461,27 +462,26 @@ const Map<String, String> hiStrings = {
   'onboarding_persistence_error':
       'आपकी पसंद सहेजी नहीं जा सकी। कृपया फिर कोशिश करें।',
   'onboarding_p1_eyebrow': 'निजी + साझा',
-  'onboarding_p1_title': 'हर खर्च के लिए एक शांत ठिकाना',
-  'onboarding_p1_description':
-      'ऐप बदले बिना और पूरी तस्वीर खोए बिना अपना बजट और ग्रुप के साझा खर्च, दोनों देखें।',
+  'onboarding_p1_title': 'अपना हिसाब रखें। मिलकर बाँटें।',
+  'onboarding_p1_description': 'आपका बजट और सभी साझा खर्च, एक ही जगह।',
   'onboarding_p1_proof_1': 'निजी बजट',
   'onboarding_p1_proof_2': 'ग्रुप के खर्च',
   'onboarding_p2_eyebrow': 'हिसाब में कोई झिझक नहीं',
-  'onboarding_p2_title': 'पल बाँटिए, दोस्ती नहीं',
+  'onboarding_p2_title': 'सही बाँटें। साफ़ हिसाब करें।',
   'onboarding_p2_description':
-      'बराबर, प्रतिशत या तय राशि में बाँटें। हर कोई साफ़ इतिहास के साथ मंज़ूरी दे सकता है, चुका सकता है और हिसाब बराबर कर सकता है।',
+      'बराबर, प्रतिशत या सटीक—हर किसी को अगला कदम पता है।',
   'onboarding_p2_proof_1': 'लचीला बँटवारा',
   'onboarding_p2_proof_2': 'साफ़ मंज़ूरियाँ',
   'onboarding_p3_eyebrow': 'हिसाब जो हमेशा मिले',
-  'onboarding_p3_title': 'हर मुद्रा अपनी कहानी रखती है',
+  'onboarding_p3_title': 'बेफिक्र घूमें। हर दर सुरक्षित रखें।',
   'onboarding_p3_description':
-      'Splixa मूल राशि और तय की गई विनिमय दर सहेजता है, ताकि कल का हिसाब आपकी जानकारी के बिना कभी न बदले।',
+      'मूल रकम और तय दरें कल के हिसाब को सही रखती हैं।',
   'onboarding_p3_proof_1': 'तय दरें',
   'onboarding_p3_proof_2': 'भरोसेमंद इतिहास',
   'onboarding_p4_eyebrow': 'शुरुआत मुफ़्त',
-  'onboarding_p4_title': 'ज़रूरी काम मुफ़्त। Pro से समय बचाएँ।',
+  'onboarding_p4_title': 'मुफ़्त शुरू करें। फ़ायदा हो तो Pro चुनें।',
   'onboarding_p4_description':
-      'पहले आदत बनाइए। जब रसीद स्कैन, अपनी दरें, गहरी जानकारी और उन्नत रिपोर्ट चाहिए हों, तब देखें कि Pro आज क्या देता है और आगे क्या आने वाला है।',
+      'ज़रूरत पर तेज़ एंट्री, गहरी जानकारी और उन्नत रिपोर्ट खोलें।',
   'onboarding_p4_proof_1': 'कोई ज़बरदस्ती ट्रायल नहीं',
   'onboarding_p4_proof_2': 'कभी भी रद्द करें',
 

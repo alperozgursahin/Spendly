@@ -9,6 +9,7 @@ import '../../core/app_strings.dart';
 import '../../core/analytics_service.dart';
 import '../../core/app_theme_provider.dart';
 import '../../core/friendly_error.dart';
+import '../../core/splixa_loading.dart';
 import '../../core/language_selector.dart';
 import '../../core/locale_provider.dart';
 import '../../core/media_upload_service.dart';
@@ -44,8 +45,14 @@ class _SplixaProfileScreenState extends ConsumerState<SplixaProfileScreen> {
       appBar: AppBar(title: Text(tr(ref, 'profile_title'))),
       body: profile.when(
         data: (data) => _ProfileContent(profile: data),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text(friendlyErrorMessage(error))),
+        loading: () => const SplixaSkeletonView(
+          type: SplixaSkeletonType.profile,
+          padding: EdgeInsets.all(20),
+        ),
+        error: (error, _) => SplixaErrorState(
+          message: friendlyErrorMessage(error),
+          onRetry: () => ref.invalidate(currentUserProfileProvider),
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
+import '../../core/splixa_loading.dart';
 import '../auth/auth_provider.dart';
 import '../social/social_provider.dart';
 import 'group_provider.dart';
@@ -90,7 +91,11 @@ class _InviteFriendModalState extends ConsumerState<InviteFriendModal> {
               future: _friendsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const SplixaSkeletonView(
+                    type: SplixaSkeletonType.list,
+                    itemCount: 4,
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                  );
                 }
                 if (snapshot.hasError) {
                   return Center(

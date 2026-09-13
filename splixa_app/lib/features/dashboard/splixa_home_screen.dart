@@ -8,6 +8,7 @@ import '../../core/analytics_service.dart';
 import '../../core/app_theme_provider.dart';
 import '../../core/friendly_error.dart';
 import '../../core/splixa_design.dart';
+import '../../core/splixa_loading.dart';
 import '../../widgets/informative_feature_sheet.dart';
 import '../auth/auth_provider.dart';
 import '../groups/group_model.dart';
@@ -98,12 +99,16 @@ class SplixaHomeScreen extends ConsumerWidget {
                     const SizedBox(height: 8),
                     groups.when(
                       data: (items) => _GroupsList(groups: items),
-                      loading: () => const Padding(
-                        padding: EdgeInsets.all(32),
-                        child: Center(child: CircularProgressIndicator()),
+                      loading: () => const SplixaSkeletonView(
+                        type: SplixaSkeletonType.cards,
+                        itemCount: 2,
+                        padding: EdgeInsets.symmetric(vertical: 8),
                       ),
-                      error: (error, _) =>
-                          SplixaCard(child: Text(friendlyErrorMessage(error))),
+                      error: (error, _) => SplixaErrorState(
+                        message: friendlyErrorMessage(error),
+                        compact: true,
+                        onRetry: () => ref.invalidate(userGroupsProvider),
+                      ),
                     ),
                     const SizedBox(height: 32),
                     const DashboardScreen(

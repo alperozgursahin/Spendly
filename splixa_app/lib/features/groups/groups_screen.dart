@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../core/analytics_service.dart';
 import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
+import '../../core/splixa_loading.dart';
 import '../auth/auth_provider.dart';
 import '../subscriptions/premium_provider.dart';
-import '../../core/analytics_service.dart';
 import 'group_provider.dart';
 
 class GroupsScreen extends ConsumerStatefulWidget {
@@ -95,8 +97,15 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
             },
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
+        loading: () => const SplixaSkeletonView(
+          type: SplixaSkeletonType.cards,
+          itemCount: 4,
+          padding: EdgeInsets.all(16),
+        ),
+        error: (e, st) => SplixaErrorState(
+          message: friendlyErrorMessage(e),
+          onRetry: () => ref.invalidate(userGroupsProvider),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {

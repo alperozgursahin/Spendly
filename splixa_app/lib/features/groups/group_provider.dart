@@ -249,17 +249,23 @@ class GroupService {
     return expense;
   }
 
-  Future<void> acknowledgeExpenseShare(String expenseId) {
-    return _supabase.rpc(
+  Future<void> acknowledgeExpenseShare(String expenseId) async {
+    await _supabase.rpc(
       'acknowledge_expense_share_v1',
       params: {'p_expense_id': expenseId},
     );
+    await _analytics.ledgerActionCompleted(
+      action: LedgerAnalyticsAction.acknowledged,
+    );
   }
 
-  Future<void> markExpensePaymentSent(String expenseId) {
-    return _supabase.rpc(
+  Future<void> markExpensePaymentSent(String expenseId) async {
+    await _supabase.rpc(
       'mark_expense_payment_sent_v1',
       params: {'p_expense_id': expenseId},
+    );
+    await _analytics.ledgerActionCompleted(
+      action: LedgerAnalyticsAction.paymentSent,
     );
   }
 
@@ -271,22 +277,32 @@ class GroupService {
       'confirm_expense_payment_v1',
       params: {'p_expense_id': expenseId, 'p_participant_id': participantId},
     );
-    return Settlement.fromJson(
+    final settlement = Settlement.fromJson(
       _singleRpcRow(response, 'confirm_expense_payment_v1'),
     );
+    await _analytics.ledgerActionCompleted(
+      action: LedgerAnalyticsAction.paymentConfirmed,
+    );
+    return settlement;
   }
 
-  Future<void> rejectExpenseShare(String expenseId) {
-    return _supabase.rpc(
+  Future<void> rejectExpenseShare(String expenseId) async {
+    await _supabase.rpc(
       'reject_expense_share_v1',
       params: {'p_expense_id': expenseId},
     );
+    await _analytics.ledgerActionCompleted(
+      action: LedgerAnalyticsAction.rejected,
+    );
   }
 
-  Future<void> archiveExpense(String expenseId) {
-    return _supabase.rpc(
+  Future<void> archiveExpense(String expenseId) async {
+    await _supabase.rpc(
       'archive_expense_v1',
       params: {'p_expense_id': expenseId},
+    );
+    await _analytics.ledgerActionCompleted(
+      action: LedgerAnalyticsAction.archived,
     );
   }
 
@@ -347,6 +363,8 @@ class GroupService {
       'group_id': group.id,
       'user_id': userId,
     });
+
+    await _analytics.groupCreated();
 
     return group;
   }

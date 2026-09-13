@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -158,7 +159,25 @@ class PremiumNotifier extends StateNotifier<bool> {
         }
       }
       return state;
+    } on PlatformException catch (e) {
+      final errorCode = PurchasesErrorHelper.getErrorCode(e);
+      await analytics.purchaseEnded(
+        source: source,
+        packageId: package.identifier,
+        productId: package.storeProduct.identifier,
+        outcome: errorCode == PurchasesErrorCode.purchaseCancelledError
+            ? AnalyticsPurchaseOutcome.cancelled
+            : AnalyticsPurchaseOutcome.failed,
+      );
+      debugPrint("Purchase failed: $e");
+      return false;
     } catch (e) {
+      await analytics.purchaseEnded(
+        source: source,
+        packageId: package.identifier,
+        productId: package.storeProduct.identifier,
+        outcome: AnalyticsPurchaseOutcome.failed,
+      );
       debugPrint("Purchase failed: $e");
       return false;
     }

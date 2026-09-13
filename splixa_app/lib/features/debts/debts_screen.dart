@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
+import '../../core/splixa_loading.dart';
 import '../auth/auth_provider.dart';
 import '../filters/filters_provider.dart';
 import '../groups/financial_models.dart';
@@ -92,8 +93,15 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
           ),
         ),
         body: groupsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => Center(child: Text(friendlyErrorMessage(error))),
+          loading: () => const SplixaSkeletonView(
+            type: SplixaSkeletonType.cards,
+            itemCount: 4,
+            padding: EdgeInsets.all(16),
+          ),
+          error: (error, _) => SplixaErrorState(
+            message: friendlyErrorMessage(error),
+            onRetry: () => ref.invalidate(userGroupsProvider),
+          ),
           data: (groups) {
             if (currentUserId == null) {
               return Center(

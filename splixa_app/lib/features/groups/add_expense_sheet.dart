@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/analytics_service.dart';
 import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
+import '../../core/splixa_loading.dart';
 import 'financial_models.dart';
 import 'group_provider.dart';
 import 'group_model.dart';
@@ -262,7 +263,11 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const SplixaSkeletonView(
+                type: SplixaSkeletonType.list,
+                itemCount: 4,
+                padding: EdgeInsets.symmetric(vertical: 8),
+              ),
               error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
             ),
           ),

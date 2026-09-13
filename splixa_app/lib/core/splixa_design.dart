@@ -20,43 +20,47 @@ abstract final class SplixaSpace {
 }
 
 class SplixaLogo extends StatelessWidget {
-  const SplixaLogo({super.key, this.compact = false});
+  const SplixaLogo({super.key, this.compact = false, this.showWordmark = true});
 
   final bool compact;
+  final bool showWordmark;
 
   @override
   Widget build(BuildContext context) {
     final size = compact ? 36.0 : 44.0;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(compact ? 12 : 14),
-          child: Image.asset(
-            'assets/images/splixa_logo.png',
-            width: size,
-            height: size,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Container(
-              width: size,
-              height: size,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: BorderRadius.circular(compact ? 12 : 14),
-              ),
-              child: Text(
-                'S',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: compact ? 21 : 25,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -1,
-                ),
-              ),
+    final mark = ClipRRect(
+      borderRadius: BorderRadius.circular(compact ? 12 : 14),
+      child: Image.asset(
+        'assets/images/splixa_logo.png',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => Container(
+          width: size,
+          height: size,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary,
+            borderRadius: BorderRadius.circular(compact ? 12 : 14),
+          ),
+          child: Text(
+            'S',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: compact ? 21 : 25,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1,
             ),
           ),
         ),
+      ),
+    );
+    if (!showWordmark) return mark;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        mark,
         const SizedBox(width: 10),
         Text(
           'Splixa',
@@ -136,27 +140,36 @@ class SplixaPrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: loading ? null : onPressed,
-        child: loading
-            ? const SizedBox.square(
-                dimension: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: Colors.white,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (icon != null) ...[
-                    Icon(icon, size: 20),
-                    const SizedBox(width: 10),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 56),
+        child: ElevatedButton(
+          onPressed: loading ? null : onPressed,
+          child: loading
+              ? const SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: Colors.white,
+                  ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (icon != null) ...[
+                      Icon(icon, size: 20),
+                      const SizedBox(width: 10),
+                    ],
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 2,
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
-                  Text(label),
-                ],
-              ),
+                ),
+        ),
       ),
     );
   }

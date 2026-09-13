@@ -22,6 +22,7 @@ const Map<String, String> itStrings = {
   'common_you': 'Tu',
   'common_user': 'Utente',
   'common_loading': 'Caricamento...',
+  'common_retry': 'Riprova',
   'common_error_generic': 'Qualcosa è andato storto. Riprova.',
   'common_date': 'Data',
   'common_category': 'Categoria',
@@ -471,27 +472,27 @@ const Map<String, String> itStrings = {
   'onboarding_persistence_error':
       'Non siamo riusciti a salvare la tua scelta. Riprova.',
   'onboarding_p1_eyebrow': 'PERSONALE + CONDIVISO',
-  'onboarding_p1_title': 'Un unico posto tranquillo per ogni spesa',
+  'onboarding_p1_title': 'Tieni il tuo conto. Dividi insieme.',
   'onboarding_p1_description':
-      'Segui il tuo budget e le spese condivise del gruppo senza passare da un’app all’altra né perdere il quadro completo.',
+      'Il tuo budget e tutte le spese condivise, in un solo posto.',
   'onboarding_p1_proof_1': 'Budget personale',
   'onboarding_p1_proof_2': 'Spese di gruppo',
   'onboarding_p2_eyebrow': 'NIENTE CONTI IMBARAZZANTI',
-  'onboarding_p2_title': 'Dividi il momento, non l’amicizia',
+  'onboarding_p2_title': 'Dividi con equità. Salda con chiarezza.',
   'onboarding_p2_description':
-      'Scegli quote uguali, percentuali o importi esatti. Tutti possono approvare, pagare e saldare con uno storico chiaro.',
+      'Quote uguali, percentuali o esatte: tutti sanno cosa viene dopo.',
   'onboarding_p2_proof_1': 'Divisioni flessibili',
   'onboarding_p2_proof_2': 'Approvazioni chiare',
   'onboarding_p3_eyebrow': 'CONTI CHE TORNANO',
-  'onboarding_p3_title': 'Ogni valuta conserva la sua storia',
+  'onboarding_p3_title': 'Viaggia libero. Conserva ogni tasso.',
   'onboarding_p3_description':
-      'Splixa conserva l’importo originale e il tasso di cambio bloccato, così il saldo di ieri non cambia mai alle tue spalle.',
+      'Importi originali e tassi bloccati mantengono corretto il saldo di ieri.',
   'onboarding_p3_proof_1': 'Tassi bloccati',
   'onboarding_p3_proof_2': 'Storico affidabile',
   'onboarding_p4_eyebrow': 'INIZIARE È GRATIS',
-  'onboarding_p4_title': 'L’essenziale è gratis. Con Pro risparmi tempo.',
+  'onboarding_p4_title': 'Inizia gratis. Passa a Pro quando conviene.',
   'onboarding_p4_description':
-      'Prima costruisci l’abitudine. Quando vorrai la scansione degli scontrini, i tassi personalizzati, analisi più profonde e report avanzati, scopri cosa offre Pro oggi e cosa arriverà dopo.',
+      'Sblocca inserimento rapido, analisi profonde e report avanzati quando servono.',
   'onboarding_p4_proof_1': 'Nessuna prova obbligatoria',
   'onboarding_p4_proof_2': 'Disdici quando vuoi',
 

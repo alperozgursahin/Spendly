@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
+import '../../core/splixa_loading.dart';
 import '../auth/auth_provider.dart';
 
 final directMessagesStreamProvider = StreamProvider<List<Map<String, dynamic>>>(
@@ -207,8 +208,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   },
                 );
               },
-              error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
-              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, st) => SplixaErrorState(
+                message: friendlyErrorMessage(e),
+                onRetry: () => ref.invalidate(directMessagesStreamProvider),
+              ),
+              loading: () => const SplixaSkeletonView(
+                type: SplixaSkeletonType.chat,
+                itemCount: 6,
+                padding: EdgeInsets.all(16),
+              ),
             ),
           ),
           Padding(

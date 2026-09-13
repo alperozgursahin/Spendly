@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../core/friendly_error.dart';
 import '../../core/app_strings.dart';
+import '../../core/splixa_loading.dart';
 import '../transactions/transaction_provider.dart';
 import '../transactions/transaction_model.dart';
 import '../profile/currency_provider.dart';
@@ -182,11 +183,12 @@ class StatisticsScreen extends ConsumerWidget {
           ],
         );
       },
-      loading: () => const SizedBox(
-        height: 150,
-        child: Center(child: CircularProgressIndicator()),
+      loading: () =>
+          const SplixaSkeletonView(type: SplixaSkeletonType.dashboard),
+      error: (e, st) => SplixaErrorState(
+        message: friendlyErrorMessage(e),
+        onRetry: () => ref.invalidate(transactionsProvider),
       ),
-      error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
     );
   }
 

@@ -22,6 +22,7 @@ const Map<String, String> ptStrings = {
   'common_you': 'Você',
   'common_user': 'Usuário',
   'common_loading': 'Carregando...',
+  'common_retry': 'Tentar novamente',
   'common_error_generic': 'Algo deu errado. Tente novamente.',
   'common_date': 'Data',
   'common_category': 'Categoria',
@@ -467,27 +468,27 @@ const Map<String, String> ptStrings = {
   'onboarding_persistence_error':
       'Não conseguimos salvar sua escolha. Tente novamente.',
   'onboarding_p1_eyebrow': 'PESSOAL + COMPARTILHADO',
-  'onboarding_p1_title': 'Um único lugar tranquilo para cada despesa',
+  'onboarding_p1_title': 'Controle o seu. Divida em grupo.',
   'onboarding_p1_description':
-      'Acompanhe seu orçamento pessoal e os custos compartilhados do grupo sem trocar de aplicativo nem perder a visão geral.',
+      'Seu orçamento e todas as despesas compartilhadas em um só lugar.',
   'onboarding_p1_proof_1': 'Orçamento pessoal',
   'onboarding_p1_proof_2': 'Despesas de grupo',
   'onboarding_p2_eyebrow': 'SEM CONTA CONSTRANGEDORA',
-  'onboarding_p2_title': 'Divida o momento, não a amizade',
+  'onboarding_p2_title': 'Divida com justiça. Acerte com clareza.',
   'onboarding_p2_description':
-      'Escolha partes iguais, porcentagens ou valores exatos. Todos podem aprovar, pagar e acertar com um histórico claro.',
+      'Igual, percentual ou exato — todos sabem o próximo passo.',
   'onboarding_p2_proof_1': 'Divisões flexíveis',
   'onboarding_p2_proof_2': 'Aprovações claras',
   'onboarding_p3_eyebrow': 'CONTAS QUE FECHAM',
-  'onboarding_p3_title': 'Cada moeda guarda a sua história',
+  'onboarding_p3_title': 'Viaje livre. Preserve cada taxa.',
   'onboarding_p3_description':
-      'O Splixa preserva o valor original e a taxa de câmbio travada, então o saldo de ontem nunca muda pelas suas costas.',
+      'Valores originais e taxas fixadas mantêm o saldo de ontem correto.',
   'onboarding_p3_proof_1': 'Taxas travadas',
   'onboarding_p3_proof_2': 'Histórico confiável',
   'onboarding_p4_eyebrow': 'COMEÇAR É GRÁTIS',
-  'onboarding_p4_title': 'O essencial de graça. Ganhe tempo com o Pro.',
+  'onboarding_p4_title': 'Comece grátis. Use Pro quando valer a pena.',
   'onboarding_p4_description':
-      'Primeiro crie o hábito. Quando quiser escanear recibos, usar taxas personalizadas, ter análises mais profundas e relatórios avançados, veja o que o Pro oferece hoje e o que vem a seguir.',
+      'Libere captura rápida, análises profundas e relatórios avançados quando precisar.',
   'onboarding_p4_proof_1': 'Sem teste obrigatório',
   'onboarding_p4_proof_2': 'Cancele quando quiser',
 

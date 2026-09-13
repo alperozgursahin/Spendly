@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
+import '../../core/splixa_loading.dart';
 import '../auth/auth_provider.dart';
 import '../filters/filters_provider.dart';
 import '../profile/currency_provider.dart';
@@ -257,11 +258,18 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
               children: [
                 ..._tabBuckets.map((bucket) {
                   if (expenses.isLoading && !expenses.hasValue) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const SplixaSkeletonView(
+                      type: SplixaSkeletonType.cards,
+                      itemCount: 4,
+                      padding: EdgeInsets.fromLTRB(16, 8, 16, 96),
+                    );
                   }
                   if (expenses.hasError && !expenses.hasValue) {
-                    return Center(
-                      child: Text(friendlyErrorMessage(expenses.error!)),
+                    return SplixaErrorState(
+                      message: friendlyErrorMessage(expenses.error!),
+                      onRetry: () => ref.invalidate(
+                        groupExpensesStreamProvider(widget.groupId),
+                      ),
                     );
                   }
                   final filtered = _filteredExpenses(

@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'experiment_service.dart';
+
 enum PaywallSource {
   onboarding('onboarding'),
   unlimitedGroups('unlimited_groups'),
@@ -40,6 +42,27 @@ enum ExpenseAnalyticsScope {
   group('group');
 
   const ExpenseAnalyticsScope(this.analyticsValue);
+
+  final String analyticsValue;
+}
+
+enum AnalyticsPurchaseOutcome {
+  cancelled('cancelled'),
+  failed('failed');
+
+  const AnalyticsPurchaseOutcome(this.analyticsValue);
+
+  final String analyticsValue;
+}
+
+enum LedgerAnalyticsAction {
+  acknowledged('acknowledged'),
+  paymentSent('payment_sent'),
+  paymentConfirmed('payment_confirmed'),
+  rejected('rejected'),
+  archived('archived');
+
+  const LedgerAnalyticsAction(this.analyticsValue);
 
   final String analyticsValue;
 }
@@ -99,22 +122,104 @@ class AnalyticsService {
     }
   }
 
-  Future<void> onboardingStart() => _log('onboarding_start');
+  Future<void> setExperimentContext({
+    required OnboardingExperimentVariant onboardingVariant,
+    required PaywallExperimentVariant paywallVariant,
+  }) async {
+    await Future.wait([
+      _setUserProperty(
+        name: 'onboarding_variant',
+        value: onboardingVariant.analyticsValue,
+      ),
+      _setUserProperty(
+        name: 'paywall_variant',
+        value: paywallVariant.analyticsValue,
+      ),
+    ]);
+  }
+
+  Future<void> setAppLanguage(String languageCode) {
+    return _setUserProperty(name: 'app_language', value: languageCode);
+  }
+
+  Future<void> setSubscriptionTier({required bool isPro}) {
+    return _setUserProperty(
+      name: 'subscription_tier',
+      value: isPro ? 'pro' : 'free',
+    );
+  }
+
+  Future<void> identifyUser(String? userId) async {
+    final analytics = _analytics;
+    if (!_isEnabled || analytics == null) return;
+    try {
+      await analytics.setUserId(id: userId);
+    } catch (error) {
+      debugPrint('Analytics user identity update failed: $error');
+    }
+  }
+
+  Future<void> onboardingStart({
+    required OnboardingExperimentVariant variant,
+    required int totalSteps,
+  }) {
+    return _log(
+      'onboarding_start',
+      parameters: {
+        'variant': variant.analyticsValue,
+        'total_steps': totalSteps,
+      },
+    );
+  }
 
   Future<void> onboardingStepViewed({
     required int step,
     required String stepName,
+    required OnboardingExperimentVariant variant,
+    required int totalSteps,
   }) {
     return _log(
       'onboarding_step_viewed',
-      parameters: {'step': step, 'step_name': stepName},
+      parameters: {
+        'step': step,
+        'step_name': stepName,
+        'variant': variant.analyticsValue,
+        'total_steps': totalSteps,
+      },
     );
   }
 
-  Future<void> onboardingComplete({required String completionMethod}) {
+  Future<void> onboardingComplete({
+    required String completionMethod,
+    required OnboardingExperimentVariant variant,
+    required int totalSteps,
+    required int durationMilliseconds,
+  }) {
     return _log(
       'onboarding_complete',
-      parameters: {'completion_method': completionMethod},
+      parameters: {
+        'completion_method': completionMethod,
+        'variant': variant.analyticsValue,
+        'total_steps': totalSteps,
+        'duration_ms': durationMilliseconds,
+      },
+    );
+  }
+
+  Future<void> onboardingInterrupted({
+    required int step,
+    required int totalSteps,
+    required OnboardingExperimentVariant variant,
+    required int durationMilliseconds,
+  }) {
+    return _log(
+      'onboarding_interrupted',
+      parameters: {
+        'step': step,
+        'total_steps': totalSteps,
+        'variant': variant.analyticsValue,
+        'duration_ms': durationMilliseconds,
+      },
     );
   }
 
@@ -125,8 +230,68 @@ class AnalyticsService {
     return _log('login', parameters: {'method': method.analyticsValue});
   }
 
+  Future<void> signUp({required AnalyticsLoginMethod method}) {
+    return _log('sign_up', parameters: {'method': method.analyticsValue});
+  }
+
+  Future<void> profileSetupComplete({required String source}) {
+    return _log('profile_setup_complete', parameters: {'source': source});
+  }
+
+  Future<void> loginAttempt({required AnalyticsLoginMethod method}) {
+    return _log('login_attempt', parameters: {'method': method.analyticsValue});
+  }
+
+  Future<void> loginFailed({
+    required AnalyticsLoginMethod method,
+    required String reasonCode,
+  }) {
+    return _log(
+      'login_failed',
+      parameters: {'method': method.analyticsValue, 'reason_code': reasonCode},
+    );
+  }
+
   Future<void> paywallView({required PaywallSource source}) {
-    return _log('paywall_view', parameters: {'source': source.analyticsValue});
+    return _log(
+      'paywall_view',
+      parameters: {
+        'source': source.analyticsValue,
+        'variant': ExperimentService.instance.paywallVariant.analyticsValue,
+      },
+    );
+  }
+
+  Future<void> paywallPackageSelected({
+    required PaywallSource source,
+    required String packageId,
+    required String productId,
+  }) {
+    return _log(
+      'paywall_package_selected',
+      parameters: {
+        'source': source.analyticsValue,
+        'variant': ExperimentService.instance.paywallVariant.analyticsValue,
+        'package_id': packageId,
+        'product_id': productId,
+      },
+    );
+  }
+
+  Future<void> paywallDismissed({
+    required PaywallSource source,
+    required bool purchaseCompleted,
+    required int durationMilliseconds,
+  }) {
+    return _log(
+      'paywall_dismissed',
+      parameters: {
+        'source': source.analyticsValue,
+        'variant': ExperimentService.instance.paywallVariant.analyticsValue,
+        'purchase_completed': purchaseCompleted ? 1 : 0,
+        'duration_ms': durationMilliseconds,
+      },
+    );
   }
 
   Future<void> purchaseAttempt({
@@ -138,6 +303,7 @@ class AnalyticsService {
       'purchase_attempt',
       parameters: {
         'source': source.analyticsValue,
+        'variant': ExperimentService.instance.paywallVariant.analyticsValue,
         'package_id': packageId,
         'product_id': productId,
       },
@@ -155,10 +321,29 @@ class AnalyticsService {
       'purchase_success',
       parameters: {
         'source': source.analyticsValue,
+        'variant': ExperimentService.instance.paywallVariant.analyticsValue,
         'package_id': packageId,
         'product_id': productId,
         'currency': currencyCode,
         'value': price,
+      },
+    );
+  }
+
+  Future<void> purchaseEnded({
+    required PaywallSource source,
+    required String packageId,
+    required String productId,
+    required AnalyticsPurchaseOutcome outcome,
+  }) {
+    return _log(
+      'purchase_ended',
+      parameters: {
+        'source': source.analyticsValue,
+        'variant': ExperimentService.instance.paywallVariant.analyticsValue,
+        'package_id': packageId,
+        'product_id': productId,
+        'outcome': outcome.analyticsValue,
       },
     );
   }
@@ -172,6 +357,7 @@ class AnalyticsService {
       'subscription_started',
       parameters: {
         'source': source.analyticsValue,
+        'variant': ExperimentService.instance.paywallVariant.analyticsValue,
         'package_id': packageId,
         'product_id': productId,
       },
@@ -180,6 +366,15 @@ class AnalyticsService {
 
   Future<void> expenseAdded({required ExpenseAnalyticsScope scope}) {
     return _log('expense_added', parameters: {'scope': scope.analyticsValue});
+  }
+
+  Future<void> groupCreated() => _log('group_created');
+
+  Future<void> ledgerActionCompleted({required LedgerAnalyticsAction action}) {
+    return _log(
+      'ledger_action_completed',
+      parameters: {'action': action.analyticsValue},
+    );
   }
 
   Future<void> _log(String eventName, {Map<String, Object>? parameters}) async {
@@ -196,6 +391,19 @@ class AnalyticsService {
       await analytics.logEvent(name: eventName, parameters: parameters);
     } catch (error) {
       debugPrint('Analytics event $eventName failed: $error');
+    }
+  }
+
+  Future<void> _setUserProperty({
+    required String name,
+    required String? value,
+  }) async {
+    final analytics = _analytics;
+    if (!_isEnabled || analytics == null) return;
+    try {
+      await analytics.setUserProperty(name: name, value: value);
+    } catch (error) {
+      debugPrint('Analytics user property $name failed: $error');
     }
   }
 

@@ -22,6 +22,7 @@ const Map<String, String> enStrings = {
   'common_you': 'You',
   'common_user': 'User',
   'common_loading': 'Loading...',
+  'common_retry': 'Try again',
   'common_error_generic': 'Something went wrong. Please try again.',
   'common_date': 'Date',
   'common_category': 'Category',
@@ -457,27 +458,27 @@ const Map<String, String> enStrings = {
   'onboarding_persistence_error':
       'We could not save your choice. Please try again.',
   'onboarding_p1_eyebrow': 'PERSONAL + SHARED',
-  'onboarding_p1_title': 'One calm home for every expense',
+  'onboarding_p1_title': 'Track solo. Split together.',
   'onboarding_p1_description':
-      'Track your own budget and shared group costs without switching between apps or losing the full picture.',
+      'Your budget and every shared expense, together in one place.',
   'onboarding_p1_proof_1': 'Personal budget',
   'onboarding_p1_proof_2': 'Group expenses',
   'onboarding_p2_eyebrow': 'NO AWKWARD MATH',
-  'onboarding_p2_title': 'Split the moment, not the friendship',
+  'onboarding_p2_title': 'Split fairly. Settle clearly.',
   'onboarding_p2_description':
-      'Choose equal, percentage, or exact shares. Everyone can approve, pay, and settle with a clear history.',
+      'Equal, percentage, or exact—everyone sees what happens next.',
   'onboarding_p2_proof_1': 'Flexible splits',
   'onboarding_p2_proof_2': 'Clear approvals',
   'onboarding_p3_eyebrow': 'MONEY THAT ADDS UP',
-  'onboarding_p3_title': 'Every currency keeps its story',
+  'onboarding_p3_title': 'Travel freely. Keep every rate.',
   'onboarding_p3_description':
-      'Splixa preserves the original amount and locked exchange rate, so yesterday’s balance never changes behind your back.',
+      'Original amounts and locked rates keep yesterday’s balance honest.',
   'onboarding_p3_proof_1': 'Locked rates',
   'onboarding_p3_proof_2': 'Reliable history',
   'onboarding_p4_eyebrow': 'FREE TO START',
-  'onboarding_p4_title': 'Do the essentials free. Save time with Pro.',
+  'onboarding_p4_title': 'Start free. Go Pro when it pays.',
   'onboarding_p4_description':
-      'Build the habit first. When you want receipt scanning, custom rates, deeper insights, and advanced reports, see what Pro offers now and what is next on its roadmap.',
+      'Unlock faster capture, deeper insights, and advanced reports when you need them.',
   'onboarding_p4_proof_1': 'No forced trial',
   'onboarding_p4_proof_2': 'Cancel anytime',
 

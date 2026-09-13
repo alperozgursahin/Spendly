@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
+import '../../core/splixa_loading.dart';
 import '../auth/auth_provider.dart';
 
 final otherUserProfileProvider =
@@ -152,8 +153,9 @@ class OtherUserProfileScreen extends ConsumerWidget {
                         ],
                       );
                     },
-                    loading: () =>
-                        const CircularProgressIndicator(strokeWidth: 2),
+                    loading: () => const SplixaSkeletonView(
+                      type: SplixaSkeletonType.compact,
+                    ),
                     error: (e, st) => const SizedBox.shrink(),
                   ),
                 ],
@@ -161,8 +163,14 @@ class OtherUserProfileScreen extends ConsumerWidget {
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
+        loading: () => const SplixaSkeletonView(
+          type: SplixaSkeletonType.profile,
+          padding: EdgeInsets.all(20),
+        ),
+        error: (e, st) => SplixaErrorState(
+          message: friendlyErrorMessage(e),
+          onRetry: () => ref.invalidate(otherUserProfileProvider(userId)),
+        ),
       ),
     );
   }

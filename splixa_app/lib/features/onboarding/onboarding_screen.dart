@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/analytics_service.dart';
 import '../../core/app_strings.dart';
+import '../../core/experiment_service.dart';
 import '../../core/language_selector.dart';
 import '../../core/splixa_design.dart';
 
@@ -60,32 +62,59 @@ class OnboardingScreen extends ConsumerStatefulWidget {
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
+    with WidgetsBindingObserver {
   final PageController _pageController = PageController();
   final Set<int> _trackedSteps = <int>{};
+  final Stopwatch _flowDuration = Stopwatch();
+  late final OnboardingExperimentVariant _variant;
+  late final List<_OnboardingPageData> _pages;
   int _currentPage = 0;
+  int? _lastInterruptedStep;
   bool _isCompleting = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _variant = ExperimentService.instance.onboardingVariant;
+    _pages = _pagesFor(_variant);
+    _flowDuration.start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final analytics = ref.read(analyticsServiceProvider);
-      analytics.onboardingStart();
+      analytics.onboardingStart(variant: _variant, totalSteps: _pages.length);
       _trackStep(0);
     });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _flowDuration.stop();
     _pageController.dispose();
     super.dispose();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.paused || _isCompleting) return;
+    final step = _currentPage + 1;
+    if (_lastInterruptedStep == step) return;
+    _lastInterruptedStep = step;
+    ref
+        .read(analyticsServiceProvider)
+        .onboardingInterrupted(
+          step: step,
+          totalSteps: _pages.length,
+          variant: _variant,
+          durationMilliseconds: _flowDuration.elapsedMilliseconds,
+        );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    const pages = _onboardingPages;
+    final pages = _pages;
     final isLastPage = _currentPage == pages.length - 1;
 
     return Scaffold(
@@ -94,24 +123,49 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 16, 8),
-              child: Row(
-                children: [
-                  const SplixaLogo(compact: true),
-                  const Spacer(),
-                  // Language is offered once, on the first slide: it is the
-                  // one decision that changes every screen that follows, and
-                  // repeating it on later slides adds friction to a flow whose
-                  // only job is to get the user in.
-                  if (_currentPage == 0) ...[
-                    const AppLanguageButton(),
-                    const SizedBox(width: 6),
-                  ],
-                  if (!isLastPage)
-                    TextButton(
-                      onPressed: _isCompleting ? null : () => _finish('skip'),
-                      child: Text(tr(ref, 'onboarding_skip')),
-                    ),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final compactHeader =
+                      constraints.maxWidth < 360 ||
+                      MediaQuery.textScalerOf(context).scale(1) > 1.3;
+                  return Row(
+                    children: [
+                      if (_currentPage == 0)
+                        SplixaLogo(compact: true, showWordmark: !compactHeader)
+                      else
+                        IconButton.filledTonal(
+                          tooltip: MaterialLocalizations.of(
+                            context,
+                          ).backButtonTooltip,
+                          onPressed: _isCompleting ? null : _previousPage,
+                          icon: const Icon(Icons.arrow_back_rounded),
+                        ),
+                      const Spacer(),
+                      // Language is offered once, on the first slide: it is
+                      // the one decision that changes every screen after it.
+                      if (_currentPage == 0) ...[
+                        const AppLanguageButton(),
+                        const SizedBox(width: 6),
+                      ],
+                      if (!isLastPage)
+                        if (compactHeader)
+                          IconButton(
+                            tooltip: tr(ref, 'onboarding_skip'),
+                            onPressed: _isCompleting
+                                ? null
+                                : () => _finish('skip'),
+                            icon: const Icon(Icons.skip_next_rounded),
+                          )
+                        else
+                          TextButton(
+                            onPressed: _isCompleting
+                                ? null
+                                : () => _finish('skip'),
+                            child: Text(tr(ref, 'onboarding_skip')),
+                          ),
+                    ],
+                  );
+                },
               ),
             ),
             Expanded(
@@ -188,18 +242,44 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   void _nextPage() {
-    _pageController.nextPage(
-      duration: const Duration(milliseconds: 360),
-      curve: Curves.easeOutCubic,
-    );
+    if (_reduceMotion) {
+      _pageController.jumpToPage(_currentPage + 1);
+    } else {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 360),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  void _previousPage() {
+    if (_reduceMotion) {
+      _pageController.jumpToPage(_currentPage - 1);
+    } else {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  bool get _reduceMotion {
+    final media = MediaQuery.maybeOf(context);
+    return (media?.disableAnimations ?? false) ||
+        (media?.accessibleNavigation ?? false);
   }
 
   void _trackStep(int index) {
     if (!_trackedSteps.add(index)) return;
-    final page = _onboardingPages[index];
+    final page = _pages[index];
     ref
         .read(analyticsServiceProvider)
-        .onboardingStepViewed(step: index + 1, stepName: page.analyticsName);
+        .onboardingStepViewed(
+          step: index + 1,
+          stepName: page.analyticsName,
+          variant: _variant,
+          totalSteps: _pages.length,
+        );
   }
 
   Future<void> _finish(String completionMethod) async {
@@ -210,7 +290,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       await ref.read(onboardingControllerProvider).complete();
       await ref
           .read(analyticsServiceProvider)
-          .onboardingComplete(completionMethod: completionMethod);
+          .onboardingComplete(
+            completionMethod: completionMethod,
+            variant: _variant,
+            totalSteps: _pages.length,
+            durationMilliseconds: _flowDuration.elapsedMilliseconds,
+          );
       if (mounted) context.go('/login');
     } catch (_) {
       if (!mounted) return;
@@ -237,6 +322,10 @@ class _OnboardingPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final media = MediaQuery.maybeOf(context);
+    final reduceMotion =
+        (media?.disableAnimations ?? false) ||
+        (media?.accessibleNavigation ?? false);
     final proofPoints = page.proofKeys
         .map((key) => tr(ref, key))
         .toList(growable: false);
@@ -246,7 +335,7 @@ class _OnboardingPage extends ConsumerWidget {
       child: Column(
         children: [
           Semantics(
-            label: '$step / $totalSteps',
+            label: '${tr(ref, '${page.keyPrefix}_title')}. $step / $totalSteps',
             child: Container(
               constraints: const BoxConstraints(maxWidth: 440),
               height: 250,
@@ -259,44 +348,9 @@ class _OnboardingPage extends ConsumerWidget {
                   color: page.accent.withValues(alpha: isDark ? .45 : .22),
                 ),
               ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Positioned(
-                    top: 28,
-                    right: 30,
-                    child: _OrbitIcon(
-                      icon: page.supportingIcon,
-                      color: page.accent,
-                      size: 58,
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 28,
-                    left: 30,
-                    child: _OrbitIcon(
-                      icon: page.secondaryIcon,
-                      color: page.accent,
-                      size: 52,
-                    ),
-                  ),
-                  Container(
-                    width: 132,
-                    height: 132,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: page.accent.withValues(alpha: .18),
-                          blurRadius: 34,
-                          offset: const Offset(0, 12),
-                        ),
-                      ],
-                    ),
-                    child: Icon(page.icon, size: 64, color: page.accent),
-                  ),
-                ],
+              child: _OnboardingIllustration(
+                page: page,
+                reduceMotion: reduceMotion,
               ),
             ),
           ),
@@ -358,6 +412,93 @@ class _OnboardingPage extends ConsumerWidget {
   }
 }
 
+class _OnboardingIllustration extends StatelessWidget {
+  const _OnboardingIllustration({
+    required this.page,
+    required this.reduceMotion,
+  });
+
+  final _OnboardingPageData page;
+  final bool reduceMotion;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = _StaticOnboardingIllustration(page: page);
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Lottie.asset(
+        page.animationAsset,
+        fit: BoxFit.contain,
+        animate: !reduceMotion,
+        repeat: !reduceMotion,
+        frameRate: FrameRate.composition,
+        renderCache: RenderCache.drawingCommands,
+        frameBuilder: (context, child, composition) {
+          if (composition == null) return fallback;
+          if (reduceMotion) return child;
+          return AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child: KeyedSubtree(
+              key: ValueKey(page.animationAsset),
+              child: child,
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) => fallback,
+      ),
+    );
+  }
+}
+
+class _StaticOnboardingIllustration extends StatelessWidget {
+  const _StaticOnboardingIllustration({required this.page});
+
+  final _OnboardingPageData page;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        PositionedDirectional(
+          top: 22,
+          end: 22,
+          child: _OrbitIcon(
+            icon: page.supportingIcon,
+            color: page.accent,
+            size: 58,
+          ),
+        ),
+        PositionedDirectional(
+          bottom: 22,
+          start: 22,
+          child: _OrbitIcon(
+            icon: page.secondaryIcon,
+            color: page.accent,
+            size: 52,
+          ),
+        ),
+        Container(
+          width: 132,
+          height: 132,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: page.accent.withValues(alpha: .18),
+                blurRadius: 34,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Icon(page.icon, size: 64, color: page.accent),
+        ),
+      ],
+    );
+  }
+}
+
 class _OrbitIcon extends StatelessWidget {
   const _OrbitIcon({
     required this.icon,
@@ -392,6 +533,7 @@ class _OnboardingPageData {
     required this.supportingIcon,
     required this.secondaryIcon,
     required this.accent,
+    required this.animationAsset,
     this.proofKeys = const [],
   });
 
@@ -404,6 +546,7 @@ class _OnboardingPageData {
   final IconData supportingIcon;
   final IconData secondaryIcon;
   final Color accent;
+  final String animationAsset;
   final List<String> proofKeys;
 }
 
@@ -416,6 +559,7 @@ const _onboardingPages = <_OnboardingPageData>[
     supportingIcon: Icons.person_rounded,
     secondaryIcon: Icons.groups_rounded,
     accent: SplixaColors.cyan,
+    animationAsset: 'assets/lottie/personal_shared.json',
     proofKeys: ['onboarding_p1_proof_1', 'onboarding_p1_proof_2'],
   ),
   _OnboardingPageData(
@@ -425,6 +569,7 @@ const _onboardingPages = <_OnboardingPageData>[
     supportingIcon: Icons.receipt_long_rounded,
     secondaryIcon: Icons.done_all_rounded,
     accent: Color(0xFF7C3AED),
+    animationAsset: 'assets/lottie/clear_splits.json',
     proofKeys: ['onboarding_p2_proof_1', 'onboarding_p2_proof_2'],
   ),
   _OnboardingPageData(
@@ -434,6 +579,7 @@ const _onboardingPages = <_OnboardingPageData>[
     supportingIcon: Icons.lock_clock_rounded,
     secondaryIcon: Icons.history_rounded,
     accent: Color(0xFF0284C7),
+    animationAsset: 'assets/lottie/trusted_currency.json',
     proofKeys: ['onboarding_p3_proof_1', 'onboarding_p3_proof_2'],
   ),
   _OnboardingPageData(
@@ -443,6 +589,18 @@ const _onboardingPages = <_OnboardingPageData>[
     supportingIcon: Icons.document_scanner_rounded,
     secondaryIcon: Icons.insights_rounded,
     accent: Color(0xFFD97706),
+    animationAsset: 'assets/lottie/pro_value.json',
     proofKeys: ['onboarding_p4_proof_1', 'onboarding_p4_proof_2'],
   ),
 ];
+
+List<_OnboardingPageData> _pagesFor(OnboardingExperimentVariant variant) {
+  return switch (variant) {
+    OnboardingExperimentVariant.control => _onboardingPages,
+    OnboardingExperimentVariant.focused => [
+      _onboardingPages[0],
+      _onboardingPages[1],
+      _onboardingPages[3],
+    ],
+  };
+}

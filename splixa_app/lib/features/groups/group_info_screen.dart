@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
 import '../../core/media_upload_service.dart';
+import '../../core/splixa_loading.dart';
 import 'group_model.dart';
 import 'group_provider.dart';
 import '../auth/auth_provider.dart';
@@ -138,8 +139,15 @@ class GroupInfoScreen extends ConsumerWidget {
                   },
                 );
               },
-              error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
-              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, st) => SplixaErrorState(
+                message: friendlyErrorMessage(e),
+                onRetry: () => ref.invalidate(groupMembersProvider(groupId)),
+              ),
+              loading: () => const SplixaSkeletonView(
+                type: SplixaSkeletonType.list,
+                itemCount: 5,
+                padding: EdgeInsets.all(16),
+              ),
             ),
           ),
           if (!isCreator)

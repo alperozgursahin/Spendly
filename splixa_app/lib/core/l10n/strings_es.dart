@@ -22,6 +22,7 @@ const Map<String, String> esStrings = {
   'common_you': 'Tú',
   'common_user': 'Usuario',
   'common_loading': 'Cargando...',
+  'common_retry': 'Intentar de nuevo',
   'common_error_generic': 'Algo salió mal. Inténtalo de nuevo.',
   'common_date': 'Fecha',
   'common_category': 'Categoría',
@@ -473,27 +474,27 @@ const Map<String, String> esStrings = {
   'onboarding_persistence_error':
       'No hemos podido guardar tu elección. Inténtalo de nuevo.',
   'onboarding_p1_eyebrow': 'PERSONAL + COMPARTIDO',
-  'onboarding_p1_title': 'Un único lugar tranquilo para cada gasto',
+  'onboarding_p1_title': 'Controla lo tuyo. Reparte en grupo.',
   'onboarding_p1_description':
-      'Controla tu propio presupuesto y los gastos compartidos del grupo sin cambiar de aplicación ni perder la visión completa.',
+      'Tu presupuesto y todos los gastos compartidos, en un solo lugar.',
   'onboarding_p1_proof_1': 'Presupuesto personal',
   'onboarding_p1_proof_2': 'Gastos de grupo',
   'onboarding_p2_eyebrow': 'SIN CUENTAS INCÓMODAS',
-  'onboarding_p2_title': 'Reparte el momento, no la amistad',
+  'onboarding_p2_title': 'Reparte con justicia. Saldad con claridad.',
   'onboarding_p2_description':
-      'Elige partes iguales, porcentajes o importes exactos. Todos pueden aprobar, pagar y saldar con un historial claro.',
+      'Por igual, porcentaje o importe exacto: todos saben qué sigue.',
   'onboarding_p2_proof_1': 'Repartos flexibles',
   'onboarding_p2_proof_2': 'Aprobaciones claras',
   'onboarding_p3_eyebrow': 'CUENTAS QUE CUADRAN',
-  'onboarding_p3_title': 'Cada moneda conserva su historia',
+  'onboarding_p3_title': 'Viaja libre. Conserva cada tipo.',
   'onboarding_p3_description':
-      'Splixa guarda el importe original y el tipo de cambio bloqueado, así el saldo de ayer nunca cambia a tus espaldas.',
+      'Los importes originales y tipos fijados mantienen fiel el saldo de ayer.',
   'onboarding_p3_proof_1': 'Tipos bloqueados',
   'onboarding_p3_proof_2': 'Historial fiable',
   'onboarding_p4_eyebrow': 'EMPEZAR ES GRATIS',
-  'onboarding_p4_title': 'Lo esencial, gratis. Con Pro, ahorra tiempo.',
+  'onboarding_p4_title': 'Empieza gratis. Pásate a Pro cuando compense.',
   'onboarding_p4_description':
-      'Primero crea el hábito. Cuando quieras escaneo de recibos, tipos personalizados, análisis más profundos e informes avanzados, mira lo que ofrece Pro hoy y lo que viene después.',
+      'Activa captura rápida, análisis profundos e informes avanzados cuando los necesites.',
   'onboarding_p4_proof_1': 'Sin prueba obligatoria',
   'onboarding_p4_proof_2': 'Cancela cuando quieras',
 

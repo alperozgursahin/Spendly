@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
+import '../../core/splixa_loading.dart';
 import '../auth/auth_provider.dart';
 import 'notification_provider.dart';
 
@@ -137,9 +138,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stackTrace) =>
-                  Center(child: Text(friendlyErrorMessage(error))),
+              loading: () => const SplixaSkeletonView(
+                type: SplixaSkeletonType.cards,
+                itemCount: 5,
+                padding: EdgeInsets.all(16),
+              ),
+              error: (error, stackTrace) => SplixaErrorState(
+                message: friendlyErrorMessage(error),
+                onRetry: () =>
+                    ref.invalidate(userNotificationsProvider(userId)),
+              ),
             ),
     );
   }

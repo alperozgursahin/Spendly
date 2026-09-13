@@ -22,6 +22,7 @@ const Map<String, String> nlStrings = {
   'common_you': 'Jij',
   'common_user': 'Gebruiker',
   'common_loading': 'Laden...',
+  'common_retry': 'Opnieuw proberen',
   'common_error_generic': 'Er ging iets mis. Probeer het opnieuw.',
   'common_date': 'Datum',
   'common_category': 'Categorie',
@@ -469,27 +470,27 @@ const Map<String, String> nlStrings = {
   'onboarding_persistence_error':
       'We konden je keuze niet opslaan. Probeer het opnieuw.',
   'onboarding_p1_eyebrow': 'PERSOONLIJK + GEDEELD',
-  'onboarding_p1_title': 'Eén rustige plek voor elke uitgave',
+  'onboarding_p1_title': 'Houd zelf bij. Deel samen.',
   'onboarding_p1_description':
-      'Houd je eigen budget en gedeelde groepskosten bij zonder tussen apps te wisselen of het overzicht kwijt te raken.',
+      'Jouw budget en alle gedeelde uitgaven op één plek.',
   'onboarding_p1_proof_1': 'Persoonlijk budget',
   'onboarding_p1_proof_2': 'Groepsuitgaven',
   'onboarding_p2_eyebrow': 'GEEN ONGEMAKKELIJK REKENWERK',
-  'onboarding_p2_title': 'Deel het moment, niet de vriendschap',
+  'onboarding_p2_title': 'Verdeel eerlijk. Reken helder af.',
   'onboarding_p2_description':
-      'Kies gelijke delen, percentages of exacte bedragen. Iedereen kan goedkeuren, betalen en afrekenen met een helder overzicht.',
+      'Gelijk, procentueel of exact — iedereen weet wat volgt.',
   'onboarding_p2_proof_1': 'Flexibel verdelen',
   'onboarding_p2_proof_2': 'Heldere goedkeuringen',
   'onboarding_p3_eyebrow': 'BEDRAGEN DIE KLOPPEN',
-  'onboarding_p3_title': 'Elke valuta houdt haar verhaal',
+  'onboarding_p3_title': 'Reis vrij. Bewaar elke koers.',
   'onboarding_p3_description':
-      'Splixa bewaart het oorspronkelijke bedrag en de vastgezette wisselkoers, zodat het saldo van gisteren nooit stiekem verandert.',
+      'Originele bedragen en vaste koersen houden het saldo van gisteren eerlijk.',
   'onboarding_p3_proof_1': 'Vaste koersen',
   'onboarding_p3_proof_2': 'Betrouwbare geschiedenis',
   'onboarding_p4_eyebrow': 'GRATIS BEGINNEN',
-  'onboarding_p4_title': 'Het belangrijkste gratis. Bespaar tijd met Pro.',
+  'onboarding_p4_title': 'Begin gratis. Kies Pro als het loont.',
   'onboarding_p4_description':
-      'Bouw eerst de gewoonte op. Wil je bonnen scannen, eigen koersen, diepere inzichten en uitgebreide rapporten, bekijk dan wat Pro nu biedt en wat er hierna komt.',
+      'Ontgrendel snelle invoer, diepere inzichten en uitgebreide rapporten wanneer nodig.',
   'onboarding_p4_proof_1': 'Geen verplichte proefperiode',
   'onboarding_p4_proof_2': 'Altijd opzegbaar',
 

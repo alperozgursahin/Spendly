@@ -5,6 +5,7 @@ import '../../core/analytics_service.dart';
 import '../../core/friendly_error.dart';
 import '../../core/app_strings.dart';
 import '../../core/app_theme_provider.dart';
+import '../../core/splixa_loading.dart';
 import '../auth/auth_provider.dart';
 import '../transactions/transaction_provider.dart';
 import '../transactions/transaction_model.dart';
@@ -421,8 +422,13 @@ class DashboardScreen extends ConsumerWidget {
           },
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
+      loading: () =>
+          const SplixaSkeletonView(type: SplixaSkeletonType.list, itemCount: 3),
+      error: (e, st) => SplixaErrorState(
+        message: friendlyErrorMessage(e),
+        compact: true,
+        onRetry: () => ref.invalidate(activityProvider),
+      ),
     );
   }
 
@@ -549,8 +555,13 @@ class DashboardScreen extends ConsumerWidget {
           },
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, st) => Center(child: Text(friendlyErrorMessage(e))),
+      loading: () =>
+          const SplixaSkeletonView(type: SplixaSkeletonType.list, itemCount: 4),
+      error: (e, st) => SplixaErrorState(
+        message: friendlyErrorMessage(e),
+        compact: true,
+        onRetry: () => ref.invalidate(transactionsProvider),
+      ),
     );
   }
 

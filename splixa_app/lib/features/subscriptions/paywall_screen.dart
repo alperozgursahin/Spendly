@@ -6,9 +6,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/analytics_service.dart';
 import '../../core/app_strings.dart';
+import '../../core/experiment_service.dart';
 import '../../core/friendly_error.dart';
 import '../../core/locale_provider.dart';
 import '../../core/splixa_design.dart';
+import '../../core/splixa_loading.dart';
 import 'premium_provider.dart';
 
 class PaywallScreen extends ConsumerStatefulWidget {
@@ -24,14 +26,26 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   String? _selectedPackageId;
   bool _isPurchasing = false;
   bool _isRestoring = false;
+  late final AnalyticsService _analytics;
+  final Stopwatch _viewDuration = Stopwatch();
+  bool _dismissTracked = false;
+  bool _purchaseCompleted = false;
 
   @override
   void initState() {
     super.initState();
+    _analytics = ref.read(analyticsServiceProvider);
+    _viewDuration.start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(analyticsServiceProvider).paywallView(source: widget.source);
+      _analytics.paywallView(source: widget.source);
     });
+  }
+
+  @override
+  void dispose() {
+    _trackDismiss();
+    super.dispose();
   }
 
   @override
@@ -39,6 +53,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     final copy = _PaywallCopy(ref.watch(appLanguageProvider));
     final offerings = ref.watch(offeringsProvider);
     final colorScheme = Theme.of(context).colorScheme;
+    final plans = _buildOfferings(context, copy, offerings, colorScheme);
+    final benefits = _buildBenefits(context, copy);
+    final plansFirst =
+        ExperimentService.instance.paywallVariant ==
+        PaywallExperimentVariant.plansFirst;
 
     return Scaffold(
       appBar: AppBar(
@@ -56,87 +75,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           children: [
             _PaywallHero(copy: copy),
             const SizedBox(height: 22),
-            Text(
-              copy.benefitsTitle,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 12),
-            ...copy.benefits.map(
-              (benefit) => _BenefitRow(
-                icon: benefit.icon,
-                title: benefit.title,
-                description: benefit.description,
-              ),
-            ),
-            const SizedBox(height: 24),
-            offerings.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 44),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (error, _) => _OfferingsError(
-                message: friendlyErrorMessage(error),
-                retryLabel: copy.retry,
-                onRetry: () => ref.invalidate(offeringsProvider),
-              ),
-              data: (offerings) {
-                final packages = _orderedPackages(
-                  offerings?.current?.availablePackages ?? const [],
-                );
-                if (packages.isEmpty) {
-                  return _OfferingsError(
-                    message: copy.noPackages,
-                    retryLabel: copy.retry,
-                    onRetry: () => ref.invalidate(offeringsProvider),
-                  );
-                }
-
-                final selected = _selectedPackage(packages);
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      copy.choosePlan,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    ...packages.map(
-                      (package) => _PlanCard(
-                        package: package,
-                        selected: package.identifier == selected.identifier,
-                        recommended: _isBestValue(package, packages),
-                        copy: copy,
-                        onTap: _isPurchasing
-                            ? null
-                            : () => setState(
-                                () => _selectedPackageId = package.identifier,
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      copy.renewalDisclosure(selected),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    SplixaPrimaryButton(
-                      label: copy.continueWith(selected),
-                      icon: Icons.lock_open_rounded,
-                      loading: _isPurchasing,
-                      onPressed: () => _purchase(selected, copy),
-                    ),
-                  ],
-                );
-              },
-            ),
+            if (plansFirst) ...[
+              plans,
+              const SizedBox(height: 24),
+              ...benefits,
+            ] else ...[
+              ...benefits,
+              const SizedBox(height: 24),
+              plans,
+            ],
             const SizedBox(height: 14),
             TextButton(
               onPressed: _isPurchasing ? null : _close,
@@ -185,6 +132,95 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     );
   }
 
+  List<Widget> _buildBenefits(BuildContext context, _PaywallCopy copy) {
+    return [
+      Text(
+        copy.benefitsTitle,
+        style: Theme.of(
+          context,
+        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+      ),
+      const SizedBox(height: 12),
+      ...copy.benefits.map(
+        (benefit) => _BenefitRow(
+          icon: benefit.icon,
+          title: benefit.title,
+          description: benefit.description,
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildOfferings(
+    BuildContext context,
+    _PaywallCopy copy,
+    AsyncValue<Offerings?> offerings,
+    ColorScheme colorScheme,
+  ) {
+    return offerings.when(
+      loading: () => const SplixaSkeletonView(
+        type: SplixaSkeletonType.paywall,
+        padding: EdgeInsets.symmetric(vertical: 8),
+      ),
+      error: (error, _) => _OfferingsError(
+        message: friendlyErrorMessage(error),
+        retryLabel: copy.retry,
+        onRetry: () => ref.invalidate(offeringsProvider),
+      ),
+      data: (offerings) {
+        final packages = _orderedPackages(
+          offerings?.current?.availablePackages ?? const [],
+        );
+        if (packages.isEmpty) {
+          return _OfferingsError(
+            message: copy.noPackages,
+            retryLabel: copy.retry,
+            onRetry: () => ref.invalidate(offeringsProvider),
+          );
+        }
+
+        final selected = _selectedPackage(packages);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              copy.choosePlan,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 10),
+            ...packages.map(
+              (package) => _PlanCard(
+                package: package,
+                selected: package.identifier == selected.identifier,
+                recommended: _isBestValue(package, packages),
+                copy: copy,
+                onTap: _isPurchasing ? null : () => _selectPackage(package),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              copy.renewalDisclosure(selected),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 14),
+            SplixaPrimaryButton(
+              label: copy.continueWith(selected),
+              icon: Icons.lock_open_rounded,
+              loading: _isPurchasing,
+              onPressed: () => _purchase(selected, copy),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   List<Package> _orderedPackages(List<Package> packages) {
     final result = List<Package>.from(packages);
     int priority(Package package) => switch (package.packageType) {
@@ -229,6 +265,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     if (!mounted) return;
     setState(() => _isPurchasing = false);
     if (success) {
+      _purchaseCompleted = true;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(copy.welcome)));
@@ -262,11 +299,32 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   }
 
   void _close() {
+    _trackDismiss();
     if (context.canPop()) {
       context.pop();
     } else {
       context.go('/dashboard');
     }
+  }
+
+  void _selectPackage(Package package) {
+    setState(() => _selectedPackageId = package.identifier);
+    _analytics.paywallPackageSelected(
+      source: widget.source,
+      packageId: package.identifier,
+      productId: package.storeProduct.identifier,
+    );
+  }
+
+  void _trackDismiss() {
+    if (_dismissTracked) return;
+    _dismissTracked = true;
+    _viewDuration.stop();
+    _analytics.paywallDismissed(
+      source: widget.source,
+      purchaseCompleted: _purchaseCompleted,
+      durationMilliseconds: _viewDuration.elapsedMilliseconds,
+    );
   }
 }
 

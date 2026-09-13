@@ -118,8 +118,8 @@
 - [x] Run formatting, tests, and `flutter analyze` with zero errors.
 - [x] Build a release Android artifact successfully.
 - [x] Record validation results in this file.
-- [ ] Commit Phase 2 with a focused conventional commit.
-- [ ] Stop and wait for Phase 2 review.
+- [x] Commit Phase 2 with a focused conventional commit.
+- [x] Stop and wait for Phase 2 review.
 
 ---
 
@@ -127,32 +127,44 @@
 
 ### Animated onboarding
 
-- [ ] Audit current onboarding completion, skip, back, and auth-routing behavior.
-- [ ] Rewrite each slide to one concise value proposition with a clear progression.
-- [ ] Select or create commercially licensed, size-efficient Lottie assets aligned with the Splixa visual system.
-- [ ] Add Lottie loading/error fallbacks so onboarding never blocks on animation rendering.
-- [ ] Implement smooth, accessible transitions that respect reduced-motion preferences.
-- [ ] Preserve locale selector access and analytics instrumentation on every step.
-- [ ] Optimize assets and verify startup size/performance impact.
+- [x] Audit current onboarding completion, skip, back, and auth-routing behavior.
+- [x] Rewrite each slide to one concise value proposition with a clear progression.
+- [x] Create original, size-efficient Lottie assets aligned with the Splixa visual system.
+- [x] Add Lottie loading/error fallbacks so onboarding never blocks on animation rendering.
+- [x] Implement smooth, accessible transitions that respect reduced-motion preferences.
+- [x] Preserve locale selector access and analytics instrumentation on every step.
+- [x] Optimize assets and verify startup size/performance impact.
 
 ### Skeleton and shimmer system
 
-- [ ] Inventory every `CircularProgressIndicator` and classify full-page, inline-action, refresh, and blocking states.
-- [ ] Create reusable theme-aware skeleton primitives matching the final content geometry.
-- [ ] Replace Supabase data-fetch spinners with stable skeleton layouts without introducing layout jumps.
-- [ ] Keep compact progress indicators where skeletons are inappropriate, such as button submissions or indeterminate actions.
-- [ ] Respect reduced-motion settings and avoid excessive GPU/battery usage.
-- [ ] Add polished empty, retryable error, and partial-data states alongside loading states.
+- [x] Inventory every `CircularProgressIndicator` and classify full-page, inline-action, refresh, and blocking states.
+- [x] Create reusable theme-aware skeleton primitives matching the final content geometry.
+- [x] Replace Supabase data-fetch spinners with stable skeleton layouts without introducing layout jumps.
+- [x] Keep compact progress indicators where skeletons are inappropriate, such as button submissions or indeterminate actions.
+- [x] Respect reduced-motion settings and avoid excessive GPU/battery usage.
+- [x] Add polished empty and retryable error states alongside loading states while preserving safely available data.
+
+### Product analytics and experimentation
+
+- [x] Define a privacy-safe measurement plan from acquisition through activation, retention, collaboration, and purchase.
+- [x] Give every GoRouter route a stable analytics name that excludes user and group identifiers.
+- [x] Instrument onboarding entry, per-step views, interruption, completion method, dwell time, and experiment assignment.
+- [x] Instrument login attempts/outcomes, profile completion, group creation, expense creation, and ledger lifecycle actions.
+- [x] Instrument paywall views, sources, package selection, dismissal, checkout outcomes, and confirmed subscription activation.
+- [x] Set pseudonymous user identity and non-PII properties for language, subscription tier, and experiment variants.
+- [x] Add Firebase Remote Config assignments for onboarding and paywall experiments with safe control fallbacks.
+- [x] Document GA4 funnels, key events, custom dimensions, BigQuery export, Google Ads linking, and consent prerequisites.
+- [x] Add automated tests that reject financial payloads and PII in critical analytics events.
 
 ### Phase 3 validation gate
 
-- [ ] Test onboarding on small/large Android devices, dark/light modes, and representative long locales.
-- [ ] Verify no animation jank, semantic regressions, overflow, or unbounded shimmer loops.
-- [ ] Run formatting, tests, and `flutter analyze` with zero errors.
-- [ ] Build and smoke-test a release artifact.
-- [ ] Record validation results in this file.
-- [ ] Commit Phase 3 with a focused conventional commit.
-- [ ] Stop and wait for Phase 3 review.
+- [x] Test onboarding on small/large Android surfaces, dark/light modes, and representative long/RTL locales.
+- [x] Verify no semantic regressions, overflow, or unbounded shimmer loops; reduced motion renders static states.
+- [x] Run formatting, tests, and `flutter analyze` with zero errors.
+- [ ] Build and smoke-test a release artifact (manual owner validation by explicit preference).
+- [x] Record validation results in this file.
+- [x] Commit Phase 3 with a focused conventional commit.
+- [x] Stop and wait for Phase 3 review.
 
 ---
 
@@ -321,8 +333,8 @@
 
 ### Phase 2
 
-- Status: Complete and device-validated. Every gate item passes except the native-speaker copy review, which is a pre-launch task rather than a code task and is tracked as a residual risk below. Ready to commit and hand to Phase 3.
-- Commit: — (pending the local gate)
+- Status: Complete and device-validated. Every gate item passes except the native-speaker copy review, which is a pre-launch task rather than a code task and is tracked as a residual risk below.
+- Commit: `e74f8cc feat(i18n): ship 12-locale global localization with RTL and locale-aware formatting`
 - Scope decision: the owner chose **12 fully translated launch locales** — EN, TR, ES, PT, DE, FR, IT, NL, RU, AR, HI, ID — instead of translating all 30+ catalogued locales at once. This covers the largest Play Store markets and ships one RTL locale (AR) so right-to-left layout is genuinely exercised. The remaining 23 locales stay catalogued in `AppLanguage` and resolve through the English fallback; each becomes shippable by adding one dictionary file and flipping `translationReady`.
 - Architecture: Flutter's own `flutter_localizations` + `intl` (already in `pubspec.yaml`) with a typed Dart catalog — no new dependency, no build-time codegen, and the dictionaries are unit-testable without a widget tree. `lib/core/l10n/strings_<code>.dart` holds one `const Map<String, String>` per locale; `AppStrings` (lib/core/app_strings.dart) composes them and resolves per key, so a missing translation renders English rather than a blank or a raw key.
 - Key conventions: `<feature>_<element>` snake_case, English is the source of truth for which keys exist (437 keys), interpolation uses `{name}` placeholders resolved by `AppStrings.format` / `trp(ref, key, values)`. Legacy `%s` placeholders were preserved where the call site already used `replaceFirst`.
@@ -347,14 +359,21 @@
 - Paywall currency audit (owner question): every amount on the paywall comes from RevenueCat's `StoreProduct.priceString` / `pricePerMonthString`, and the app's own expense-currency selector never reaches subscription UI. The only raw numeric price use is an internal comparison for the Best Value badge and is never rendered. Google Play returns prices in the currency of the buyer's Play billing country, so a Turkish account correctly sees TRY regardless of app language; verifying the other 176 countries needs a licence-tester account in the target country, not a language change.
 - Residual risks: (1) the 10 newly added locales are machine-assisted translations and still need native-speaker review before launch, especially paywall, legal and destructive-action copy — the one open Phase 2 item; (2) no ICU plural forms, so count-bearing strings read flat in RU/AR/PL; (3) Play Store listing translations have not been added for the new locales, so the store page stays in its existing languages while the app itself is localized.
 - Release: shipped as `0.6.0-alpha` (versionCode 6).
-- Review decision: —
+- Review decision: Accepted by the owner; Phase 3 explicitly approved.
 
 ### Phase 3
 
-- Status: Not started
-- Commit: —
-- Validation: —
-- Review decision: —
+- Status: Implementation complete; automated quality gates passed. Awaiting the owner's manual release build/device smoke test and Phase 3 review.
+- Commit: `feat(ux): complete onboarding polish and product experiments`
+- UX delivery: four concise localized onboarding steps use four original bundled Lottie compositions with static error/reduced-motion fallbacks. A Remote Config `focused` variant removes the FX step for a stable three-step experiment without allowing assignments to change mid-flow.
+- Loading delivery: `SplixaSkeletonView` provides compact, list, cards, dashboard, profile, chat, and paywall geometries. All Supabase data-fetch spinners were replaced; the 16 remaining `CircularProgressIndicator` instances are deliberate inline/blocking actions such as sign-in, purchase, upload, mutation, and account deletion.
+- Accessibility/device evidence: widget tests traverse all four German steps on a 320x568 surface and verify Arabic RTL, dark mode, and reduced motion on 430x932. The responsive header collapses its wordmark/skip label on constrained layouts, and primary buttons safely accommodate long or scaled labels.
+- Analytics delivery: Firebase Analytics covers stable `screen_view`, onboarding progression/interruption/completion, login outcomes, profile setup, group/expense activation, ledger lifecycle, paywall source/package/dismissal, purchase outcomes, and confirmed subscriptions. Supabase IDs are pseudonymous; no email, username, group name, description, receipt content, balance, debt, or expense amount is sent.
+- Experiment delivery: Firebase Remote Config keys are `onboarding_flow_variant` (`control` / `focused`) and `paywall_layout_variant` (`control` / `plans_first`). Missing, offline, or unknown values fail closed to `control`; active values are also attached as Analytics user properties.
+- Operations: `PRODUCT_ANALYTICS_PLAYBOOK.md` documents the event dictionary, GA4 funnel explorations, key events/custom dimensions, BigQuery export, Google Ads attribution, DebugView, and consent prerequisites. Console configuration remains an owner-side action before paid acquisition.
+- Automated validation: `flutter test` passed 56/56 tests; `flutter analyze` reported `No issues found`; all four Lottie JSON files parse as animated compositions; `git diff --check` passed.
+- Release: source version advanced to `0.7.0-alpha+7`. Per owner preference, APK/AAB generation is intentionally not run by the agent; the owner will build and smoke-test the release artifact.
+- Review decision: Awaiting owner review. Phase 4 must not begin without explicit approval.
 
 ### Phase 4
 

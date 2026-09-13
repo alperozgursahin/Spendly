@@ -22,6 +22,7 @@ const Map<String, String> frStrings = {
   'common_you': 'Toi',
   'common_user': 'Utilisateur',
   'common_loading': 'Chargement...',
+  'common_retry': 'Réessayer',
   'common_error_generic': 'Une erreur est survenue. Réessaie.',
   'common_date': 'Date',
   'common_category': 'Catégorie',
@@ -473,27 +474,27 @@ const Map<String, String> frStrings = {
   'onboarding_persistence_error':
       'Nous n’avons pas pu enregistrer ton choix. Réessaie.',
   'onboarding_p1_eyebrow': 'PERSO + PARTAGÉ',
-  'onboarding_p1_title': 'Un seul endroit serein pour chaque dépense',
+  'onboarding_p1_title': 'Suis tes dépenses. Partagez les vôtres.',
   'onboarding_p1_description':
-      'Suis ton propre budget et les frais partagés du groupe sans changer d’application ni perdre la vue d’ensemble.',
+      'Ton budget et toutes les dépenses partagées, au même endroit.',
   'onboarding_p1_proof_1': 'Budget personnel',
   'onboarding_p1_proof_2': 'Dépenses de groupe',
   'onboarding_p2_eyebrow': 'PLUS DE CALCULS GÊNANTS',
-  'onboarding_p2_title': 'Partage le moment, pas l’amitié',
+  'onboarding_p2_title': 'Partagez équitablement. Réglez clairement.',
   'onboarding_p2_description':
-      'Choisis des parts égales, en pourcentage ou des montants exacts. Chacun peut approuver, payer et régler avec un historique clair.',
+      'À parts égales, en pourcentage ou au centime : chacun sait quoi faire.',
   'onboarding_p2_proof_1': 'Partages flexibles',
   'onboarding_p2_proof_2': 'Approbations claires',
   'onboarding_p3_eyebrow': 'DES COMPTES QUI TOMBENT JUSTE',
-  'onboarding_p3_title': 'Chaque devise garde son histoire',
+  'onboarding_p3_title': 'Voyage librement. Garde chaque taux.',
   'onboarding_p3_description':
-      'Splixa conserve le montant d’origine et le taux de change figé, pour que le solde d’hier ne change jamais à ton insu.',
+      'Montants d’origine et taux figés préservent le solde d’hier.',
   'onboarding_p3_proof_1': 'Taux figés',
   'onboarding_p3_proof_2': 'Historique fiable',
   'onboarding_p4_eyebrow': 'DÉBUT GRATUIT',
-  'onboarding_p4_title': 'L’essentiel gratuitement. Gagne du temps avec Pro.',
+  'onboarding_p4_title': 'Commence gratuitement. Passe à Pro si utile.',
   'onboarding_p4_description':
-      'Prends d’abord l’habitude. Quand tu voudras le scan de reçus, les taux personnalisés, des analyses plus poussées et des rapports avancés, découvre ce que Pro propose aujourd’hui et ce qui arrive ensuite.',
+      'Active la saisie rapide, les analyses poussées et les rapports avancés au besoin.',
   'onboarding_p4_proof_1': 'Aucun essai imposé',
   'onboarding_p4_proof_2': 'Résiliable à tout moment',
 

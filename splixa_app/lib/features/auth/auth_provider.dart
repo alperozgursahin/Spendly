@@ -159,6 +159,11 @@ class AuthController {
   /// short-lived tokens for a normal Supabase session. Tokens are never
   /// persisted or logged by the app.
   Future<GoogleLoginResult> signInWithGoogle() async {
+    unawaited(
+      _ref
+          .read(analyticsServiceProvider)
+          .loginAttempt(method: AnalyticsLoginMethod.google),
+    );
     _ref.read(authFlowStageProvider.notifier).state =
         AuthFlowStage.nativeSignIn;
 
@@ -197,7 +202,8 @@ class AuthController {
         requiresOnboarding: requiresOnboarding,
         requiresProfileSetup: requiresGoogleProfileSetup(user),
       );
-    } catch (_) {
+    } catch (error) {
+      _trackLoginFailure(AnalyticsLoginMethod.google, error);
       if (_client.auth.currentSession == null) {
         try {
           await _googleAuth.signOut();
@@ -212,6 +218,11 @@ class AuthController {
     required String identifier,
     required String password,
   }) async {
+    unawaited(
+      _ref
+          .read(analyticsServiceProvider)
+          .loginAttempt(method: AnalyticsLoginMethod.password),
+    );
     _ref.read(authFlowStageProvider.notifier).state =
         AuthFlowStage.loginVerification;
 
@@ -251,6 +262,7 @@ class AuthController {
 
       return LoginStartResult(email: email, requiresOtp: true);
     } on FunctionException catch (error) {
+      _trackLoginFailure(AnalyticsLoginMethod.password, error);
       _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
       if (error.status == 401) {
         throw const AuthException('Invalid login credentials');
@@ -261,7 +273,8 @@ class AuthController {
         );
       }
       throw const AuthException('Secure login service is unavailable.');
-    } catch (_) {
+    } catch (error) {
+      _trackLoginFailure(AnalyticsLoginMethod.password, error);
       _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
       rethrow;
     }
@@ -286,7 +299,8 @@ class AuthController {
       }
       _ref.read(authFlowStageProvider.notifier).state = AuthFlowStage.none;
       _schedulePostLogin(AnalyticsLoginMethod.password);
-    } catch (_) {
+    } catch (error) {
+      _trackLoginFailure(AnalyticsLoginMethod.password, error);
       rethrow;
     }
   }
@@ -304,6 +318,11 @@ class AuthController {
       email: email.trim().toLowerCase(),
       password: password,
       data: {'username': normalizedUsername},
+    );
+    unawaited(
+      _ref
+          .read(analyticsServiceProvider)
+          .signUp(method: AnalyticsLoginMethod.password),
     );
     if (response.session != null) {
       _scheduleRevenueCatIdentitySync();
@@ -346,6 +365,11 @@ class AuthController {
           .timeout(_profileWriteTimeout);
 
       _ref.invalidate(currentUserProfileProvider);
+      unawaited(
+        _ref
+            .read(analyticsServiceProvider)
+            .profileSetupComplete(source: 'google'),
+      );
     } on UsernameSetupException {
       rethrow;
     } on TimeoutException {
@@ -362,7 +386,27 @@ class AuthController {
 
   void _schedulePostLogin(AnalyticsLoginMethod method) {
     _scheduleRevenueCatIdentitySync();
-    unawaited(_ref.read(analyticsServiceProvider).login(method: method));
+    final analytics = _ref.read(analyticsServiceProvider);
+    unawaited(analytics.identifyUser(_client.auth.currentUser?.id));
+    unawaited(analytics.login(method: method));
+  }
+
+  void _trackLoginFailure(AnalyticsLoginMethod method, Object error) {
+    final reason = switch (error) {
+      NativeGoogleAuthException(:final failure) => failure.name,
+      TimeoutException() => 'timed_out',
+      FunctionException(:final status) when status == 401 =>
+        'invalid_credentials',
+      FunctionException(:final status) when status == 429 => 'rate_limited',
+      FunctionException() => 'service_unavailable',
+      AuthException() => 'authentication_failed',
+      _ => 'unknown',
+    };
+    unawaited(
+      _ref
+          .read(analyticsServiceProvider)
+          .loginFailed(method: method, reasonCode: reason),
+    );
   }
 
   void _scheduleRevenueCatIdentitySync() {
@@ -570,5 +614,6 @@ class AuthController {
     _ref.invalidate(premiumProvider);
     _ref.invalidate(offeringsProvider);
     _ref.read(premiumProvider.notifier).reset();
+    unawaited(_ref.read(analyticsServiceProvider).identifyUser(null));
   }
 }
