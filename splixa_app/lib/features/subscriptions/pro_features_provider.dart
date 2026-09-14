@@ -1,24 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../transactions/transaction_provider.dart';
+
+/// A user's own spending category. Name only by design: people were typing an
+/// emoji into the name field anyway, so a separate emoji box and a colour
+/// picker were two extra decisions that bought nothing. The `emoji` and
+/// `color_value` columns still exist and still hold whatever older rows put
+/// there; they are simply no longer read or written.
 class CustomCategory {
-  const CustomCategory({
-    required this.id,
-    required this.name,
-    required this.emoji,
-    required this.colorValue,
-  });
+  const CustomCategory({required this.id, required this.name});
   final String id;
   final String name;
-  final String emoji;
-  final int colorValue;
 
-  factory CustomCategory.fromJson(Map<String, dynamic> json) => CustomCategory(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    emoji: json['emoji'] as String,
-    colorValue: (json['color_value'] as num).toInt(),
-  );
+  factory CustomCategory.fromJson(Map<String, dynamic> json) =>
+      CustomCategory(id: json['id'] as String, name: json['name'] as String);
 }
 
 class RecurringExpense {
@@ -77,7 +73,7 @@ final customCategoriesProvider = FutureProvider<List<CustomCategory>>((
 ) async {
   final rows = await Supabase.instance.client
       .from('custom_categories')
-      .select('id, name, emoji, color_value')
+      .select('id, name')
       .order('name');
   return rows
       .map((row) => CustomCategory.fromJson(Map<String, dynamic>.from(row)))
@@ -105,18 +101,12 @@ class ProFeaturesService {
   final SupabaseClient _client;
   final Ref _ref;
 
-  Future<void> createCustomCategory({
-    required String name,
-    required String emoji,
-    required int colorValue,
-  }) async {
+  Future<void> createCustomCategory({required String name}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw StateError('Not authenticated');
     await _client.from('custom_categories').insert({
       'user_id': userId,
       'name': name.trim(),
-      'emoji': emoji.trim(),
-      'color_value': colorValue,
     });
     _ref.invalidate(customCategoriesProvider);
   }
@@ -129,27 +119,31 @@ class ProFeaturesService {
   Future<void> updateCustomCategory({
     required String id,
     required String name,
-    required String emoji,
-    required int colorValue,
   }) async {
     await _client
         .from('custom_categories')
         .update({
           'name': name.trim(),
-          'emoji': emoji.trim(),
-          'color_value': colorValue,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', id);
     _ref.invalidate(customCategoriesProvider);
   }
 
+  /// Creates the template and, when [nextRunAt] has already passed, its first
+  /// expense in the same database transaction.
+  ///
+  /// This used to be a plain INSERT, which meant the first occurrence only
+  /// appeared when the hourly job next ran -- so adding a recurring expense
+  /// changed nothing the user could see, sometimes for an hour, sometimes
+  /// until the following morning. The balance is derived from `transactions`,
+  /// so no row meant no expense. `create_recurring_expense_v1` also recomputes
+  /// the base amount server-side, which is why this no longer sends one.
   Future<void> createRecurringExpense({
     required String title,
     required String category,
     required double originalAmount,
     required String currencyCode,
-    required double baseAmount,
     required double exchangeRate,
     required String rateSource,
     required DateTime rateLockedAt,
@@ -157,25 +151,28 @@ class ProFeaturesService {
     required String timezone,
     required DateTime nextRunAt,
   }) async {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) throw StateError('Not authenticated');
-    await _client.from('recurring_expense_templates').insert({
-      'user_id': userId,
-      'title': title.trim(),
-      'category': category.trim(),
-      'original_amount': originalAmount,
-      'currency_code': currencyCode,
-      'base_amount': baseAmount,
-      'base_currency_code': 'TRY',
-      'exchange_rate': exchangeRate,
-      'rate_source': rateSource,
-      'rate_locked_at': rateLockedAt.toUtc().toIso8601String(),
-      'frequency': frequency,
-      'interval_count': 1,
-      'timezone': timezone,
-      'next_run_at': nextRunAt.toUtc().toIso8601String(),
-    });
+    if (_client.auth.currentUser?.id == null) {
+      throw StateError('Not authenticated');
+    }
+    await _client.rpc(
+      'create_recurring_expense_v1',
+      params: {
+        'p_title': title.trim(),
+        'p_category': category.trim(),
+        'p_original_amount': originalAmount,
+        'p_currency_code': currencyCode,
+        'p_exchange_rate': exchangeRate,
+        'p_rate_source': rateSource,
+        'p_rate_locked_at': rateLockedAt.toUtc().toIso8601String(),
+        'p_frequency': frequency,
+        'p_timezone': timezone,
+        'p_next_run_at': nextRunAt.toUtc().toIso8601String(),
+      },
+    );
     _ref.invalidate(recurringExpensesProvider);
+    // The balance and the transaction list both derive from this provider, so
+    // an immediate first charge is invisible without it.
+    _ref.invalidate(transactionsProvider);
   }
 
   Future<void> setRecurringActive(String id, bool active) async {

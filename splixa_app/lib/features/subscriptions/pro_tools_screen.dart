@@ -190,11 +190,7 @@ class _CustomCategoriesCard extends ConsumerWidget {
                       children: items
                           .map(
                             (item) => InputChip(
-                              avatar: Text(item.emoji),
                               label: Text(item.name),
-                              backgroundColor: Color(
-                                item.colorValue,
-                              ).withValues(alpha: .14),
                               onPressed: () =>
                                   _editCategory(context, ref, item),
                               onDeleted: () => ref
@@ -230,128 +226,68 @@ class _CustomCategoriesCard extends ConsumerWidget {
     await _showCategoryEditor(context, ref, category: category);
   }
 
+  /// Name-only editor. The colour palette and the separate emoji box are gone:
+  /// people were typing an emoji into the name anyway, and two extra decisions
+  /// per category bought nothing the list did not already convey.
   Future<bool> _showCategoryEditor(
     BuildContext context,
     WidgetRef ref, {
     CustomCategory? category,
   }) async {
-    const palette = <int>[
-      0xFF0E7490,
-      0xFF2563EB,
-      0xFF7C3AED,
-      0xFFDB2777,
-      0xFFDC2626,
-      0xFFEA580C,
-      0xFF16A34A,
-      0xFF475569,
-    ];
     final name = TextEditingController(text: category?.name);
-    final emoji = TextEditingController(text: category?.emoji ?? '✨');
-    var colorValue = category?.colorValue ?? palette.first;
     final saved = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: Text(tr(ref, 'pro_category_add')),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: name,
-                  maxLength: 40,
-                  decoration: InputDecoration(
-                    labelText: tr(ref, 'pro_category_name'),
-                  ),
-                ),
-                TextField(
-                  controller: emoji,
-                  maxLength: 8,
-                  decoration: InputDecoration(
-                    labelText: tr(ref, 'pro_category_emoji'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: palette
-                      .map(
-                        (value) => InkWell(
-                          onTap: () => setState(() => colorValue = value),
-                          borderRadius: BorderRadius.circular(20),
-                          child: Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              color: Color(value),
-                              shape: BoxShape.circle,
-                              border: value == colorValue
-                                  ? Border.all(color: Colors.white, width: 3)
-                                  : null,
-                              boxShadow: value == colorValue
-                                  ? const [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 5,
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ],
-            ),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(tr(ref, 'pro_category_add')),
+        content: TextField(
+          controller: name,
+          maxLength: 40,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(
+            labelText: tr(ref, 'pro_category_name'),
+            helperText: tr(ref, 'pro_category_name_helper'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text(tr(ref, 'common_cancel')),
-            ),
-            FilledButton(
-              onPressed: () async {
-                if (name.text.trim().isEmpty || emoji.text.trim().isEmpty) {
-                  return;
-                }
-                try {
-                  final service = ref.read(proFeaturesServiceProvider);
-                  if (category == null) {
-                    await service.createCustomCategory(
-                      name: name.text,
-                      emoji: emoji.text,
-                      colorValue: colorValue,
-                    );
-                  } else {
-                    await service.updateCustomCategory(
-                      id: category.id,
-                      name: name.text,
-                      emoji: emoji.text,
-                      colorValue: colorValue,
-                    );
-                  }
-                  if (dialogContext.mounted) {
-                    Navigator.pop(dialogContext, true);
-                  }
-                } catch (error) {
-                  if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      SnackBar(content: Text(friendlyErrorMessage(error))),
-                    );
-                  }
-                }
-              },
-              child: Text(tr(ref, 'common_save')),
-            ),
-          ],
+          onSubmitted: (_) => _saveCategory(dialogContext, ref, category, name),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(tr(ref, 'common_cancel')),
+          ),
+          FilledButton(
+            onPressed: () => _saveCategory(dialogContext, ref, category, name),
+            child: Text(tr(ref, 'common_save')),
+          ),
+        ],
       ),
     );
     name.dispose();
-    emoji.dispose();
     return saved == true;
+  }
+
+  Future<void> _saveCategory(
+    BuildContext dialogContext,
+    WidgetRef ref,
+    CustomCategory? category,
+    TextEditingController name,
+  ) async {
+    if (name.text.trim().isEmpty) return;
+    try {
+      final service = ref.read(proFeaturesServiceProvider);
+      if (category == null) {
+        await service.createCustomCategory(name: name.text);
+      } else {
+        await service.updateCustomCategory(id: category.id, name: name.text);
+      }
+      if (dialogContext.mounted) Navigator.pop(dialogContext, true);
+    } catch (error) {
+      if (dialogContext.mounted) {
+        ScaffoldMessenger.of(
+          dialogContext,
+        ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(error))));
+      }
+    }
   }
 }
 
@@ -423,6 +359,12 @@ class _RecurringExpensesCard extends ConsumerWidget {
     final amount = TextEditingController();
     var frequency = 'monthly';
     var currency = ref.read(currencyProvider);
+    // Defaults to today so the common case -- "start this now" -- is one tap,
+    // while still letting a bill that starts next month say so. The previous
+    // version silently hard-coded tomorrow at 09:00 and told the user nothing,
+    // which is why nobody could work out when anything would happen.
+    var startDate = DateUtils.dateOnly(DateTime.now());
+    var category = kPredefinedExpenseCategories.first;
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -454,6 +396,25 @@ class _RecurringExpensesCard extends ConsumerWidget {
                   onChanged: (value) => setState(() => currency = value),
                 ),
                 const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: category,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: tr(ref, 'groups_expense_category_label'),
+                  ),
+                  items: kPredefinedExpenseCategories
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c,
+                          child: Text(categoryLabel(ref, c)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => category = value);
+                  },
+                ),
+                const SizedBox(height: 12),
                 SegmentedButton<String>(
                   segments: [
                     ButtonSegment(
@@ -468,6 +429,50 @@ class _RecurringExpensesCard extends ConsumerWidget {
                   selected: {frequency},
                   onSelectionChanged: (value) =>
                       setState(() => frequency = value.first),
+                ),
+                const SizedBox(height: 12),
+                InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: tr(ref, 'pro_recurring_start_date'),
+                    border: const OutlineInputBorder(),
+                  ),
+                  child: InkWell(
+                    onTap: () async {
+                      final today = DateUtils.dateOnly(DateTime.now());
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: startDate,
+                        firstDate: today,
+                        lastDate: DateTime(
+                          today.year + 2,
+                          today.month,
+                          today.day,
+                        ),
+                      );
+                      if (picked != null) {
+                        setState(() => startDate = DateUtils.dateOnly(picked));
+                      }
+                    },
+                    child: Row(
+                      children: [
+                        Expanded(child: Text(AppFormat.shortDate(startDate))),
+                        const Icon(Icons.event_rounded, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // States the rule in words. A recurring expense the user cannot
+                // predict is one they will not trust.
+                Text(
+                  trp(
+                    ref,
+                    frequency == 'weekly'
+                        ? 'pro_recurring_explainer_weekly'
+                        : 'pro_recurring_explainer_monthly',
+                    {'date': AppFormat.shortDate(startDate)},
+                  ),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
             ),
@@ -495,17 +500,29 @@ class _RecurringExpensesCard extends ConsumerWidget {
                   final rate = isTry ? 1.0 : 1 / exchanger.rateFor(currency);
                   final timezone = await FlutterTimezone.getLocalTimezone();
                   final now = DateTime.now();
-                  final next = DateTime(now.year, now.month, now.day + 1, 9);
+                  // Starting today means starting now: the server charges the
+                  // first occurrence inline when this moment has passed, so the
+                  // expense appears in the balance as soon as the sheet closes.
+                  // Anchoring today to 09:00 instead would either skip the
+                  // charge (before 09:00) or date it to hours ago (after), and
+                  // either way the user would see nothing happen. Future start
+                  // dates keep the 09:00 anchor, which is when later runs fire.
+                  final isToday = DateUtils.isSameDay(startDate, now);
+                  final next = isToday
+                      ? now
+                      : DateTime(
+                          startDate.year,
+                          startDate.month,
+                          startDate.day,
+                          9,
+                        );
                   await ref
                       .read(proFeaturesServiceProvider)
                       .createRecurringExpense(
                         title: title.text,
-                        category: 'Diğer',
+                        category: category,
                         originalAmount: parsed,
                         currencyCode: option.code,
-                        baseAmount: double.parse(
-                          (parsed * rate).toStringAsFixed(2),
-                        ),
                         exchangeRate: rate,
                         rateSource: isTry
                             ? 'identity'

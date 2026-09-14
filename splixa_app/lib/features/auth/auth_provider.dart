@@ -344,15 +344,14 @@ class AuthController {
     }
 
     try {
-      final existing = await _client
-          .from('profiles')
-          .select('id')
-          .ilike('username', normalized)
-          .neq('id', user.id)
-          .limit(1)
-          .maybeSingle()
+      // The profiles policy no longer exposes other people's rows, so this
+      // availability check has to be asked of the server. `username_taken_v1`
+      // is case-insensitive and excludes the caller, matching what this
+      // ilike/neq pair did.
+      final taken = await _client
+          .rpc('username_taken_v1', params: {'p_username': normalized})
           .timeout(_profileWriteTimeout);
-      if (existing != null) {
+      if (taken == true) {
         throw const UsernameSetupException(UsernameSetupFailure.taken);
       }
 

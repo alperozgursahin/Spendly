@@ -247,6 +247,8 @@ class _Header extends ConsumerWidget {
     return Row(
       children: [
         const SplixaLogo(compact: true),
+        const SizedBox(width: 8),
+        const _MembershipBadge(),
         const Spacer(),
         IconButton(
           tooltip: tr(ref, 'dashboard_statistics'),
@@ -378,6 +380,80 @@ class _GroupTile extends ConsumerWidget {
       onTap: groupId == null
           ? null
           : () => context.push('/groups/$groupId', extra: group.name),
+    );
+  }
+}
+
+/// PRO / STANDARD pill sitting beside the wordmark.
+///
+/// It doubles as a route: PRO opens the Pro tools it stands for, STANDARD opens
+/// the paywall. A badge that only decorates would be wasted space in the one
+/// row every session starts on.
+class _MembershipBadge extends ConsumerWidget {
+  const _MembershipBadge();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPro = ref.watch(premiumProvider);
+    final scheme = Theme.of(context).colorScheme;
+
+    // Pro is a warm gold so it reads as a status, not as another primary-colored
+    // control; standard borrows the neutral outline so it recedes.
+    final background = isPro ? const Color(0xFFFFC94A) : Colors.transparent;
+    final foreground = isPro
+        ? const Color(0xFF4A3400)
+        : scheme.onSurfaceVariant;
+
+    return Semantics(
+      button: true,
+      child: Material(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: () => isPro
+              ? context.push('/pro-tools')
+              : context.push(
+                  '/paywall?source=${PaywallSource.profile.analyticsValue}',
+                ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              border: isPro
+                  ? null
+                  : Border.all(color: scheme.outlineVariant, width: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isPro) ...[
+                  const Icon(
+                    Icons.workspace_premium_rounded,
+                    size: 12,
+                    color: Color(0xFF4A3400),
+                  ),
+                  const SizedBox(width: 3),
+                ],
+                Text(
+                  tr(
+                    ref,
+                    isPro
+                        ? 'profile_membership_pro'
+                        : 'profile_membership_standard',
+                  ),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .6,
+                    color: foreground,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

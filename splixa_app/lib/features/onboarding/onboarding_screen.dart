@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/analytics_service.dart';
@@ -9,6 +8,7 @@ import '../../core/app_strings.dart';
 import '../../core/experiment_service.dart';
 import '../../core/language_selector.dart';
 import '../../core/splixa_design.dart';
+import 'onboarding_art.dart';
 
 class OnboardingController extends ChangeNotifier {
   factory OnboardingController({required bool completed}) {
@@ -116,127 +116,134 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   Widget build(BuildContext context) {
     final pages = _pages;
     final isLastPage = _currentPage == pages.length - 1;
+    final page = pages[_currentPage];
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 16, 8),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final compactHeader =
-                      constraints.maxWidth < 360 ||
-                      MediaQuery.textScalerOf(context).scale(1) > 1.3;
-                  return Row(
-                    children: [
-                      if (_currentPage == 0)
-                        SplixaLogo(compact: true, showWordmark: !compactHeader)
-                      else
-                        IconButton.filledTonal(
-                          tooltip: MaterialLocalizations.of(
-                            context,
-                          ).backButtonTooltip,
-                          onPressed: _isCompleting ? null : _previousPage,
-                          icon: const Icon(Icons.arrow_back_rounded),
-                        ),
-                      const Spacer(),
-                      // Language is offered once, on the first slide: it is
-                      // the one decision that changes every screen after it.
-                      if (_currentPage == 0) ...[
-                        const AppLanguageButton(),
-                        const SizedBox(width: 6),
-                      ],
-                      if (!isLastPage)
-                        if (compactHeader)
-                          IconButton(
-                            tooltip: tr(ref, 'onboarding_skip'),
-                            onPressed: _isCompleting
-                                ? null
-                                : () => _finish('skip'),
-                            icon: const Icon(Icons.skip_next_rounded),
-                          )
-                        else
-                          TextButton(
-                            onPressed: _isCompleting
-                                ? null
-                                : () => _finish('skip'),
-                            child: Text(tr(ref, 'onboarding_skip')),
-                          ),
-                    ],
+      // Deliberately no top SafeArea: the accent panel runs under the status
+      // bar, which is what gives the screen its full-bleed feel. The panel
+      // applies the inset to its own contents instead.
+      body: Column(
+        children: [
+          Expanded(
+            child: PageView.builder(
+              controller: _pageController,
+              physics: const BouncingScrollPhysics(),
+              itemCount: pages.length,
+              onPageChanged: (index) {
+                setState(() => _currentPage = index);
+                _trackStep(index);
+              },
+              itemBuilder: (context, index) => AnimatedBuilder(
+                // Rebuilding per scroll frame is what makes the parallax track
+                // the finger instead of snapping at the end of a swipe.
+                animation: _pageController,
+                builder: (context, child) {
+                  var offset = 0.0;
+                  if (_pageController.hasClients &&
+                      _pageController.position.haveDimensions) {
+                    offset = (_pageController.page ?? 0) - index;
+                  }
+                  return _OnboardingPage(
+                    key: ValueKey(pages[index].analyticsName),
+                    page: pages[index],
+                    step: index + 1,
+                    totalSteps: pages.length,
+                    pageOffset: offset,
+                    isActive: _currentPage == index,
+                    showLanguageButton: index == 0,
+                    onBack: index == 0 ? null : _previousPage,
                   );
                 },
               ),
             ),
-            Expanded(
-              child: PageView.builder(
-                controller: _pageController,
-                physics: const BouncingScrollPhysics(),
-                itemCount: pages.length,
-                onPageChanged: (page) {
-                  setState(() => _currentPage = page);
-                  _trackStep(page);
-                },
-                itemBuilder: (context, index) => _OnboardingPage(
-                  key: ValueKey(pages[index].analyticsName),
-                  page: pages[index],
-                  step: index + 1,
-                  totalSteps: pages.length,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      pages.length,
-                      (index) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 240),
-                        curve: Curves.easeOutCubic,
-                        width: index == _currentPage ? 28 : 8,
-                        height: 8,
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        decoration: BoxDecoration(
-                          color: index == _currentPage
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.outlineVariant
-                                    .withValues(alpha: .65),
-                          borderRadius: BorderRadius.circular(20),
+          ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 16),
+              child: isLastPage
+                  ? Column(
+                      children: [
+                        SplixaPrimaryButton(
+                          label: tr(ref, 'onboarding_start_free'),
+                          icon: Icons.rocket_launch_rounded,
+                          loading: _isCompleting,
+                          onPressed: () => _finish('completed'),
                         ),
-                      ),
+                        const SizedBox(height: 10),
+                        Text(
+                          tr(ref, 'onboarding_no_card'),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: scheme.onSurfaceVariant),
+                        ),
+                      ],
+                    )
+                  // Skip left, position centre, forward right: the shape people
+                  // already know from every intro flow, so the only thing they
+                  // have to actually read is the slide itself.
+                  // Two equal Expandeds rather than Spacers: they keep the dots
+                  // optically centred while letting a long label ("Überspringen"
+                  // at 320 px) shrink instead of pushing the row 40 px past the
+                  // screen, which is exactly what the layout test caught.
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: TextButton(
+                              onPressed: _isCompleting
+                                  ? null
+                                  : () => _finish('skip'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: scheme.onSurfaceVariant,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                              ),
+                              child: Text(
+                                tr(ref, 'onboarding_skip'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(
+                            pages.length,
+                            (index) => AnimatedContainer(
+                              duration: const Duration(milliseconds: 260),
+                              curve: Curves.easeOutCubic,
+                              width: index == _currentPage ? 20 : 6,
+                              height: 6,
+                              margin: const EdgeInsets.symmetric(horizontal: 2),
+                              decoration: BoxDecoration(
+                                color: index == _currentPage
+                                    ? page.accent
+                                    : scheme.outlineVariant,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Align(
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: _NextButton(
+                              accent: page.accent,
+                              label: tr(ref, 'onboarding_continue'),
+                              onPressed: _isCompleting ? null : _nextPage,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  SplixaPrimaryButton(
-                    label: isLastPage
-                        ? tr(ref, 'onboarding_start_free')
-                        : tr(ref, 'onboarding_continue'),
-                    icon: isLastPage
-                        ? Icons.rocket_launch_rounded
-                        : Icons.arrow_forward_rounded,
-                    loading: _isCompleting,
-                    onPressed: isLastPage
-                        ? () => _finish('completed')
-                        : _nextPage,
-                  ),
-                  if (isLastPage) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      tr(ref, 'onboarding_no_card'),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -313,101 +320,353 @@ class _OnboardingPage extends ConsumerWidget {
     required this.page,
     required this.step,
     required this.totalSteps,
+    this.pageOffset = 0,
+    this.isActive = true,
+    this.showLanguageButton = false,
+    this.onBack,
   });
 
   final _OnboardingPageData page;
   final int step;
   final int totalSteps;
 
+  /// Distance from the centre of the viewport in pages: 0 is centred, -1 is one
+  /// page to the left. Drives the parallax.
+  final double pageOffset;
+
+  /// Only the page the user is looking at runs its staged reveal, so a
+  /// neighbour half-visible mid-swipe is never caught part-way through.
+  final bool isActive;
+
+  final bool showLanguageButton;
+  final VoidCallback? onBack;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final media = MediaQuery.maybeOf(context);
     final reduceMotion =
         (media?.disableAnimations ?? false) ||
         (media?.accessibleNavigation ?? false);
+    final topInset = media?.padding.top ?? 0;
     final proofPoints = page.proofKeys
         .map((key) => tr(ref, key))
         .toList(growable: false);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
-      child: Column(
-        children: [
-          Semantics(
-            label: '${tr(ref, '${page.keyPrefix}_title')}. $step / $totalSteps',
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 440),
-              height: 250,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? SplixaColors.slate800
-                    : page.accent.withValues(alpha: .10),
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(
-                  color: page.accent.withValues(alpha: isDark ? .45 : .22),
+    // The art gets the top ~46% of the screen and the copy the rest. Splitting
+    // the screen into two solid blocks -- a coloured stage and a plain reading
+    // surface -- is what makes each slide feel composed rather than like a
+    // picture with text under it.
+    final panelHeight = ((media?.size.height ?? 720) * 0.46).clamp(
+      240.0,
+      420.0,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: panelHeight,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: isDark
+                          ? [
+                              page.accent.withValues(alpha: .34),
+                              SplixaColors.slate800,
+                            ]
+                          : [
+                              page.accent.withValues(alpha: .20),
+                              page.accent.withValues(alpha: .07),
+                            ],
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(36),
+                      bottomRight: Radius.circular(36),
+                    ),
+                  ),
                 ),
               ),
-              child: _OnboardingIllustration(
-                page: page,
-                reduceMotion: reduceMotion,
-              ),
-            ),
-          ),
-          const SizedBox(height: 30),
-          Text(
-            tr(ref, '${page.keyPrefix}_eyebrow'),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: page.accent,
-              fontWeight: FontWeight.w800,
-              letterSpacing: .7,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            tr(ref, '${page.keyPrefix}_title'),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w900,
-              letterSpacing: -.9,
-              height: 1.12,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            tr(ref, '${page.keyPrefix}_description'),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              height: 1.5,
-            ),
-          ),
-          if (proofPoints.isNotEmpty) ...[
-            const SizedBox(height: 22),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
-              children: proofPoints
-                  .map(
-                    (point) => Chip(
-                      avatar: Icon(
-                        Icons.check_circle_rounded,
-                        size: 17,
-                        color: page.accent,
-                      ),
-                      label: Text(point),
-                      side: BorderSide(
-                        color: page.accent.withValues(alpha: .22),
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(36),
+                    bottomRight: Radius.circular(36),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.only(top: topInset + 44, bottom: 20),
+                    child: _Reveal(
+                      active: isActive,
+                      reduceMotion: reduceMotion,
+                      delay: Duration.zero,
+                      child: Transform.translate(
+                        // The art drifts against the swipe at a third of the
+                        // finger's speed and shrinks as it leaves. Depth
+                        // without a second asset.
+                        offset: Offset(reduceMotion ? 0 : -pageOffset * 110, 0),
+                        child: Transform.scale(
+                          scale: reduceMotion
+                              ? 1
+                              : (1 - (pageOffset.abs() * .10)).clamp(.82, 1.0),
+                          child: Semantics(
+                            label:
+                                '${tr(ref, '${page.keyPrefix}_title')}. '
+                                '$step / $totalSteps',
+                            child: _OnboardingIllustration(
+                              page: page,
+                              reduceMotion: reduceMotion,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  )
-                  .toList(growable: false),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: topInset + 6,
+                left: 8,
+                right: 8,
+                child: Row(
+                  children: [
+                    if (onBack != null)
+                      IconButton(
+                        tooltip: MaterialLocalizations.of(
+                          context,
+                        ).backButtonTooltip,
+                        onPressed: onBack,
+                        icon: const Icon(Icons.arrow_back_rounded),
+                      )
+                    else
+                      const Padding(
+                        padding: EdgeInsets.only(left: 8),
+                        child: SplixaLogo(compact: true),
+                      ),
+                    const Spacer(),
+                    // Language is offered once, on the first slide: it is the
+                    // one decision that changes every screen after it.
+                    if (showLanguageButton) const AppLanguageButton(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(28, 26, 28, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _Reveal(
+                  active: isActive,
+                  reduceMotion: reduceMotion,
+                  delay: const Duration(milliseconds: 90),
+                  child: Text(
+                    tr(ref, '${page.keyPrefix}_eyebrow').toUpperCase(),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: page.accent,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _Reveal(
+                  active: isActive,
+                  reduceMotion: reduceMotion,
+                  delay: const Duration(milliseconds: 150),
+                  child: Text(
+                    tr(ref, '${page.keyPrefix}_title'),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -.9,
+                      height: 1.12,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _Reveal(
+                  active: isActive,
+                  reduceMotion: reduceMotion,
+                  delay: const Duration(milliseconds: 210),
+                  child: Text(
+                    tr(ref, '${page.keyPrefix}_description'),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+                if (proofPoints.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  _Reveal(
+                    active: isActive,
+                    reduceMotion: reduceMotion,
+                    delay: const Duration(milliseconds: 280),
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: proofPoints
+                          .map(
+                            (point) => Chip(
+                              visualDensity: VisualDensity.compact,
+                              avatar: Icon(
+                                Icons.check_circle_rounded,
+                                size: 16,
+                                color: page.accent,
+                              ),
+                              label: Text(point),
+                              backgroundColor: page.accent.withValues(
+                                alpha: isDark ? .16 : .08,
+                              ),
+                              side: BorderSide(
+                                color: page.accent.withValues(alpha: .24),
+                              ),
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ],
-        ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Circular forward button in the page accent, the way the reference flows do
+/// it. Sized to the 48dp minimum touch target even though the visible disc is
+/// smaller than the old full-width bar.
+class _NextButton extends StatelessWidget {
+  const _NextButton({
+    required this.accent,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final Color accent;
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: accent,
+        shape: const CircleBorder(),
+        elevation: 0,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: const SizedBox.square(
+            dimension: 52,
+            child: Icon(
+              Icons.arrow_forward_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+        ),
       ),
+    );
+  }
+}
+
+/// Fades and lifts its child into place once, shortly after the page becomes
+/// the active one. Staggering these by ~60ms is what separates a screen that
+/// "appears" from one that reads as composed -- and it is why the previous
+/// pass, which had motion only inside the illustration, felt unfinished.
+///
+/// Honours the platform's reduce-motion setting by rendering the end state
+/// immediately; vestibular triggers are not a style choice.
+class _Reveal extends StatefulWidget {
+  const _Reveal({
+    required this.child,
+    required this.active,
+    required this.reduceMotion,
+    required this.delay,
+  });
+
+  final Widget child;
+  final bool active;
+  final bool reduceMotion;
+  final Duration delay;
+
+  @override
+  State<_Reveal> createState() => _RevealState();
+}
+
+class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 460),
+  );
+  late final Animation<double> _curve = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _maybePlay();
+  }
+
+  @override
+  void didUpdateWidget(_Reveal old) {
+    super.didUpdateWidget(old);
+    if (widget.active != old.active) _maybePlay();
+  }
+
+  void _maybePlay() {
+    if (widget.reduceMotion) {
+      _controller.value = 1;
+      return;
+    }
+    if (!widget.active) {
+      _controller.value = 0;
+      return;
+    }
+    Future<void>.delayed(widget.delay, () {
+      if (mounted && widget.active) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.reduceMotion) return widget.child;
+    return AnimatedBuilder(
+      animation: _curve,
+      builder: (context, child) => Opacity(
+        opacity: _curve.value,
+        child: Transform.translate(
+          offset: Offset(0, 22 * (1 - _curve.value)),
+          child: child,
+        ),
+      ),
+      child: widget.child,
     );
   }
 }
@@ -422,118 +681,22 @@ class _OnboardingIllustration extends StatelessWidget {
   final bool reduceMotion;
 
   @override
-  Widget build(BuildContext context) {
-    final fallback = _StaticOnboardingIllustration(page: page);
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Lottie.asset(
-        page.animationAsset,
-        fit: BoxFit.contain,
-        animate: !reduceMotion,
-        repeat: !reduceMotion,
-        frameRate: FrameRate.composition,
-        renderCache: RenderCache.drawingCommands,
-        frameBuilder: (context, child, composition) {
-          if (composition == null) return fallback;
-          if (reduceMotion) return child;
-          return AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
-            child: KeyedSubtree(
-              key: ValueKey(page.animationAsset),
-              child: child,
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) => fallback,
-      ),
-    );
-  }
-}
-
-class _StaticOnboardingIllustration extends StatelessWidget {
-  const _StaticOnboardingIllustration({required this.page});
-
-  final _OnboardingPageData page;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        PositionedDirectional(
-          top: 22,
-          end: 22,
-          child: _OrbitIcon(
-            icon: page.supportingIcon,
-            color: page.accent,
-            size: 58,
-          ),
-        ),
-        PositionedDirectional(
-          bottom: 22,
-          start: 22,
-          child: _OrbitIcon(
-            icon: page.secondaryIcon,
-            color: page.accent,
-            size: 52,
-          ),
-        ),
-        Container(
-          width: 132,
-          height: 132,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: page.accent.withValues(alpha: .18),
-                blurRadius: 34,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          child: Icon(page.icon, size: 64, color: page.accent),
-        ),
-      ],
-    );
-  }
-}
-
-class _OrbitIcon extends StatelessWidget {
-  const _OrbitIcon({
-    required this.icon,
-    required this.color,
-    required this.size,
-  });
-
-  final IconData icon;
-  final Color color;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        shape: BoxShape.circle,
-        border: Border.all(color: color.withValues(alpha: .30)),
-      ),
-      child: Icon(icon, color: color, size: size * .46),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+    child: OnboardingArt(
+      scene: page.scene,
+      accent: page.accent,
+      reduceMotion: reduceMotion,
+    ),
+  );
 }
 
 class _OnboardingPageData {
   const _OnboardingPageData({
     required this.analyticsName,
     required this.keyPrefix,
-    required this.icon,
-    required this.supportingIcon,
-    required this.secondaryIcon,
     required this.accent,
-    required this.animationAsset,
+    required this.scene,
     this.proofKeys = const [],
   });
 
@@ -542,11 +705,11 @@ class _OnboardingPageData {
   /// Localization key prefix; `<prefix>_eyebrow`, `_title` and `_description`
   /// are resolved from `AppStrings` so every shipped locale renders this slide.
   final String keyPrefix;
-  final IconData icon;
-  final IconData supportingIcon;
-  final IconData secondaryIcon;
   final Color accent;
-  final String animationAsset;
+
+  /// Which hand-built vector scene this slide shows. Replaced the Lottie asset
+  /// path: those four files held placeholder geometry, not artwork.
+  final OnboardingScene scene;
   final List<String> proofKeys;
 }
 
@@ -555,41 +718,29 @@ const _onboardingPages = <_OnboardingPageData>[
   _OnboardingPageData(
     analyticsName: 'unified_money_home',
     keyPrefix: 'onboarding_p1',
-    icon: Icons.account_balance_wallet_rounded,
-    supportingIcon: Icons.person_rounded,
-    secondaryIcon: Icons.groups_rounded,
     accent: SplixaColors.cyan,
-    animationAsset: 'assets/lottie/personal_shared.json',
+    scene: OnboardingScene.personalAndShared,
     proofKeys: ['onboarding_p1_proof_1', 'onboarding_p1_proof_2'],
   ),
   _OnboardingPageData(
     analyticsName: 'clear_group_splits',
     keyPrefix: 'onboarding_p2',
-    icon: Icons.call_split_rounded,
-    supportingIcon: Icons.receipt_long_rounded,
-    secondaryIcon: Icons.done_all_rounded,
     accent: Color(0xFF7C3AED),
-    animationAsset: 'assets/lottie/clear_splits.json',
+    scene: OnboardingScene.clearSplits,
     proofKeys: ['onboarding_p2_proof_1', 'onboarding_p2_proof_2'],
   ),
   _OnboardingPageData(
     analyticsName: 'trusted_multi_currency',
     keyPrefix: 'onboarding_p3',
-    icon: Icons.currency_exchange_rounded,
-    supportingIcon: Icons.lock_clock_rounded,
-    secondaryIcon: Icons.history_rounded,
     accent: Color(0xFF0284C7),
-    animationAsset: 'assets/lottie/trusted_currency.json',
+    scene: OnboardingScene.trustedCurrency,
     proofKeys: ['onboarding_p3_proof_1', 'onboarding_p3_proof_2'],
   ),
   _OnboardingPageData(
     analyticsName: 'free_first_pro_value',
     keyPrefix: 'onboarding_p4',
-    icon: Icons.auto_awesome_rounded,
-    supportingIcon: Icons.document_scanner_rounded,
-    secondaryIcon: Icons.insights_rounded,
     accent: Color(0xFFD97706),
-    animationAsset: 'assets/lottie/pro_value.json',
+    scene: OnboardingScene.pro,
     proofKeys: ['onboarding_p4_proof_1', 'onboarding_p4_proof_2'],
   ),
 ];

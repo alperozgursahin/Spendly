@@ -12,6 +12,10 @@ analyzer:
     - build/**
     - android/**
     - ios/**
+    # Scratch folder the desktop app mirrors session outputs into. Copies of
+    # real lib/ files land here and get analysed twice, so every issue in them
+    # is reported against a path that is not part of the app.
+    - "Claude outputs/**"
     - web/**
     - windows/**
     - macos/**

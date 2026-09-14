@@ -99,6 +99,10 @@ const Map<String, String> deStrings = {
   'statistics_no_expenses_this_month':
       'Du hast in diesem Monat keine Ausgaben.',
   'statistics_heatmap_title': 'Aktivitäts-Heatmap',
+  'statistics_monthly_trend': 'Monatliche Ausgaben',
+  'statistics_total': 'Gesamt',
+  'statistics_daily_average': 'Tagesdurchschnitt',
+  'statistics_largest': 'Größte Ausgabe',
   'statistics_heatmap_activity_count': 'Aktivitäten',
   // --- Auth: login ---
   'login_title': 'Bei Splixa anmelden',
@@ -251,10 +255,15 @@ const Map<String, String> deStrings = {
   // --- Groups: add expense sheet ---
   'groups_scan_receipt': 'Beleg scannen',
   'groups_custom_exchange_rate': 'Eigener Wechselkurs',
+  'groups_custom_rate_base_currency':
+      'Die gewählte Währung ist bereits die Basiswährung.',
+  'groups_custom_rate_label': '1 {code} = ? TRY',
+  'groups_custom_rate_live': 'Aktueller Kurs: {rate}',
   'groups_pro_tool_coming_soon': 'Dieses Pro-Werkzeug kommt bald.',
   'dashboard_custom_rate_coming_soon':
       'Der Editor für eigene Wechselkurse kommt bald.',
   'groups_expense_desc_label': 'Wofür?',
+  'groups_expense_category_label': 'Kategorie',
   'groups_total_amount_label': 'Gesamtbetrag',
   'groups_split_equal': 'Gleich (=)',
   'groups_split_percentage': 'Prozent (%)',
@@ -271,6 +280,7 @@ const Map<String, String> deStrings = {
       'Höchstens 1 Person darf ohne Betrag bleiben, und die Summe muss dem Ausgabenbetrag entsprechen.',
   // --- Groups: invite friend modal ---
   'groups_invited_snackbar': 'Eingeladen!',
+  'groups_already_member': 'Bereits in der Gruppe',
   'groups_invite_modal_title': 'Freund in die Gruppe einladen',
   'groups_invite_search_hint': 'Deine Freunde durchsuchen',
   'groups_no_friends_to_invite': 'Du hast niemanden zum Einladen.',
@@ -410,6 +420,10 @@ const Map<String, String> deStrings = {
   'other_profile_title': 'Nutzerprofil',
   'other_profile_unknown': 'Unbekannt',
   'other_profile_no_shared_groups': 'Keine gemeinsamen Gruppen',
+  'other_profile_member_new': 'Diesen Monat beigetreten',
+  'other_profile_member_months': 'Seit {months} Monaten bei Splixa',
+  'other_profile_member_years': 'Seit {years} Jahren bei Splixa',
+  'other_profile_shared_groups_title': 'Gemeinsame Gruppen',
   'other_profile_shared_groups_count': 'Ihr habt %s gemeinsame Gruppen',
   'other_profile_send_message': 'Nachricht senden',
   // --- Subscriptions: paywall ---
@@ -528,6 +542,12 @@ const Map<String, String> deStrings = {
       'Belegscan und eigene Wechselkurse kommen als Nächstes.',
   'paywall_choose_plan': 'Wähle deinen Tarif',
   'paywall_best_value': 'BESTES ANGEBOT',
+  'paywall_save_percent': '{percent}% SPAREN',
+  'paywall_start_trial_cta': '{days} Tage kostenlos testen',
+  'paywall_start_trial_cta_generic': 'Kostenlos testen',
+  'paywall_trust_cancel': 'Jederzeit kündbar',
+  'paywall_trust_no_charge': 'Heute keine Abbuchung',
+  'paywall_trust_store': 'Sichere Zahlung über deinen App-Store',
   'paywall_continue_free': 'Jetzt nicht – kostenlos weiter',
   'paywall_restore': 'Käufe wiederherstellen',
   'paywall_restore_restored': 'Dein Pro-Zugang wurde wiederhergestellt.',
@@ -595,12 +615,16 @@ const Map<String, String> deStrings = {
   'pro_custom_categories': 'Eigene Kategorien',
   'pro_category_add': 'Kategorie hinzufügen',
   'pro_category_name': 'Kategoriename',
+  'pro_category_name_helper': 'Du kannst dem Namen ein Emoji voranstellen',
   'pro_category_emoji': 'Emoji',
   'pro_categories_empty':
       'Erstelle wiederverwendbare Kategorien mit Emoji und Farbe.',
   'pro_recurring_expenses': 'Wiederkehrende Ausgaben',
   'pro_recurring_add': 'Wiederkehrende Ausgabe hinzufügen',
   'pro_recurring_name': 'Name der Ausgabe',
+  'pro_recurring_start_date': 'Startdatum',
+  'pro_recurring_explainer_weekly': 'Zuerst am {date}, dann jede Woche.',
+  'pro_recurring_explainer_monthly': 'Zuerst am {date}, dann jeden Monat.',
   'pro_recurring_empty':
       'Automatisiere Miete, Abos und andere regelmäßige Kosten.',
   'pro_frequency_weekly': 'Wöchentlich',
@@ -628,9 +652,17 @@ const Map<String, String> deStrings = {
   'pro_trip_summary': 'Teilbare Reiseübersicht',
   'pro_trip_privacy_note':
       'Das Bild enthält nur Summen, keine privaten Salden.',
+  'trip_summary_settled_up': 'Alle sind quitt',
+  'trip_summary_who_owes': 'Wer schuldet wem',
+  'trip_summary_expenses_title': 'Ausgaben',
+  'trip_summary_people': '{count} Personen',
+  'trip_summary_expenses_count': '{count} Ausgaben',
+  'trip_summary_more': '+{count} weitere',
   'pro_trip_share': 'Übersicht teilen',
   'statistics_current_month': 'Aktueller Monat',
   'paywall_free_trial': '7 TAGE KOSTENLOS',
+  'paywall_free_trial_days': '{days} TAGE KOSTENLOS TESTEN',
+  'paywall_free_trial_generic': 'KOSTENLOS TESTEN',
   'paywall_plan_lifetime': 'Pro auf Lebenszeit',
   'paywall_period_once': 'einmalig',
   'paywall_lifetime_disclosure':

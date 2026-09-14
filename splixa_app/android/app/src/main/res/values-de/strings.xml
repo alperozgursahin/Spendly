@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_quick_add">+ Schnell erfassen</string>
+    <string name="widget_unlock_pro">Mit Pro freischalten</string>
+    <string name="widget_description">Splixa Schnellerfassung öffnen</string>
+</resources>

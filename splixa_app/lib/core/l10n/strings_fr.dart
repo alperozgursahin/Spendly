@@ -99,6 +99,10 @@ const Map<String, String> frStrings = {
   'statistics_category_distribution': 'Répartition par catégorie (ce mois-ci)',
   'statistics_no_expenses_this_month': 'Tu n’as aucune dépense ce mois-ci.',
   'statistics_heatmap_title': 'Carte d’activité',
+  'statistics_monthly_trend': 'Dépenses mensuelles',
+  'statistics_total': 'Total',
+  'statistics_daily_average': 'Moyenne par jour',
+  'statistics_largest': 'Plus grosse dépense',
   'statistics_heatmap_activity_count': 'activités',
   // --- Auth: login ---
   'login_title': 'Connexion à Splixa',
@@ -247,10 +251,15 @@ const Map<String, String> frStrings = {
   // --- Groups: add expense sheet ---
   'groups_scan_receipt': 'Scanner un reçu',
   'groups_custom_exchange_rate': 'Taux de change personnalisé',
+  'groups_custom_rate_base_currency':
+      'La devise choisie est déjà la devise de base.',
+  'groups_custom_rate_label': '1 {code} = ? TRY',
+  'groups_custom_rate_live': 'Taux actuel : {rate}',
   'groups_pro_tool_coming_soon': 'Cet outil Pro arrive bientôt.',
   'dashboard_custom_rate_coming_soon':
       'L’éditeur de taux personnalisé arrive bientôt.',
   'groups_expense_desc_label': 'Pour quoi ?',
+  'groups_expense_category_label': 'Catégorie',
   'groups_total_amount_label': 'Montant total',
   'groups_split_equal': 'Égal (=)',
   'groups_split_percentage': 'Pourcentage (%)',
@@ -267,6 +276,7 @@ const Map<String, String> frStrings = {
       'Au maximum 1 personne peut rester sans montant, et le total doit correspondre au montant de la dépense.',
   // --- Groups: invite friend modal ---
   'groups_invited_snackbar': 'Invitation envoyée !',
+  'groups_already_member': 'Déjà dans le groupe',
   'groups_invite_modal_title': 'Inviter un ami dans le groupe',
   'groups_invite_search_hint': 'Cherche parmi tes amis',
   'groups_no_friends_to_invite': 'Tu n’as personne à inviter.',
@@ -405,6 +415,10 @@ const Map<String, String> frStrings = {
   'other_profile_title': 'Profil de l’utilisateur',
   'other_profile_unknown': 'Inconnu',
   'other_profile_no_shared_groups': 'Aucun groupe en commun',
+  'other_profile_member_new': 'Inscrit ce mois-ci',
+  'other_profile_member_months': '{months} mois sur Splixa',
+  'other_profile_member_years': '{years} ans sur Splixa',
+  'other_profile_shared_groups_title': 'Groupes en commun',
   'other_profile_shared_groups_count': 'Vous avez %s groupes en commun',
   'other_profile_send_message': 'Envoyer un message',
   // --- Subscriptions: paywall ---
@@ -521,6 +535,12 @@ const Map<String, String> frStrings = {
       'Le scan de reçus et les taux de change personnalisés arrivent ensuite.',
   'paywall_choose_plan': 'Choisis ta formule',
   'paywall_best_value': 'MEILLEUR CHOIX',
+  'paywall_save_percent': 'ÉCONOMISEZ {percent}%',
+  'paywall_start_trial_cta': 'Démarrer mon essai gratuit de {days} jours',
+  'paywall_start_trial_cta_generic': 'Démarrer mon essai gratuit',
+  'paywall_trust_cancel': 'Annulable à tout moment',
+  'paywall_trust_no_charge': 'Aucun débit aujourd\'hui',
+  'paywall_trust_store': 'Paiement sécurisé via votre store',
   'paywall_continue_free': 'Pas maintenant — continuer en gratuit',
   'paywall_restore': 'Restaurer les achats',
   'paywall_restore_restored': 'Ton accès Pro a été restauré.',
@@ -587,12 +607,18 @@ const Map<String, String> frStrings = {
   'pro_custom_categories': 'Catégories personnalisées',
   'pro_category_add': 'Ajouter une catégorie',
   'pro_category_name': 'Nom de la catégorie',
+  'pro_category_name_helper':
+      'Vous pouvez ajouter un emoji au nom si vous le souhaitez',
   'pro_category_emoji': 'Emoji',
   'pro_categories_empty':
       'Créez des catégories réutilisables avec votre emoji et couleur.',
   'pro_recurring_expenses': 'Dépenses récurrentes',
   'pro_recurring_add': 'Ajouter une dépense récurrente',
   'pro_recurring_name': 'Nom de la dépense',
+  'pro_recurring_start_date': 'Date de début',
+  'pro_recurring_explainer_weekly':
+      'La première le {date}, puis chaque semaine.',
+  'pro_recurring_explainer_monthly': 'La première le {date}, puis chaque mois.',
   'pro_recurring_empty':
       'Automatisez loyer, abonnements et autres coûts réguliers.',
   'pro_frequency_weekly': 'Hebdomadaire',
@@ -619,9 +645,17 @@ const Map<String, String> frStrings = {
   'pro_trip_summary': 'Résumé de voyage partageable',
   'pro_trip_privacy_note':
       'L’image contient seulement les totaux, sans soldes privés.',
+  'trip_summary_settled_up': 'Tout le monde est à jour',
+  'trip_summary_who_owes': 'Qui doit à qui',
+  'trip_summary_expenses_title': 'Dépenses',
+  'trip_summary_people': '{count} personnes',
+  'trip_summary_expenses_count': '{count} dépenses',
+  'trip_summary_more': '+{count} autres',
   'pro_trip_share': 'Partager le résumé',
   'statistics_current_month': 'Mois en cours',
   'paywall_free_trial': '7 JOURS GRATUITS',
+  'paywall_free_trial_days': 'ESSAI GRATUIT DE {days} JOURS',
+  'paywall_free_trial_generic': 'ESSAI GRATUIT',
   'paywall_plan_lifetime': 'Pro à vie',
   'paywall_period_once': 'paiement unique',
   'paywall_lifetime_disclosure':

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -75,6 +76,13 @@ class GoRouterRefreshStream extends ChangeNotifier {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Android 15 draws every SDK-35 app edge to edge whether it asks or not, so
+  // opting in explicitly is the only way to control how that looks. Without
+  // this the platform falls back to painting a translucent scrim behind the
+  // system bars, which is the "may not display correctly" Play Console warns
+  // about. Icon brightness is handled per-theme in `_buildTheme`.
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   // Android's release asset packaging can omit dot-prefixed files even when
   // Flutter lists them as assets. Keep the local runtime configuration under
@@ -486,6 +494,22 @@ class _MyAppState extends ConsumerState<MyApp> {
         backgroundColor: isDark ? _darkScaffold : const Color(0xFFF8FAFC),
         elevation: 0.0,
         centerTitle: true,
+        // Transparent bars with contrast enforcement off is what actually
+        // removes the platform scrim under edge-to-edge; the brightness pair
+        // keeps the clock and gesture bar legible in both themes.
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: isDark
+              ? Brightness.light
+              : Brightness.dark,
+          statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarDividerColor: Colors.transparent,
+          systemNavigationBarIconBrightness: isDark
+              ? Brightness.light
+              : Brightness.dark,
+          systemNavigationBarContrastEnforced: false,
+        ),
         iconTheme: IconThemeData(
           color: isDark ? Colors.white70 : Colors.black87,
         ),

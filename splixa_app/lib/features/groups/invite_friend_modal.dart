@@ -147,17 +147,62 @@ class _InviteFriendModalState extends ConsumerState<InviteFriendModal> {
                   return Center(child: Text(tr(ref, 'groups_no_search_match')));
                 }
 
+                // Everyone already in the group is shown, but inert. Hiding
+                // them would leave the inviter wondering whether they simply
+                // forgot to add someone; a disabled row answers that.
+                final existingMemberIds = ref
+                    .watch(groupMembersProvider(widget.groupId))
+                    .maybeWhen(
+                      data: (members) => members.map((m) => m.userId).toSet(),
+                      orElse: () => <String>{},
+                    );
+
                 return ListView.builder(
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final f = filtered[index];
+                    final avatarUrl = f['avatar_url'] as String?;
+                    final alreadyMember = existingMemberIds.contains(
+                      f['id'] as String,
+                    );
                     return ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.person)),
-                      title: Text('@${f['username']}'),
-                      trailing: ElevatedButton(
-                        onPressed: () => _addFriend(f),
-                        child: Text(tr(ref, 'common_add')),
+                      enabled: !alreadyMember,
+                      leading: CircleAvatar(
+                        foregroundImage: avatarUrl?.isNotEmpty == true
+                            ? NetworkImage(avatarUrl!)
+                            : null,
+                        child: avatarUrl?.isNotEmpty == true
+                            ? null
+                            : const Icon(Icons.person),
                       ),
+                      title: Text('@${f['username']}'),
+                      trailing: alreadyMember
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.check_circle_rounded,
+                                  size: 16,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  tr(ref, 'groups_already_member'),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : ElevatedButton(
+                              onPressed: () => _addFriend(f),
+                              child: Text(tr(ref, 'common_add')),
+                            ),
                     );
                   },
                 );

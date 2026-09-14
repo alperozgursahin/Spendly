@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import 'package:lottie/lottie.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/analytics_service.dart';
@@ -12,6 +11,7 @@ import '../../core/friendly_error.dart';
 import '../../core/locale_provider.dart';
 import '../../core/splixa_design.dart';
 import '../../core/splixa_loading.dart';
+import '../onboarding/onboarding_art.dart';
 import 'premium_provider.dart';
 
 class PaywallScreen extends ConsumerStatefulWidget {
@@ -184,7 +184,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         final selectedEligibility = ref.watch(
           trialEligibilityProvider(selected.storeProduct.identifier),
         );
-        final selectedHasSevenDayTrial = _hasEligibleSevenDayTrial(
+        final selectedTrialPeriod = _freeTrialPeriod(
           selected,
           selectedEligibility.value,
         );
@@ -202,7 +202,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               (package) => _PlanCard(
                 package: package,
                 selected: package.identifier == selected.identifier,
-                recommended: _isBestValue(package, packages),
+                savingsPercent: _annualSavingsPercent(package, packages),
                 copy: copy,
                 onTap: _isPurchasing ? null : () => _selectPackage(package),
               ),
@@ -211,7 +211,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             Text(
               copy.renewalDisclosure(
                 selected,
-                hasEligibleSevenDayTrial: selectedHasSevenDayTrial,
+                trialPeriod: selectedTrialPeriod,
               ),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -221,11 +221,20 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             ),
             const SizedBox(height: 14),
             SplixaPrimaryButton(
-              label: copy.continueWith(selected),
-              icon: Icons.lock_open_rounded,
+              // Naming the trial in the button is the single highest-leverage
+              // wording change on a paywall: the commitment the user is being
+              // asked for should match what actually happens when they tap.
+              label: selectedTrialPeriod == null
+                  ? copy.continueWith(selected)
+                  : copy.startTrialCta(selectedTrialPeriod),
+              icon: selectedTrialPeriod == null
+                  ? Icons.lock_open_rounded
+                  : Icons.play_arrow_rounded,
               loading: _isPurchasing,
               onPressed: () => _purchase(selected, copy),
             ),
+            const SizedBox(height: 14),
+            _TrustRow(copy: copy, hasTrial: selectedTrialPeriod != null),
           ],
         );
       },
@@ -244,16 +253,25 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     return result;
   }
 
-  bool _isBestValue(Package package, List<Package> packages) {
-    if (package.packageType != PackageType.annual) return false;
+  /// How much the annual plan saves against paying monthly for a year, as a
+  /// whole percent, or null when there is nothing to claim.
+  ///
+  /// A concrete "SAVE 38%" outperforms an abstract "best value" badge, and
+  /// computing it from the two live store prices means it can never drift out
+  /// of date the way a hard-coded number would when prices change.
+  int? _annualSavingsPercent(Package package, List<Package> packages) {
+    if (package.packageType != PackageType.annual) return null;
 
     final monthlyPackages = packages.where(
       (candidate) => candidate.packageType == PackageType.monthly,
     );
-    if (monthlyPackages.isEmpty) return false;
+    if (monthlyPackages.isEmpty) return null;
 
-    return package.storeProduct.price <
-        monthlyPackages.first.storeProduct.price * 12;
+    final yearAtMonthlyRate = monthlyPackages.first.storeProduct.price * 12;
+    if (yearAtMonthlyRate <= 0) return null;
+    final saved = (1 - package.storeProduct.price / yearAtMonthlyRate) * 100;
+    // Under five percent is not worth a badge; it reads as a rounding error.
+    return saved < 5 ? null : saved.floor();
   }
 
   Package _selectedPackage(List<Package> packages) {
@@ -359,17 +377,16 @@ class _PaywallHero extends StatelessWidget {
       ),
       child: Column(
         children: [
+          // Was the same placeholder Lottie as the old onboarding -- a circle
+          // orbiting a tick. Reuses the Pro scene instead, so the paywall and
+          // the last onboarding slide show the same object and the upgrade is
+          // recognisable as the thing that was just described.
           SizedBox(
-            height: 88,
-            child: Lottie.asset(
-              'assets/lottie/pro_value.json',
-              animate: !MediaQuery.disableAnimationsOf(context),
-              repeat: true,
-              errorBuilder: (_, _, _) => const Icon(
-                Icons.auto_awesome_rounded,
-                size: 48,
-                color: Colors.white,
-              ),
+            height: 108,
+            child: OnboardingArt(
+              scene: OnboardingScene.pro,
+              accent: Colors.white,
+              reduceMotion: MediaQuery.disableAnimationsOf(context),
             ),
           ),
           const SizedBox(height: 16),
@@ -454,14 +471,17 @@ class _PlanCard extends ConsumerWidget {
   const _PlanCard({
     required this.package,
     required this.selected,
-    required this.recommended,
+    required this.savingsPercent,
     required this.copy,
     required this.onTap,
   });
 
   final Package package;
   final bool selected;
-  final bool recommended;
+
+  /// Percent saved versus paying monthly, or null when this plan has no claim
+  /// to make.
+  final int? savingsPercent;
   final _PaywallCopy copy;
   final VoidCallback? onTap;
 
@@ -472,10 +492,7 @@ class _PlanCard extends ConsumerWidget {
     final appleEligibility = ref.watch(
       trialEligibilityProvider(product.identifier),
     );
-    final hasEligibleTrial = _hasEligibleSevenDayTrial(
-      package,
-      appleEligibility.value,
-    );
+    final trialPeriod = _freeTrialPeriod(package, appleEligibility.value);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
@@ -521,7 +538,7 @@ class _PlanCard extends ConsumerWidget {
                               ),
                             ),
                           ),
-                          if (recommended) ...[
+                          if (savingsPercent != null) ...[
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -533,7 +550,7 @@ class _PlanCard extends ConsumerWidget {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                copy.bestValue,
+                                copy.savePercent(savingsPercent!),
                                 style: const TextStyle(
                                   color: Color(0xFF6D4800),
                                   fontSize: 10,
@@ -542,11 +559,11 @@ class _PlanCard extends ConsumerWidget {
                               ),
                             ),
                           ],
-                          if (hasEligibleTrial) ...[
+                          if (trialPeriod != null) ...[
                             const SizedBox(width: 8),
                             Flexible(
                               child: Text(
-                                copy.freeTrial,
+                                copy.freeTrial(trialPeriod),
                                 style: TextStyle(
                                   color: colorScheme.primary,
                                   fontSize: 11,
@@ -597,6 +614,54 @@ class _PlanCard extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Three short reassurances under the CTA.
+///
+/// Deliberately factual -- what the subscription actually does -- rather than
+/// star ratings or install counts. Invented social proof is the fastest way to
+/// make a paywall feel less trustworthy, not more, and the real numbers are not
+/// ours to quote yet.
+class _TrustRow extends StatelessWidget {
+  const _TrustRow({required this.copy, required this.hasTrial});
+
+  final _PaywallCopy copy;
+  final bool hasTrial;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final items = <({IconData icon, String label})>[
+      (icon: Icons.cancel_schedule_send_rounded, label: copy.trustCancel),
+      if (hasTrial)
+        (icon: Icons.money_off_csred_rounded, label: copy.trustNoCharge),
+      (icon: Icons.verified_user_rounded, label: copy.trustStore),
+    ];
+
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 14,
+      runSpacing: 8,
+      children: items
+          .map(
+            (item) => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(item.icon, size: 14, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 5),
+                Text(
+                  item.label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          )
+          .toList(),
     );
   }
 }
@@ -662,7 +727,32 @@ class _PaywallCopy {
   String get benefitsTitle => _s('paywall_benefits_title');
   String get choosePlan => _s('paywall_choose_plan');
   String get bestValue => _s('paywall_best_value');
-  String get freeTrial => _s('paywall_free_trial');
+
+  String savePercent(int percent) =>
+      _f('paywall_save_percent', {'percent': '$percent'});
+
+  /// CTA for a plan that opens with a free trial. Falls back to untimed wording
+  /// when the store reports a period that is not a whole number of days.
+  String startTrialCta(String iso8601) {
+    final days = _trialDays(iso8601);
+    return days == null
+        ? _s('paywall_start_trial_cta_generic')
+        : _f('paywall_start_trial_cta', {'days': '$days'});
+  }
+
+  String get trustCancel => _s('paywall_trust_cancel');
+  String get trustNoCharge => _s('paywall_trust_no_charge');
+  String get trustStore => _s('paywall_trust_store');
+
+  /// Badge text for a trial of [iso8601]. Falls back to untimed wording when
+  /// the period is not expressible in whole days.
+  String freeTrial(String? iso8601) {
+    final days = _trialDays(iso8601);
+    return days == null
+        ? _s('paywall_free_trial_generic')
+        : _f('paywall_free_trial_days', {'days': '$days'});
+  }
+
   String get continueFree => _s('paywall_continue_free');
   String get restore => _s('paywall_restore');
   String get restoreSuccess => _s('paywall_restore_restored');
@@ -719,10 +809,7 @@ class _PaywallCopy {
   String continueWith(Package package) =>
       _f('paywall_continue_with_plan', {'plan': planName(package)});
 
-  String renewalDisclosure(
-    Package package, {
-    required bool hasEligibleSevenDayTrial,
-  }) {
+  String renewalDisclosure(Package package, {String? trialPeriod}) {
     final price = package.storeProduct.priceString;
     final key = switch (package.packageType) {
       PackageType.annual => 'paywall_renewal_annual',
@@ -730,25 +817,61 @@ class _PaywallCopy {
       _ => 'paywall_renewal_monthly',
     };
     final disclosure = _f(key, {'price': price});
-    return hasEligibleSevenDayTrial
-        ? '${_s('paywall_free_trial')}. $disclosure'
-        : disclosure;
+    return trialPeriod == null
+        ? disclosure
+        : '${freeTrial(trialPeriod)}. $disclosure';
   }
 }
 
-bool _hasEligibleSevenDayTrial(
+/// The free trial the store is actually offering on this package, as an
+/// ISO-8601 duration, or null when there is none.
+///
+/// The previous version missed a trial that was really there, in three separate
+/// ways. It bailed out unless the package was `PackageType.monthly`, so a trial
+/// configured on the annual base plan could never appear. It only looked at
+/// `defaultOption`, but Play exposes the trial as its own entry in
+/// `subscriptionOptions` and only promotes it to the default in some cases. And
+/// it demanded the period be exactly `P1W`, so the same seven days entered as
+/// `P7D` did not count. Any free phase on any option now counts, and the badge
+/// renders whatever length the store reports rather than a hard-coded week.
+String? _freeTrialPeriod(
   Package package,
   IntroEligibilityStatus? appleEligibility,
 ) {
-  if (package.packageType != PackageType.monthly) return false;
   final product = package.storeProduct;
-  final androidPeriod = product.defaultOption?.freePhase?.billingPeriod;
-  final hasAndroidWeek = androidPeriod?.iso8601 == 'P1W';
-  final appleIntro = product.introductoryPrice;
-  final hasEligibleAppleWeek =
-      appleIntro?.price == 0 &&
-      appleIntro?.period == 'P1W' &&
-      appleIntro?.cycles == 1 &&
-      appleEligibility == IntroEligibilityStatus.introEligibilityStatusEligible;
-  return hasAndroidWeek || hasEligibleAppleWeek;
+
+  // Android. `freePhase` is already "the phase that costs nothing", so finding
+  // one on any option is enough.
+  for (final option in <SubscriptionOption?>[
+    product.defaultOption,
+    ...?product.subscriptionOptions,
+  ]) {
+    final period = option?.freePhase?.billingPeriod?.iso8601;
+    if (period != null && period.isNotEmpty) return period;
+  }
+
+  // iOS. A zero-price introductory offer counts only when StoreKit says this
+  // Apple ID has not already used it; showing it otherwise is a false promise.
+  final intro = product.introductoryPrice;
+  if (intro != null &&
+      intro.price == 0 &&
+      intro.period.isNotEmpty &&
+      appleEligibility ==
+          IntroEligibilityStatus.introEligibilityStatusEligible) {
+    return intro.period;
+  }
+  return null;
+}
+
+/// Whole days in an ISO-8601 subscription period, or null if it is not a
+/// day-or-week duration. Months and years deliberately return null: "30-day
+/// free trial" for a `P1M` offer would be wrong in any month that is not
+/// thirty days long, so those fall back to untimed copy.
+int? _trialDays(String? iso8601) {
+  if (iso8601 == null) return null;
+  final match = RegExp(r'^P(\d+)([DW])$').firstMatch(iso8601);
+  if (match == null) return null;
+  final value = int.tryParse(match.group(1)!);
+  if (value == null || value <= 0) return null;
+  return match.group(2) == 'W' ? value * 7 : value;
 }

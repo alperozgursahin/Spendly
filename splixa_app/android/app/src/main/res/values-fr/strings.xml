@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_quick_add">+ Ajout rapide</string>
+    <string name="widget_unlock_pro">Débloquer avec Pro</string>
+    <string name="widget_description">Ouvrir l\'ajout rapide Splixa</string>
+</resources>

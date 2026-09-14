@@ -614,16 +614,8 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
   String? selectedCurrency;
   double? manualExchangeRate;
 
-  final List<String> predefinedCategories = [
-    'Market',
-    'Yemek',
-    'Ulaşım',
-    'Eğlence',
-    'Maaş',
-    'Aidat',
-    'Fatura',
-    'Diğer',
-  ];
+  // Shared with the group expense sheet; see kPredefinedCategories.
+  List<String> get predefinedCategories => kPredefinedCategories;
 
   @override
   void dispose() {

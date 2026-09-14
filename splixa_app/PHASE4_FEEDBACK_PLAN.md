@@ -23,7 +23,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[?]` needs owner input
   tap blind to reveal it. Safe-area / keyboard inset bug in `chat_screen.dart`.
 - [x] **A5. Group info → "Delete group" button is half off-screen.**
   Overflow in `group_info_screen.dart`.
-- [ ] **A6. 7-day trial not shown on the paywall** although the Play Console
+- [x] **A6. 7-day trial not shown on the paywall** although the Play Console
   base plan has it. Verify what the store actually reports; the badge is gated
   on an exact `P1W` free phase.
 - [~] **A7. Recurring expenses cannot be tested by the owner** (weekly/monthly
@@ -33,35 +33,35 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[?]` needs owner input
 
 ## B. Product changes — small
 
-- [ ] **B1. Custom categories: drop colour and emoji.** Name only — users can
+- [x] **B1. Custom categories: drop colour and emoji.** Name only — users can
   type an emoji into the name. Simplifies the form and the model.
-- [ ] **B2. PRO / STANDARD badge on the dashboard header,** to the right of the
+- [x] **B2. PRO / STANDARD badge on the dashboard header,** to the right of the
   Splixa logo and wordmark.
-- [ ] **B3. Group "Add expense" → "What for?" needs the same default category
+- [x] **B3. Group "Add expense" → "What for?" needs the same default category
   set as the home screen,** plus "Other". Custom categories stay Pro-only.
   This is also why the trip summary shows "uncategorized".
-- [ ] **B4. Invite-to-group member list:** show avatars; members already in the
+- [x] **B4. Invite-to-group member list:** show avatars; members already in the
   group appear disabled with an "already in group" label instead of an enabled
   button.
-- [ ] **B5. Other user's profile should show** bio, avatar, shared groups, and
+- [x] **B5. Other user's profile should show** bio, avatar, shared groups, and
   how many months they have been on Splixa.
 
 ## C. Product changes — larger
 
-- [ ] **C1. Trip summary card is too plain and not useful.** Needs: member
+- [x] **C1. Trip summary card is too plain and not useful.** Needs: member
   names, who owes whom and how much *right now*, payer + category + amount per
   expense, and a clear "everyone is settled up" state when there is no debt.
   Must stay simple enough to drop into a WhatsApp group. Keep it privacy-safe.
-- [ ] **C2. Statistics screen needs 1–2 more views** — a bar chart plus one
+- [x] **C2. Statistics screen needs 1–2 more views** — a bar chart plus one
   other. Deliberately not more.
-- [ ] **C3. Paywall redesign.** Owner finds it unprofessional. Research what
+- [x] **C3. Paywall redesign.** Owner finds it unprofessional. Research what
   strong subscription paywalls do (Splitwise and peers) before rewriting.
-- [ ] **C4. Onboarding redesign.** Current animation is placeholder-grade.
+- [x] **C4. Onboarding redesign.** Current animation is placeholder-grade.
   Wants something striking, with real animation.
 
 ## D. Measurement question (no code)
 
-- [ ] **D1. Explain how to answer:** what share of installs finish onboarding,
+- [x] **D1. Explain how to answer:** what share of installs finish onboarding,
   what share drop out during it, what share reach login/signup. The Firebase
   realtime screen does not show this; needs a GA4 funnel exploration on the
   events Phase 1 already emits (`onboarding_start`, `onboarding_step_viewed`,
@@ -77,7 +77,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[?]` needs owner input
   not for the product. Delete the deployed function before the public launch and
   redeploy it only when a load test is actually being run.
 
-- [ ] **F2. `anon` can execute 16 `SECURITY DEFINER` functions in `public`.**
+- [x] **F2. `anon` can execute 16 `SECURITY DEFINER` functions in `public`.**
   Most are harmless — they call `auth.uid()` internally, which is null for an
   anonymous caller, so they return nothing. Three are not, because they take the
   identity to check *as a parameter* and only default it to `auth.uid()`:
@@ -92,7 +92,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[?]` needs owner input
   authenticated, so nothing breaks. These three are RLS helpers, so the
   parameter itself cannot simply be dropped without auditing every policy that
   passes it; do that as a follow-up, not in the same change.
-- [ ] **F3. `handle_splixa_user_signup()` has no `search_path` set.** It is the
+- [x] **F3. `handle_splixa_user_signup()` has no `search_path` set.** It is the
   `SECURITY DEFINER` trigger that runs on every signup, so it executes as its
   owner. Exploiting a mutable `search_path` requires CREATE on a schema in the
   path, which `anon`/`authenticated` do not have, so this is hardening rather
@@ -109,7 +109,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[?]` needs owner input
 
 ## E. Carried over from Phase 4, still open
 
-- [ ] **E1. Native Android widget strings are English-only** for all 12 shipped
+- [x] **E1. Native Android widget strings are English-only** for all 12 shipped
   locales.
 - [ ] **E2. iOS widget extension** is not an Xcode target yet (needs macOS).
 - [ ] **E3. Native-speaker review** of the 10 machine-assisted locales.
@@ -190,3 +190,122 @@ _Append one line per completed item: what changed, which files, how verified._
   which the gesture bar covers. Wrapped both in one `SafeArea(top: false)` and
   gave the delete button its missing top padding.
   File: `lib/features/groups/group_info_screen.dart`.
+
+- **CRITICAL, found during the pre-push audit and fixed — `public.profiles` was
+  world-readable.** The table carried two permissive SELECT policies granted to
+  the PUBLIC pseudo-role with `using (true)`
+  ("Public profiles are viewable by everyone" and `profiles_select`). Permissive
+  policies are OR-ed, so those two overrode every narrower policy on the table,
+  and PUBLIC includes `anon` — whose key ships inside the published APK.
+  Measured, not assumed: `set local role anon; select count(*) from
+  public.profiles` inside a rolled-back transaction returned **56 rows, e-mail
+  column included**. Fixed in migration `20260914194049`: both policies dropped
+  along with their duplicate `{public}` write counterparts, and, since username
+  search and group member lists legitimately need to read strangers' rows, the
+  `email` column was removed from the API surface with a revoke-then-grant
+  rather than narrowing rows and breaking those features. Re-measured against
+  production after applying: anon `DENIED`, authenticated still reads the app's
+  columns (56), authenticated `email` `DENIED`, zero `{public}` policies left.
+  `currentUserProfileProvider` was the only caller doing `select *` on profiles
+  and now lists its columns.
+
+- **F2/F3 — FIXED in migration `20260914194333`.** EXECUTE revoked from `anon`
+  *and* `public` on all 17 exposed functions — revoking from `anon` alone would
+  not have worked, because 11 of them also carried a PUBLIC grant and privileges
+  are additive. Dry-run in a rolled-back transaction first: anon denied on
+  `can_view_profile`, while `is_group_member`, `get_auth_group_ids` and selects
+  against the RLS-protected ledger tables all still succeeded as
+  `authenticated`. `handle_splixa_user_signup` now has `search_path = ''`.
+  Supabase's security advisor afterwards: the entire
+  `anon_security_definer_function_executable` category (16 findings) and
+  `function_search_path_mutable` are gone. What remains is
+  `authenticated_security_definer_function_executable` (31), which is the app's
+  own RPC layer and is by design, plus F4.
+
+- **Housekeeping:** `supabase/migrations/20260914000100_close_public_profile_exposure.sql`
+  is a leftover from before the migration was applied and got its real version
+  number. Delete it — the same change is recorded at `20260914194049`. It is
+  idempotent, so pushing it by accident does nothing, but it should not stay.
+
+- **A6 — FIXED.** The badge was gated three ways at once: only
+  `PackageType.monthly` was considered, only `defaultOption` was read (Play
+  exposes a trial as its own entry in `subscriptionOptions` and only sometimes
+  promotes it to the default), and the period had to equal `P1W` exactly, so the
+  same seven days entered as `P7D` did not count. `_freeTrialPeriod` now scans
+  every option on every package and returns the real ISO-8601 period; the badge
+  and the CTA render the actual length instead of a hard-coded week.
+
+- **B1 — DONE.** Colour palette and emoji box removed from the editor and from
+  `CustomCategory`. Migration `20260914194938` relaxes NOT NULL and defaults the
+  two columns rather than dropping them, so existing rows keep their values.
+
+- **B2 — DONE.** `_MembershipBadge` beside the wordmark; PRO opens Pro tools,
+  STANDARD opens the paywall, so the badge is a route rather than decoration.
+
+- **B3 — DONE.** Group expenses carried no category at all, which is why every
+  trip summary read "uncategorized". `kPredefinedCategories` now lives in
+  `app_strings.dart` and both screens read it, so they cannot drift again. The
+  group sheet uses `kPredefinedExpenseCategories` — the same list minus `Maaş`,
+  since a shared expense is never a salary — plus the user's own categories.
+
+- **B4 — DONE.** Avatars come through `getAcceptedFriends` (which now selects
+  `avatar_url`), and existing members render disabled with "Already in group"
+  rather than being hidden, so the inviter can tell the difference between
+  "already added" and "forgot to add".
+
+- **B5 — DONE.** Avatar, bio, months-on-Splixa and the *names* of shared groups,
+  each row tapping through to the group. Backed by migration `20260914195219`:
+  `profiles.created_at` backfilled from `auth.users` (all 56 rows verified to
+  match) and `shared_groups_with_v1`, which reads the viewer from `auth.uid()`
+  rather than taking it as an argument — deliberately not the caller-supplied
+  identity shape that had to be closed on `can_view_profile`.
+
+- **C1 — DONE.** The card now leads with settle-up state: either "Everyone is
+  settled up" or the actual "A → B, amount" list, computed by greedy debt
+  simplification over `groupBalancesProvider` (largest debtor against largest
+  creditor; never more than n-1 payments). Under it, up to five recent expenses
+  as description / payer · category / amount, then "+N more". Names resolve
+  through group members, with "You" for the viewer.
+
+- **C2 — DONE.** A monthly-spend bar chart plus three stat tiles (total, daily
+  average, largest single expense). Single series, so one hue and no legend; the
+  tallest month is the only labelled bar. Every month in the window is seeded at
+  zero so a quiet month shows as a gap rather than silently compressing the axis.
+
+- **C3 — DONE (needs a visual pass).** Researched first, then changed the three
+  things the research is clearest about: the "best value" badge is now a computed
+  **SAVE n%** derived from the two live store prices; the CTA names the trial
+  ("Start my 7-day free trial") instead of a generic continue; and an honest
+  trust row sits under it — cancel anytime, no charge today, secure store
+  payment. Deliberately **no** star ratings or install counts: invented social
+  proof makes a paywall less trustworthy, not more, and the real numbers are not
+  ours to quote yet.
+
+- **C4 — DONE (needs a visual pass).** The complaint was motion, not structure,
+  so the structure stayed. Each page now reveals in stages (art, eyebrow, title,
+  body, chips, ~60 ms apart), the illustration parallaxes against the swipe at a
+  third of finger speed and scales down as it leaves, and the dots became a
+  progress bar that starts a fifth filled — the endowed-progress effect. All of
+  it collapses to the end state when the platform asks for reduced motion.
+
+- **D1 — ANSWERED** in `ONBOARDING_FUNNEL_GUIDE.md`. Short version: Realtime
+  cannot do this, GA4 → Explore → Funnel exploration can, and the events are
+  already being collected. The one thing that must happen first is registering
+  `step`, `step_name`, `completion_method`, `variant` and `method` as custom
+  dimensions — GA4 drops parameter values for reporting until you do, and
+  registration is **not** retroactive. `onboarding_interrupted` already carries
+  the step it died on, so the abandonment curve needs no funnel at all.
+
+- **E1 — DONE.** `res/values-{tr,es,pt,de,fr,it,nl,ru,ar,hi,in}/strings.xml` for
+  the three widget strings. Indonesian uses Android's legacy `in` qualifier, not
+  `id`. Apostrophes are backslash-escaped; an unescaped one fails the build.
+
+### Still open after this pass
+
+- **A7 (second half)** — the cron `Recurring generation failed` with an empty
+  error code. Generation itself is proven; the widened JSON logging needs
+  deploying and the next scheduled run inspecting.
+- **F1** — delete the deployed `create-load-test-users` function.
+- **F4** — turn on leaked-password protection in Supabase Auth settings.
+- **E2 / E3** — the iOS widget target needs macOS, and native-speaker review of
+  the 10 machine-assisted locales is a people task, not a code one.

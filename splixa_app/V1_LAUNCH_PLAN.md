@@ -179,10 +179,10 @@
 
 - [ ] Audit all current RevenueCat offerings, products, entitlement identifiers, restore flows, and premium checks.
 - [ ] Create one fail-safe Pro access service backed by `entitlements.active['pro']`.
-- [ ] Define loading/offline/grace-period behavior so temporary RevenueCat failures do not incorrectly remove paid access.
-- [ ] Enforce free limits server-side as well as in Flutter to prevent client bypass.
-- [ ] Limit free users to two active groups with a localized upgrade path before the third group is created.
-- [ ] Limit free users to 50 personal expenses per calendar month using a timezone-safe server-side count.
+- [x] Define loading/offline/grace-period behavior so temporary RevenueCat failures do not incorrectly remove paid access.
+- [x] Enforce free limits server-side as well as in Flutter to prevent client bypass.
+- [x] Limit free users to two active groups with a localized upgrade path before the third group is created.
+- [x] Limit free users to 50 personal expenses per calendar month using a timezone-safe server-side count.
 - [ ] Define how deletes, imports, failed writes, group expenses, and month boundaries affect the limits.
 - [ ] Add analytics for limit exposure, paywall source, purchase attempt, cancellation, success, restore, and entitlement activation.
 
@@ -192,7 +192,7 @@
 - [ ] Home Screen Widgets: define minimum viable Android/iOS widget scope, implement Quick Add deep links, and protect locked actions.
 - [ ] Photo Attachments: add compressed uploads, private Supabase Storage paths, signed access, deletion/retention rules, and Pro gating.
 - [ ] Custom Categories: add relational schema/RLS, colors/emojis, editing/deletion behavior, and Pro gating.
-- [ ] Recurring Expenses: define recurrence/timezone/idempotency rules, implement scheduled backend generation, and Pro management UI.
+- [x] Recurring Expenses: define recurrence/timezone/idempotency rules, implement scheduled backend generation, and Pro management UI.
 - [ ] Auto-Nudge: implement consent-aware debt reminders, rate limits, notification preferences, auditability, and abuse prevention.
 - [ ] OCR Scanner: reproduce existing failures, repair image preprocessing/parsing, add confidence/edit review, and prevent unreviewed financial writes.
 - [ ] Advanced Exports: implement localized PDF and CSV exports with deterministic totals and safe sharing.
@@ -223,7 +223,7 @@
 - [ ] Test localized store pricing and disclosures across representative currencies/locales.
 - [ ] Reconcile export/analytics totals with normalized ledger balances.
 - [ ] Verify attachment and custom-category RLS using positive and negative authorization tests.
-- [ ] Verify recurring jobs and reminders are idempotent and rate-limited.
+- [x] Verify recurring jobs and reminders are idempotent and rate-limited.
 - [ ] Run formatting, tests, `flutter analyze`, and release builds with zero blocking errors.
 - [ ] Record validation results in this file.
 - [ ] Commit Phase 4 with a focused conventional commit.
@@ -288,13 +288,13 @@
 
 ### DevSecOps and backend security
 
-- [ ] Scan tracked files and Git history for secrets, service-role keys, tokens, signing files, and sensitive Firebase/Supabase configuration.
-- [ ] Audit `.gitignore`, environment templates, Android signing configuration, and Supabase temporary files.
-- [ ] Review every relevant RLS policy, security-definer function, RPC grant, Edge Function JWT check, Storage policy, and service-role use.
-- [ ] Run negative authorization tests for cross-user groups, expenses, shares, settlements, attachments, categories, invites, exports, and deletion.
+- [x] Scan tracked files and Git history for secrets, service-role keys, tokens, signing files, and sensitive Firebase/Supabase configuration.
+- [x] Audit `.gitignore`, environment templates, Android signing configuration, and Supabase temporary files.
+- [x] Review every relevant RLS policy, security-definer function, RPC grant, Edge Function JWT check, Storage policy, and service-role use.
+- [x] Run negative authorization tests for cross-user groups, expenses, shares, settlements, attachments, categories, invites, exports, and deletion.
 - [ ] Verify rate limiting and abuse controls for auth, invites, OCR, reminders, exports, uploads, and account deletion.
 - [ ] Review dependency vulnerabilities, outdated critical packages, Android/iOS permissions, and data-retention behavior.
-- [ ] Verify analytics/crash reports contain no tokens, PII, receipt images, or financial payloads.
+- [x] Verify analytics/crash reports contain no tokens, PII, receipt images, or financial payloads.
 
 ### UX, accessibility, and store readiness
 
@@ -382,13 +382,22 @@
 
 ### Phase 4
 
-- Status: In progress. Implementation is broad but not yet validated or
-  committed; `PHASE4_HANDOFF.md` is the authoritative continuation record.
-- Commit: —
-- Validation: `dart pub get` completed; `dart analyze` reached `No issues
-  found` before the latest attachment-cleanup edit. The first full test run had
-  one brand-wordmark audit failure, which was fixed; the targeted audit/OCR
-  rerun passed 5/5. A final full validation run is still required.
+- Status: Entitlement, limits and recurring expenses verified against the live database. Remaining Phase 4 boxes are unverified rather than known-broken.
+- Validation: `flutter analyze` and `flutter test` reported clean by the owner before this round of changes; the database work below was executed against production inside rolled-back transactions.
+- Server-side free limits were already implemented, and are now confirmed working rather than merely declared. Impersonating an unentitled user: group creation raised `FREE_GROUP_LIMIT_REACHED` after exactly 2 groups, personal expenses raised `FREE_PERSONAL_EXPENSE_LIMIT_REACHED` after exactly 50, and granting that same user Pro let the 51st through. `splixa_enforce_personal_expense_quota` takes a per-user advisory transaction lock, so concurrent inserts cannot race past the cap.
+- Recurring expenses did not behave like expenses. Creation only inserted a template; the first real transaction was written by the hourly `splixa-recurring-expenses` cron, so a template created at 14:05 produced nothing until 15:00, and one created before its own 09:00 anchor waited until the next day. The balance is derived from `transactions`, so until that row existed the expense did not exist to the user.
+- `create_recurring_expense_v1` now creates the template and, when the start moment has already passed, emits its first occurrence in the same database transaction. The client sends `now()` for a start date of today and keeps the 09:00 anchor for future dates. Amounts and ownership moved server-side; the client no longer supplies `base_amount`.
+- `emit_recurring_occurrence_v1` holds the single definition of one occurrence and is called by both the inline path and the cron. Idempotency rests on the `(template_id, due_at)` primary key of `recurring_expense_runs`: verified by generating once and immediately re-running the job, which returned 0.
+- Verified end to end on a real user: transaction count 44 to 45, balance 13438.70 to 13288.71 for a 149.99 monthly template, `next_run_at` advanced one month, one run row written, `rate_source` recorded as `recurring:identity`.
+- Entitlement loss previously set `is_active = false` on due templates, destroying configuration the user built, silently, and requiring them to re-enable every template by hand after any billing problem. It now skips the missed periods and keeps the template: `skip_recurring_occurrences_v1` rolls `next_run_at` past `now()` without writing anything, preserving the no-backfill guarantee.
+- `has_pro_entitlement_with_grace` adds a three-day window after expiry so a failed renewal or a slow RevenueCat webhook does not remove paid access. Verified: entitled one day after expiry, not entitled ten days after. A two-month-overdue template owned by a lapsed user generated 0 expenses, stayed active, and had its schedule rolled into the future with no run rows written.
+- The freemium quota triggers have raised `FREE_GROUP_LIMIT_REACHED` and `FREE_PERSONAL_EXPENSE_LIMIT_REACHED` since Phase 4, and the matching strings were translated in all 12 catalogs, but nothing ever read them: both arrive as PostgreSQL `P0001` and fell through to the generic server-error message, so a user hitting a cap was shown a fault instead of the upgrade prompt written for them. `friendly_error.dart` now maps the sentinels, longest-first so `PRO_REQUIRED_CUSTOM_CATEGORY` is not swallowed by `PRO_REQUIRED`.
+- Play Console pre-launch findings addressed: the release build now sets `isMinifyEnabled` and `isShrinkResources`, with `proguard-android-optimize.txt` listed explicitly because `proguardFiles` replaces the default set rather than appending to it. Edge-to-edge is opted into via `SystemUiMode.edgeToEdge` with transparent system bars and per-theme icon brightness.
+- Not done: the Android Gradle Plugin remains at 8.11.1. Play Console asks for 9.0 or newer, which also requires a Gradle upgrade and risks breaking the Flutter Gradle plugin; attempting it immediately before a release build was judged too dangerous.
+- Not done: leaked-password protection requires a paid Supabase plan and was deferred by the owner.
+- Production hygiene: 30 `splixa-loadtest-*@example.com` accounts were removed from `auth.users`, taking the user table from 56 to 26 with no orphaned profiles and no change to groups, transactions or expenses. `create-load-test-users` cannot be deleted through the available API, so it was replaced with a stub that returns 410 and creates no accounts; it still needs deleting from the dashboard.
+- Migrations: `20260914215115_recurring_expense_immediate_first_run`, `20260914220632_recurring_pro_grace_period`.
+- Owner action before shipping: R8 is newly enabled, so the release build must be smoke-tested for anything reached reflectively -- OCR receipt scanning, purchases and restore, and the home-screen widget are the likely failure points.
 - Review decision: —
 
 ### Phase 5
@@ -400,7 +409,34 @@
 
 ### Phase 6
 
-- Status: Not started
-- Commit: —
-- Validation: —
+- Status: Backend security audit executed and remediated. Client regression and release-build verification still with the owner.
+- Method: every authorization claim below was tested by running the attack inside a rolled-back transaction while impersonating the relevant role, not inferred from reading policies. Two findings were real; both are fixed.
+
+**Finding 1 — every signed-in user could read every profile.**
+`profiles_select_authenticated` was `USING (true)`, exposing every account's username, full name, avatar, bio, timezone, streak count and last-active date. Measured: a stranger account saw all 25 other profiles. The `email` column had already been closed at the grant level; nothing else had. The correct rule already existed in `can_view_profile` (self / accepted friend / shared group member) but the policy never called it, and could not, because the client discovered strangers by querying the table directly.
+
+Remediated by moving discovery behind three narrow functions and tightening the policy to the intended rule:
+- `search_profiles_v1(query)` — identity fields only, two-character minimum, capped at 20 rows, excludes self and deleted accounts, exact matches ordered first. The minimum length and cap are what stop this being a bulk export of the user table under another name.
+- `profile_card_v1(user_id)` — returns username and avatar for anyone, because a pending friend request must render as a person; grades `bio` and `created_at` by `can_view_profile`.
+- `username_taken_v1(username)` — availability check that excludes the caller. `check_username_exists` could not be reused: it does not exclude the caller, so re-saving an unchanged username would report the user's own name as taken.
+
+Verified after the change: profiles directly readable by a stranger dropped from 26 to 1 (self); all 6 group co-members of a test account stayed visible and that account now sees 12 instead of 26; friend search still returns strangers; a one-character search returns nothing; a stranger's bio is withheld from the card; `username_taken_v1` is true for another user's name and false for the caller's own.
+
+Eight client call sites rerouted. The friends stream mattered most: it carries **pending** requests, and `can_view_profile` only counts accepted friendships, so reading the table there would have rendered every incoming request as a blank person.
+
+**Finding 2 — two functions added the same day were callable unauthenticated.**
+`create_recurring_expense_v1` and `has_pro_entitlement_with_grace` were revoked `FROM PUBLIC` and granted to `authenticated`. That is not sufficient on Supabase: default privileges grant EXECUTE on new public-schema functions to `anon` directly, and a revoke from PUBLIC does not touch a direct role grant. Both were reachable over `/rest/v1/rpc/` with no JWT. `has_pro_entitlement_with_grace` takes an arbitrary user id, so anyone could probe whether a given account had Pro; it lost `authenticated` as well. Stray grants on trigger functions were revoked in the same pass. The advisor's `anon_security_definer_function_executable` category is now empty.
+
+**Negative authorization tests, all refused.** Table level, as an unrelated signed-in account: reading another user's personal transactions; inserting a transaction owned by someone else; reading a non-member group, its expenses, its roster and its chat; posting into it; self-joining it; adding a third party to it; reading DMs between other people; reading other users' push tokens; updating another user's profile; deleting another user's transactions. As `anon`: profiles, transactions, groups and entitlements — several refused at the grant level, before RLS is consulted.
+
+**IDOR tests against financial RPCs, all refused.** Calling each against objects belonging to someone else, from an account with no relationship to them: `archive_expense_v1` (only the payer), `mark_expense_payment_sent_v1` (only an approved share), `confirm_expense_payment_v1` (only the creditor), `acknowledge_expense_share_v1` and `reject_expense_share_v1` (only a pending participant share), `send_debt_reminder_v1` (entitlement gate), `approve_debt_participant` (participant not on transaction), `confirm_payment_received` (only the creditor), `archive_group_transaction` (only the creditor), `create_expense_v1` into a foreign group (payer not a member). Every state-changing financial RPC authorises the caller against the object, not merely against the session.
+
+**Secrets:** `.gitignore` covers `.env`, `env.config`, `**/google-services.json`, `**/key.properties`, `*.jks`, `*.keystore`, `**/local.properties`. **Analytics:** no amounts, emails, tokens or receipt content in event parameters — only a currency code.
+
+- Open, low severity: `is_group_member(group_id, user_id)` and `is_group_creator` are `SECURITY DEFINER`, callable by any signed-in user with arbitrary arguments, and answer "is user X in group Y" even for groups the caller cannot see. Exploiting it requires already holding both UUIDs, which are random v4 and not enumerable, so it confirms a guess rather than harvesting anything. Not fixed now because both are called from inside RLS policies, and a policy expression's function calls are permission-checked against the querying role — narrowing the grant or adding a caller guard risks breaking table access. Do it deliberately after release, with policy behaviour re-tested.
+- Open, performance: 41 `auth_rls_initplan` warnings (`auth.uid()` re-evaluated per row instead of `(select auth.uid())`); 6 unindexed foreign keys; 15 unused indexes, expected on a small dataset.
+- Reviewed and dismissed: 33 duplicate permissive policies. Permissive policies OR together, so a stale one can silently widen access — all of them on `transactions`, `groups` and `group_transactions` were read, and every legacy policy is equivalent to or narrower than its replacement. Maintenance debt, not a hole. `auth_login_rate_limits` and `receipt_storage_deletion_queue` have RLS on with no policies, which is the correct deny-all state for service-role-only tables; both confirmed to refuse an authenticated reader.
+- Deferred by the owner: leaked-password protection requires a paid Supabase plan. AGP remains 8.11.1 against Play Console's 9.0+ request; it needs a Gradle upgrade and risks the Flutter Gradle plugin, so it is post-release work on a branch.
+- Migrations: `20260914224251_phase6_revoke_anon_execute_on_new_functions`, `20260914225118_phase6_scope_profile_visibility`.
+- Owner action outstanding: re-test the social flows the profile change touched — friend search, friend request by username, username change, another user's profile, notifications list, and the friends/requests list, checking that pending incoming requests still render with a name and avatar. Separately the release build still needs OCR, purchase/restore and the home-screen widget smoke-tested, because R8 was enabled in the previous round.
 - Review decision: —

@@ -11,3 +11,15 @@
 -dontwarn com.google.mlkit.vision.text.devanagari.**
 -dontwarn com.google.mlkit.vision.text.japanese.**
 -dontwarn com.google.mlkit.vision.text.korean.**
+
+# With minification now on, the deferred-components support in Flutter's
+# embedding references Play Core split-install classes that this app does not
+# ship, and R8 treats the missing references as errors rather than warnings.
+# Splixa has no dynamic feature modules, so nothing here is reachable.
+-dontwarn com.google.android.play.core.**
+
+# The embedding instantiates the engine, the plugin registrant and every
+# registered plugin reflectively by name, so shrinking must not rename or
+# remove them.
+-keep class io.flutter.** { *; }
+-keep class io.flutter.plugins.** { *; }

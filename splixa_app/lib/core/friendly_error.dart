@@ -31,16 +31,6 @@ String friendlyErrorMessage(Object error) {
   }
   if (error is AuthException) return _friendlyAuthMessage(error);
   if (error is PostgrestException) return _friendlyPostgrestMessage(error);
-  if (error is FunctionException) {
-    final details = error.details.toString().toUpperCase();
-    if (details.contains('RATE_LIMIT') || details.contains('REMINDER_RATE')) {
-      return AppStrings.of('error_rate_limited', currentAppLanguage);
-    }
-    if (error.status == 401 || error.status == 403) {
-      return AppStrings.of('error_forbidden', currentAppLanguage);
-    }
-    return AppStrings.of('error_server_generic', currentAppLanguage);
-  }
 
   if (error is Exception) {
     return AppStrings.of('error_generic_short', currentAppLanguage);
@@ -94,14 +84,6 @@ String _friendlyAuthMessage(AuthException error) {
 
 String _friendlyPostgrestMessage(PostgrestException error) {
   final language = currentAppLanguage;
-  final message = error.message.toUpperCase();
-
-  if (message.contains('FREE_GROUP_LIMIT_REACHED')) {
-    return AppStrings.of('error_free_group_limit', language);
-  }
-  if (message.contains('FREE_PERSONAL_EXPENSE_LIMIT_REACHED')) {
-    return AppStrings.of('error_free_personal_expense_limit', language);
-  }
 
   switch (error.code) {
     case '23505':
@@ -110,7 +92,36 @@ String _friendlyPostgrestMessage(PostgrestException error) {
       return AppStrings.of('error_forbidden', language);
     case 'PGRST116':
       return AppStrings.of('error_not_found', language);
+    // plpgsql `raise exception 'CODE'` arrives as P0001 with the sentinel as
+    // the message. The freemium quota triggers have raised these since Phase 4
+    // and the matching strings have been translated all along, but nothing ever
+    // read them: hitting the group or expense cap showed a generic server
+    // fault instead of the upgrade prompt it was written for.
+    case 'P0001':
+      final key = _postgresSentinelKey(error.message);
+      if (key != null) return AppStrings.of(key, language);
   }
 
   return AppStrings.of('error_server_generic', language);
+}
+
+/// Maps a `raise exception` sentinel to a localization key.
+///
+/// Matching is by containment because PostgREST sometimes wraps the sentinel in
+/// surrounding context, and longest-first because `PRO_REQUIRED_CUSTOM_CATEGORY`
+/// must not be swallowed by the shorter `PRO_REQUIRED`.
+String? _postgresSentinelKey(String message) {
+  const sentinels = <String, String>{
+    'FREE_GROUP_LIMIT_REACHED': 'error_free_group_limit',
+    'FREE_PERSONAL_EXPENSE_LIMIT_REACHED': 'error_free_personal_expense_limit',
+    'TRANSACTION_OWNER_MUST_MATCH_AUTH_USER': 'error_not_authenticated',
+    'UNAUTHENTICATED': 'error_not_authenticated',
+    'PRO_REQUIRED_CUSTOM_CATEGORY': 'error_forbidden',
+    'PRO_REQUIRED': 'error_forbidden',
+  };
+  for (final entry in sentinels.entries) {
+    if (message.contains(entry.key)) return entry.value;
+  }
+  if (message.contains('INVALID_')) return 'error_generic_short';
+  return null;
 }

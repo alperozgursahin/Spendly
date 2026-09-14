@@ -98,14 +98,18 @@ Future<List<AppNotificationModel>> _buildNotifications(
     ),
   );
 
+  // Notification senders are frequently strangers -- an incoming friend
+  // request is exactly that -- and the profiles policy no longer exposes
+  // those rows directly. `profile_card_v1` still returns the username, which
+  // is all this list needs to render.
   final profileResults = await Future.wait(
-    senderIds.map(
-      (id) => supabase
-          .from('profiles')
-          .select('id, username')
-          .eq('id', id)
-          .maybeSingle(),
-    ),
+    senderIds.map((id) async {
+      final rows = List<Map<String, dynamic>>.from(
+        await supabase.rpc('profile_card_v1', params: {'p_user_id': id})
+            as List,
+      );
+      return rows.isEmpty ? null : rows.first;
+    }),
   );
 
   final expenses = <String, Map<String, dynamic>>{};

@@ -58,9 +58,21 @@ android {
 
         release {
             signingConfig = signingConfigs.getByName("release")
-            // Appends to the rules Flutter's Gradle plugin already contributes;
-            // see proguard-rules.pro for why ML Kit needs an entry here.
-            proguardFiles("proguard-rules.pro")
+            // Play Console reported both of these as off. Without them R8 ships
+            // every class and every unused resource, which is the bundle-size
+            // and memory finding in the pre-launch report.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            // `proguard-android-optimize.txt` is the variant that actually
+            // enables optimization passes; the plain `proguard-android.txt`
+            // turns them off. It also has to be listed explicitly because
+            // `proguardFiles` REPLACES the default set rather than adding to
+            // it -- minifying with only the app's own -dontwarn lines would
+            // strip the Android and Kotlin runtime keeps and break the build.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

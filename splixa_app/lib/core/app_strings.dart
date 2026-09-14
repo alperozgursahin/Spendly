@@ -44,6 +44,35 @@ const _categoryKeysByCategory = {
   'Diğer': 'category_other',
 };
 
+/// Canonical predefined categories in display order, stored and compared in
+/// their Turkish form. One list, so the home screen and the group expense sheet
+/// cannot drift apart -- they had already drifted to the point where group
+/// expenses carried no category at all and every trip summary read
+/// "uncategorized".
+const List<String> kPredefinedCategories = [
+  'Market',
+  'Yemek',
+  'Ulaşım',
+  'Eğlence',
+  'Maaş',
+  'Aidat',
+  'Fatura',
+  'Diğer',
+];
+
+/// The same list minus income-only entries, for screens that can only ever
+/// record spending. A group expense is never a salary, and offering it there
+/// just invites rows that make the trip summary read oddly.
+const List<String> kPredefinedExpenseCategories = [
+  'Market',
+  'Yemek',
+  'Ulaşım',
+  'Eğlence',
+  'Aidat',
+  'Fatura',
+  'Diğer',
+];
+
 String categoryLabel(WidgetRef ref, String category) {
   final key = _categoryKeysByCategory[category];
   return key == null ? category : tr(ref, key);

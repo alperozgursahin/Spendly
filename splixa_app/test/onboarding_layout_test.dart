@@ -18,8 +18,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
       expect(tester.takeException(), isNull, reason: 'overflow on page $page');
       if (page < 3) {
+        // The forward control is a circular icon button now, so it carries its
+        // label as a semantics label rather than visible text. Finding it by
+        // that label keeps the test honest about the control being reachable
+        // and named, which is what actually matters here.
         await tester.tap(
-          find.text(AppStrings.of('onboarding_continue', AppLanguage.de)),
+          find.bySemanticsLabel(
+            AppStrings.of('onboarding_continue', AppLanguage.de),
+          ),
         );
         // Start the page animation on one frame, then advance beyond its
         // 360 ms duration. pumpAndSettle cannot be used because Lottie loops.
