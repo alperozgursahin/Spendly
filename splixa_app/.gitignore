@@ -65,3 +65,19 @@ firebase-debug.log
 
 # Supabase CLI link metadata and local service versions.
 supabase/.temp/
+
+# Build output at any depth. The stock Flutter ignore only covers /build/, so
+# android/build/ and android/app/build/ were still being offered to git.
+build/
+.gradle/
+.kotlin/
+
+# FVM pins the SDK here; the SDK itself must never enter the repo.
+.fvm/
+
+# Scratch folder for generated hand-off notes, not part of the app.
+Claude outputs/
+
+# One-off SQL kept at the repo root before supabase/migrations/ existed.
+# supabase/migrations/ is the schema's source of truth; these are stale copies.
+/supabase_*.sql

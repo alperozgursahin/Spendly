@@ -547,4 +547,68 @@ const Map<String, String> trStrings = {
   'profile_section_support': 'Destek',
   'profile_section_legal': 'Yasal',
   'language_picker_title': 'Dilini seç',
+  'error_free_group_limit':
+      'Ücretsiz planda en fazla 2 grup kullanabilirsin. Sınırsız grup için Pro’ya geç.',
+  'error_free_personal_expense_limit':
+      'Bu ay 50 kişisel gider sınırına ulaştın. Eklemeye devam etmek için Pro’ya geç.',
+  'error_not_authenticated': 'Devam etmek için yeniden giriş yap.',
+  'pro_tools_title': 'Pro araçları',
+  'pro_tools_locked': 'Tüm gelişmiş para araçlarını Splixa Pro ile aç.',
+  'pro_server_verified': 'Pro erişimi güvenli biçimde doğrulandı',
+  'pro_sync_pending': 'Pro erişimi eşitleniyor',
+  'pro_biometric_lock': 'Biyometrik Uygulama Kilidi',
+  'pro_biometric_lock_body':
+      'Splixa’dan ayrıldıktan sonra Face ID, parmak izi veya cihaz kilidi iste.',
+  'pro_biometric_unavailable':
+      'Biyometrik veya cihaz doğrulaması kullanılamıyor.',
+  'pro_app_lock_reason': 'Splixa finans bilgilerini açmak için doğrula',
+  'pro_app_locked_title': 'Splixa kilitli',
+  'pro_app_locked_body':
+      'Özel finans bilgilerini korumak için kimliğini doğrula.',
+  'pro_unlock': 'Kilidi aç',
+  'pro_home_widget': 'Hızlı Ekle ana ekran widget’ı',
+  'pro_home_widget_body': 'Ana ekrandan doğrudan gider eklemeye geç.',
+  'pro_home_widget_manual':
+      'Splixa widget’ını cihazının widget galerisinden ekle.',
+  'pro_custom_categories': 'Özel kategoriler',
+  'pro_category_add': 'Kategori ekle',
+  'pro_category_name': 'Kategori adı',
+  'pro_category_emoji': 'Emoji',
+  'pro_categories_empty':
+      'Kendi emoji ve renginle tekrar kullanılabilir kategoriler oluştur.',
+  'pro_recurring_expenses': 'Tekrarlayan giderler',
+  'pro_recurring_add': 'Tekrarlayan gider ekle',
+  'pro_recurring_name': 'Gider adı',
+  'pro_recurring_empty':
+      'Kira, abonelik ve diğer düzenli ödemeleri otomatikleştir.',
+  'pro_frequency_weekly': 'Haftalık',
+  'pro_frequency_monthly': 'Aylık',
+  'pro_export_csv': 'Eksiksiz CSV dışa aktar',
+  'pro_advanced_analytics': 'Gelişmiş analiz ve tarih aralığı',
+  'pro_custom_rate_title': 'Özel döviz kurunu kilitle',
+  'pro_custom_rate_label': '1 {currency} için TRY',
+  'pro_custom_rate_helper':
+      'Bu kur giderle birlikte saklanır ve geçmişte asla değişmez.',
+  'pro_custom_rate_try_identity': 'TRY zaten sabit 1:1 kurunu kullanır.',
+  'pro_receipt_camera': 'Kamerayla tara',
+  'pro_receipt_gallery': 'Galeriden seç',
+  'pro_receipt_ready': 'Fiş hazır · alanları kontrol et',
+  'pro_receipt_view': 'Fişi görüntüle',
+  'pro_receipt_review_required':
+      'OCR önerileri dolduruldu. Kaydetmeden önce kontrol et.',
+  'pro_receipt_upload_failed': 'Gider kaydedildi ancak fiş eklenemedi.',
+  'pro_receipt_invalid_image': 'Bu fiş görseli okunamadı.',
+  'pro_ocr_mobile_only': 'Fiş tarama Android ve iOS’ta kullanılabilir.',
+  'pro_send_reminder': 'Hatırlat',
+  'pro_reminder_sent': 'Nazik bir hatırlatma gönderildi.',
+  'pro_trip_summary': 'Paylaşılabilir gezi özeti',
+  'pro_trip_privacy_note':
+      'Paylaşılan görsel yalnızca toplamları içerir; özel üye bakiyeleri yer almaz.',
+  'pro_trip_share': 'Özeti paylaş',
+  'statistics_current_month': 'Bu ay',
+  'paywall_free_trial': '7 GÜN ÜCRETSİZ DENE',
+  'paywall_plan_lifetime': 'Ömür Boyu Pro',
+  'paywall_period_once': 'tek ödeme',
+  'paywall_lifetime_disclosure':
+      '{price} bir kez tahsil edilir. Bu bir abonelik değildir ve yenilenmez.',
 };

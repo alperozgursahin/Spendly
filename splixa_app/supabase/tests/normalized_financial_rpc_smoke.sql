@@ -38,7 +38,7 @@ begin
     p_group_id => v_group_id,
     p_payer_id => v_payer_id,
     p_description => 'ROLLBACK_ONLY_NORMALIZED_RPC_SMOKE_TEST',
-    p_category => 'test',
+    p_category => 'Diğer',
     p_notes => 'This row must never survive the surrounding rollback.',
     p_expense_date => current_date,
     p_split_type => 'exact',

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Splixa</string>
+    <string name="widget_quick_add">+ Quick Add</string>
+    <string name="widget_unlock_pro">Unlock with Pro</string>
+    <string name="widget_description">Open Splixa Quick Add</string>
+</resources>

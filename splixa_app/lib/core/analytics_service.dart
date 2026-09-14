@@ -9,10 +9,18 @@ import 'experiment_service.dart';
 enum PaywallSource {
   onboarding('onboarding'),
   unlimitedGroups('unlimited_groups'),
+  personalExpenseLimit('personal_expense_limit'),
   receiptScan('receipt_scan'),
+  receiptAttachment('receipt_attachment'),
   customExchangeRate('custom_exchange_rate'),
+  customCategories('custom_categories'),
+  recurringExpenses('recurring_expenses'),
+  debtReminders('debt_reminders'),
+  biometricLock('biometric_lock'),
+  homeWidget('home_widget'),
   advancedAnalytics('advanced_analytics'),
   advancedReports('advanced_reports'),
+  tripSummary('trip_summary'),
   profile('profile'),
   unknown('unknown');
 
@@ -369,6 +377,18 @@ class AnalyticsService {
   }
 
   Future<void> groupCreated() => _log('group_created');
+
+  Future<void> proLimitReached({required String limit}) {
+    return _log('pro_limit_reached', parameters: {'limit': limit});
+  }
+
+  Future<void> proFeatureSelected({required String feature}) {
+    return _log('pro_feature_selected', parameters: {'feature': feature});
+  }
+
+  Future<void> proFeatureCompleted({required String feature}) {
+    return _log('pro_feature_completed', parameters: {'feature': feature});
+  }
 
   Future<void> ledgerActionCompleted({required LedgerAnalyticsAction action}) {
     return _log(

@@ -28,7 +28,9 @@ import 'features/groups/groups_screen.dart';
 import 'features/groups/group_detail_screen.dart';
 import 'features/groups/group_info_screen.dart';
 import 'features/groups/group_chat_screen.dart';
+import 'features/groups/trip_summary_screen.dart';
 import 'features/subscriptions/paywall_screen.dart';
+import 'features/subscriptions/pro_tools_screen.dart';
 import 'features/social/social_screen.dart';
 import 'features/social/chat_screen.dart';
 import 'features/social/other_user_profile_screen.dart';
@@ -40,6 +42,11 @@ import 'main_scaffold.dart';
 
 import 'features/subscriptions/revenuecat_config.dart';
 import 'features/subscriptions/premium_provider.dart';
+import 'features/subscriptions/app_lock_service.dart';
+import 'features/subscriptions/home_widget_service.dart';
+import 'features/subscriptions/paywall_frequency_service.dart';
+import 'features/notifications/push_notification_service.dart';
+import 'core/profile_preferences_service.dart';
 
 class GoRouterRefreshStream extends ChangeNotifier {
   factory GoRouterRefreshStream(
@@ -254,13 +261,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/dashboard',
             name: 'dashboard',
             builder: (context, state) => const SplixaHomeScreen(),
-            routes: [
-              GoRoute(
-                path: 'statistics',
-                name: 'statistics',
-                builder: (context, state) => const StatisticsScreen(),
-              ),
-            ],
           ),
           GoRoute(
             path: '/notifications',
@@ -378,6 +378,32 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ),
       ),
+      // Deliberately a top-level route rather than a child of /dashboard.
+      // The ShellRoute owns a single Navigator GlobalKey, so pushing a route
+      // that lives inside the shell while the top of the stack is outside it
+      // (Pro tools -> "Advanced analytics") would mount that same key twice and
+      // the navigation would fail outright. Statistics never shows the primary
+      // bottom navigation anyway, so it gains nothing from the shell.
+      GoRoute(
+        path: '/statistics',
+        name: 'statistics',
+        builder: (context, state) => const StatisticsScreen(),
+      ),
+      GoRoute(
+        path: '/pro-tools',
+        name: 'pro_tools',
+        builder: (context, state) => const ProToolsScreen(),
+      ),
+      GoRoute(
+        path: '/trip-summary/:id',
+        name: 'trip_summary',
+        builder: (context, state) => TripSummaryScreen(
+          groupId: state.pathParameters['id']!,
+          groupName:
+              state.extra as String? ??
+              AppStrings.of('route_fallback_group', currentAppLanguage),
+        ),
+      ),
     ],
   );
 });
@@ -400,6 +426,35 @@ class _MyAppState extends ConsumerState<MyApp> {
   static const _darkBorder = Color(0xFF334155);
   String? _trackedLanguage;
   bool? _trackedProState;
+  String? _runtimeUserId;
+  StreamSubscription<Uri?>? _homeWidgetClickSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _homeWidgetClickSubscription = SplixaHomeWidgetService.clicks.listen(
+      _handleHomeWidgetClick,
+    );
+    unawaited(
+      SplixaHomeWidgetService.initiallyLaunched().then(_handleHomeWidgetClick),
+    );
+  }
+
+  void _handleHomeWidgetClick(Uri? uri) {
+    if (uri == null || !mounted) return;
+    final router = ref.read(routerProvider);
+    if (ref.read(premiumProvider)) {
+      router.go('/dashboard?quickAdd=1');
+    } else {
+      router.push('/paywall?source=${PaywallSource.homeWidget.analyticsValue}');
+    }
+  }
+
+  @override
+  void dispose() {
+    _homeWidgetClickSubscription?.cancel();
+    super.dispose();
+  }
 
   ThemeData _buildTheme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
@@ -510,18 +565,32 @@ class _MyAppState extends ConsumerState<MyApp> {
     final themeMode = ref.watch(appThemeModeProvider);
     final language = ref.watch(appLanguageProvider);
     final isPro = ref.watch(premiumProvider);
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+
+    if (_runtimeUserId != currentUserId) {
+      _runtimeUserId = currentUserId;
+      if (currentUserId != null) {
+        unawaited(ProfilePreferencesService.syncTimezone());
+        unawaited(ref.read(pushNotificationServiceProvider).synchronize());
+        unawaited(_offerPostOnboardingPaywall(currentUserId));
+      }
+    }
 
     if (_trackedLanguage != language.code) {
       _trackedLanguage = language.code;
       unawaited(
         ref.read(analyticsServiceProvider).setAppLanguage(language.code),
       );
+      if (currentUserId != null) {
+        unawaited(ref.read(pushNotificationServiceProvider).synchronize());
+      }
     }
     if (_trackedProState != isPro) {
       _trackedProState = isPro;
       unawaited(
         ref.read(analyticsServiceProvider).setSubscriptionTier(isPro: isPro),
       );
+      unawaited(SplixaHomeWidgetService.update(isPro: isPro));
     }
 
     return MaterialApp.router(
@@ -541,9 +610,26 @@ class _MyAppState extends ConsumerState<MyApp> {
       // yet on the first frame after a live language switch.
       builder: (context, child) => Directionality(
         textDirection: language.textDirection,
-        child: child ?? const SizedBox.shrink(),
+        child: AppLockGate(child: child ?? const SizedBox.shrink()),
       ),
       routerConfig: router,
     );
+  }
+
+  Future<void> _offerPostOnboardingPaywall(String userId) async {
+    if (ref.read(premiumProvider)) return;
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null || requiresGoogleProfileSetup(user)) return;
+    final shouldShow = await PaywallFrequencyService.claimPostOnboarding(
+      userId,
+    );
+    if (!shouldShow || !mounted || ref.read(premiumProvider)) return;
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    if (!mounted || Supabase.instance.client.auth.currentUser?.id != userId) {
+      return;
+    }
+    ref
+        .read(routerProvider)
+        .push('/paywall?source=${PaywallSource.onboarding.analyticsValue}');
   }
 }

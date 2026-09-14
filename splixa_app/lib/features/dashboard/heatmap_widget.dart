@@ -5,7 +5,13 @@ import '../../core/app_strings.dart';
 import 'heatmap_provider.dart';
 
 class HeatmapCard extends ConsumerWidget {
-  const HeatmapCard({super.key});
+  const HeatmapCard({super.key, this.initialMonth});
+
+  /// Month the calendar opens on. `HeatMapCalendar` copies `initDate` into its
+  /// own state on first build, so the widget is rebuilt from scratch (via the
+  /// `ValueKey` below) whenever this changes — otherwise picking a date range
+  /// would filter the data but leave the calendar sitting on today's month.
+  final DateTime? initialMonth;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -34,6 +40,8 @@ class HeatmapCard extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             HeatMapCalendar(
+              key: ValueKey(initialMonth),
+              initDate: initialMonth,
               datasets: data,
               colorsets: colorsets,
               colorMode: ColorMode.color,

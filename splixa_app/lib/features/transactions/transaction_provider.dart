@@ -60,9 +60,12 @@ class TransactionService {
   }
 
   Future<void> addTransaction(TransactionModel transaction) async {
-    // RLS enforces ownership. The compatibility trigger keeps `amount` equal
-    // to base_amount until the legacy column is removed.
-    await _supabase.from('transactions').insert(transaction.toJson());
+    // Ownership, locked FX validation, and the monthly free quota are applied
+    // atomically by PostgreSQL. The RPC never accepts a caller-supplied user.
+    await _supabase.rpc(
+      'create_personal_transaction_v1',
+      params: transaction.toCreateRpcParameters(),
+    );
     if (transaction.type == 'expense') {
       await _analytics.expenseAdded(scope: ExpenseAnalyticsScope.personal);
     }

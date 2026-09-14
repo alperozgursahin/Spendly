@@ -31,6 +31,16 @@ String friendlyErrorMessage(Object error) {
   }
   if (error is AuthException) return _friendlyAuthMessage(error);
   if (error is PostgrestException) return _friendlyPostgrestMessage(error);
+  if (error is FunctionException) {
+    final details = error.details.toString().toUpperCase();
+    if (details.contains('RATE_LIMIT') || details.contains('REMINDER_RATE')) {
+      return AppStrings.of('error_rate_limited', currentAppLanguage);
+    }
+    if (error.status == 401 || error.status == 403) {
+      return AppStrings.of('error_forbidden', currentAppLanguage);
+    }
+    return AppStrings.of('error_server_generic', currentAppLanguage);
+  }
 
   if (error is Exception) {
     return AppStrings.of('error_generic_short', currentAppLanguage);
@@ -84,6 +94,14 @@ String _friendlyAuthMessage(AuthException error) {
 
 String _friendlyPostgrestMessage(PostgrestException error) {
   final language = currentAppLanguage;
+  final message = error.message.toUpperCase();
+
+  if (message.contains('FREE_GROUP_LIMIT_REACHED')) {
+    return AppStrings.of('error_free_group_limit', language);
+  }
+  if (message.contains('FREE_PERSONAL_EXPENSE_LIMIT_REACHED')) {
+    return AppStrings.of('error_free_personal_expense_limit', language);
+  }
 
   switch (error.code) {
     case '23505':

@@ -150,34 +150,44 @@ class GroupInfoScreen extends ConsumerWidget {
               ),
             ),
           ),
-          if (!isCreator)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: ElevatedButton.icon(
-                onPressed: () => _showLeaveGroupDialog(context, ref),
-                icon: const Icon(Icons.exit_to_app),
-                label: Text(tr(ref, 'group_info_leave_button')),
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.red,
-                  backgroundColor: Colors.red.shade50,
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-              ),
+          // Android 14 draws Flutter edge-to-edge: without SafeArea the gesture
+          // bar covers the lower half of whichever destructive button is shown.
+          SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!isCreator)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showLeaveGroupDialog(context, ref),
+                      icon: const Icon(Icons.exit_to_app),
+                      label: Text(tr(ref, 'group_info_leave_button')),
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        backgroundColor: Colors.red.shade50,
+                        minimumSize: const Size(double.infinity, 50),
+                      ),
+                    ),
+                  ),
+                if (isCreator)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showDeleteGroupDialog(context, ref),
+                      icon: const Icon(Icons.delete_forever),
+                      label: Text(tr(ref, 'group_info_delete_button')),
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.red.shade700,
+                        minimumSize: const Size(double.infinity, 50),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-          if (isCreator)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: ElevatedButton.icon(
-                onPressed: () => _showDeleteGroupDialog(context, ref),
-                icon: const Icon(Icons.delete_forever),
-                label: Text(tr(ref, 'group_info_delete_button')),
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Colors.red.shade700,
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-              ),
-            ),
+          ),
         ],
       ),
     );

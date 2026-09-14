@@ -256,7 +256,7 @@ class _Header extends ConsumerWidget {
           iconSize: 20,
           onPressed: () {
             if (ref.read(premiumProvider)) {
-              context.push('/dashboard/statistics');
+              context.push('/statistics');
             } else {
               context.push(
                 '/paywall?source=${PaywallSource.advancedAnalytics.analyticsValue}',

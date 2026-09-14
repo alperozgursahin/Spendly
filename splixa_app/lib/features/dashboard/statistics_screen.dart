@@ -3,22 +3,62 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../core/friendly_error.dart';
 import '../../core/app_strings.dart';
+import '../../core/app_formatting.dart';
 import '../../core/splixa_loading.dart';
 import '../transactions/transaction_provider.dart';
 import '../transactions/transaction_model.dart';
 import '../profile/currency_provider.dart';
 import '../profile/exchange_rate_provider.dart';
+import '../subscriptions/premium_provider.dart';
+import '../subscriptions/pro_access.dart';
+import 'heatmap_provider.dart';
 import 'heatmap_widget.dart';
 
 /// Split out of DashboardScreen so the main tab stays a quick "where do I
 /// stand today" summary instead of a long scroll of charts + a heatmap.
-class StatisticsScreen extends ConsumerWidget {
+class StatisticsScreen extends ConsumerStatefulWidget {
   const StatisticsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StatisticsScreen> createState() => _StatisticsScreenState();
+}
+
+class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
+  @override
+  Widget build(BuildContext context) {
+    if (!ref.watch(premiumProvider)) {
+      return Scaffold(
+        appBar: AppBar(title: Text(tr(ref, 'statistics_title'))),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_rounded, size: 56),
+                const SizedBox(height: 16),
+                Text(
+                  tr(ref, 'pro_tools_locked'),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 18),
+                FilledButton(
+                  onPressed: () =>
+                      requirePro(context, ref, ProFeature.advancedAnalytics),
+                  child: Text(tr(ref, 'profile_upgrade_pro')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     final transactionsAsync = ref.watch(transactionsProvider);
     final currency = ref.watch(currencyProvider);
+    // Held in a provider, not in this State, so the pie chart and the heatmap
+    // can never disagree about which window is on screen.
+    final range = ref.watch(heatmapRangeProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(tr(ref, 'statistics_title'))),
@@ -32,9 +72,19 @@ class StatisticsScreen extends ConsumerWidget {
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            _buildPieChart(ref, transactionsAsync, currency),
+            OutlinedButton.icon(
+              onPressed: _pickRange,
+              icon: const Icon(Icons.date_range_rounded),
+              label: Text(
+                range == null
+                    ? tr(ref, 'statistics_current_month')
+                    : '${AppFormat.shortDate(range.start)} – ${AppFormat.shortDate(range.end)}',
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildPieChart(ref, transactionsAsync, currency, range),
             const SizedBox(height: 24),
-            const HeatmapCard(),
+            HeatmapCard(initialMonth: range?.start),
           ],
         ),
       ),
@@ -45,16 +95,19 @@ class StatisticsScreen extends ConsumerWidget {
     WidgetRef ref,
     AsyncValue<List<TransactionModel>> transactionsAsync,
     String currency,
+    DateTimeRange? range,
   ) {
     return transactionsAsync.when(
       data: (transactions) {
         final now = DateTime.now();
+        final effectiveStart = range?.start ?? DateTime(now.year, now.month);
+        final effectiveEnd = range?.end ?? DateTime(now.year, now.month + 1, 0);
         final currentMonthExpenses = transactions
             .where(
               (t) =>
                   t.type == 'expense' &&
-                  t.date.month == now.month &&
-                  t.date.year == now.year,
+                  !t.date.isBefore(effectiveStart) &&
+                  !t.date.isAfter(effectiveEnd),
             )
             .toList();
 
@@ -190,6 +243,24 @@ class StatisticsScreen extends ConsumerWidget {
         onRetry: () => ref.invalidate(transactionsProvider),
       ),
     );
+  }
+
+  Future<void> _pickRange() async {
+    final now = DateTime.now();
+    final result = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(now.year - 10),
+      lastDate: DateTime(now.year + 1),
+      initialDateRange:
+          ref.read(heatmapRangeProvider) ??
+          DateTimeRange(
+            start: DateTime(now.year, now.month),
+            end: DateTime(now.year, now.month + 1, 0),
+          ),
+    );
+    if (result != null && mounted) {
+      ref.read(heatmapRangeProvider.notifier).state = result;
+    }
   }
 
   String sanitizeCategory(String raw) {

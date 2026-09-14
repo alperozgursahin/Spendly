@@ -6,3 +6,15 @@ verify_jwt = false
 
 [functions.delete-account]
 verify_jwt = true
+
+[functions.revenuecat-webhook]
+verify_jwt = false
+
+[functions.sync-pro-entitlement]
+verify_jwt = true
+
+[functions.generate-recurring-expenses]
+verify_jwt = false
+
+[functions.send-debt-reminder]
+verify_jwt = true

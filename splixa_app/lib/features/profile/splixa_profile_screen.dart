@@ -19,6 +19,7 @@ import '../social/social_provider.dart';
 import '../subscriptions/premium_provider.dart';
 import '../transactions/transaction_provider.dart';
 import 'currency_provider.dart';
+import 'exchange_rate_provider.dart';
 import 'services/pdf_export_service.dart';
 
 class SplixaProfileScreen extends ConsumerStatefulWidget {
@@ -250,6 +251,18 @@ class _ProfileContent extends ConsumerWidget {
                       : tr(ref, 'profile_upgrade_pro'),
                   onTap: isPremium
                       ? () => _manageSubscription(context, ref)
+                      : () => context.push(
+                          '/paywall?source=${PaywallSource.profile.analyticsValue}',
+                        ),
+                ),
+                const _MenuDivider(),
+                _MenuRow(
+                  icon: isPremium
+                      ? Icons.auto_awesome_rounded
+                      : Icons.lock_rounded,
+                  label: tr(ref, 'pro_tools_title'),
+                  onTap: isPremium
+                      ? () => context.push('/pro-tools')
                       : () => context.push(
                           '/paywall?source=${PaywallSource.profile.analyticsValue}',
                         ),
@@ -646,6 +659,9 @@ class _ProfileContent extends ConsumerWidget {
         DateTime(now.year, now.month),
         language: ref.read(appLanguageProvider),
         currencySymbol: ref.read(currencyProvider),
+        displayAmount: (amount) => ref
+            .read(exchangeRateProvider)
+            .convertFromTRY(amount, ref.read(currencyProvider)),
       );
     } catch (error) {
       if (!context.mounted) return;

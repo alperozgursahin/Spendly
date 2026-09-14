@@ -86,6 +86,19 @@ class TransactionModel {
     'type': type,
     if (createdAt != null) 'created_at': createdAt!.toUtc().toIso8601String(),
   };
+
+  Map<String, dynamic> toCreateRpcParameters() => {
+    'p_original_amount': originalAmount,
+    'p_currency_code': currencyCode,
+    'p_base_amount': baseAmount,
+    'p_base_currency_code': baseCurrencyCode,
+    'p_exchange_rate': exchangeRate,
+    'p_rate_source': rateSource,
+    'p_rate_locked_at': rateLockedAt.toUtc().toIso8601String(),
+    'p_category': category,
+    'p_date': _dateOnly(date),
+    'p_type': type,
+  };
 }
 
 String _requiredText(Object? value, String field) {

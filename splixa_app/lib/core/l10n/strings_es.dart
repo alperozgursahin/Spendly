@@ -561,4 +561,68 @@ const Map<String, String> esStrings = {
   'profile_section_support': 'Soporte',
   'profile_section_legal': 'Legal',
   'language_picker_title': 'Elige tu idioma',
+  'error_free_group_limit':
+      'El plan gratis incluye hasta 2 grupos. Pásate a Pro para grupos ilimitados.',
+  'error_free_personal_expense_limit':
+      'Alcanzaste 50 gastos personales este mes. Pásate a Pro para seguir.',
+  'error_not_authenticated': 'Vuelve a iniciar sesión para continuar.',
+  'pro_tools_title': 'Herramientas Pro',
+  'pro_tools_locked':
+      'Desbloquea todas las herramientas avanzadas con Splixa Pro.',
+  'pro_server_verified': 'Acceso Pro verificado de forma segura',
+  'pro_sync_pending': 'Sincronizando acceso Pro',
+  'pro_biometric_lock': 'Bloqueo biométrico',
+  'pro_biometric_lock_body':
+      'Pide Face ID, huella o seguridad del dispositivo al volver a Splixa.',
+  'pro_biometric_unavailable':
+      'La autenticación biométrica no está disponible.',
+  'pro_app_lock_reason': 'Autentícate para abrir tus finanzas de Splixa',
+  'pro_app_locked_title': 'Splixa está bloqueado',
+  'pro_app_locked_body': 'Autentícate para proteger tu información financiera.',
+  'pro_unlock': 'Desbloquear',
+  'pro_home_widget': 'Widget de registro rápido',
+  'pro_home_widget_body': 'Registra un gasto desde la pantalla de inicio.',
+  'pro_home_widget_manual':
+      'Añade el widget de Splixa desde la galería de widgets.',
+  'pro_custom_categories': 'Categorías personalizadas',
+  'pro_category_add': 'Añadir categoría',
+  'pro_category_name': 'Nombre de categoría',
+  'pro_category_emoji': 'Emoji',
+  'pro_categories_empty': 'Crea categorías reutilizables con tu emoji y color.',
+  'pro_recurring_expenses': 'Gastos recurrentes',
+  'pro_recurring_add': 'Añadir gasto recurrente',
+  'pro_recurring_name': 'Nombre del gasto',
+  'pro_recurring_empty':
+      'Automatiza alquiler, suscripciones y otros gastos repetidos.',
+  'pro_frequency_weekly': 'Semanal',
+  'pro_frequency_monthly': 'Mensual',
+  'pro_export_csv': 'Exportar CSV completo',
+  'pro_advanced_analytics': 'Análisis avanzado y rangos de fechas',
+  'pro_custom_rate_title': 'Fijar un tipo de cambio propio',
+  'pro_custom_rate_label': 'TRY por 1 {currency}',
+  'pro_custom_rate_helper':
+      'Este tipo se guarda con el gasto y nunca cambia en el historial.',
+  'pro_custom_rate_try_identity': 'TRY ya usa un tipo fijo de 1:1.',
+  'pro_receipt_camera': 'Escanear con cámara',
+  'pro_receipt_gallery': 'Elegir de la galería',
+  'pro_receipt_ready': 'Recibo listo · revisa los campos',
+  'pro_receipt_view': 'Ver recibo',
+  'pro_receipt_review_required':
+      'Se completaron sugerencias OCR. Revísalas antes de guardar.',
+  'pro_receipt_upload_failed':
+      'El gasto se guardó, pero no se pudo adjuntar el recibo.',
+  'pro_receipt_invalid_image': 'No se pudo leer esta imagen.',
+  'pro_ocr_mobile_only': 'El escáner está disponible en Android e iOS.',
+  'pro_send_reminder': 'Recordar',
+  'pro_reminder_sent': 'Se envió un recordatorio amable.',
+  'pro_trip_summary': 'Resumen de viaje compartible',
+  'pro_trip_privacy_note':
+      'La imagen solo contiene totales, no saldos privados.',
+  'pro_trip_share': 'Compartir resumen',
+  'statistics_current_month': 'Mes actual',
+  'paywall_free_trial': '7 DÍAS GRATIS',
+  'paywall_plan_lifetime': 'Pro de por vida',
+  'paywall_period_once': 'pago único',
+  'paywall_lifetime_disclosure':
+      'Se cobra {price} una sola vez. No es una suscripción ni se renueva.',
 };

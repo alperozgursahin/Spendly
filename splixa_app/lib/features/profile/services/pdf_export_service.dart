@@ -1,7 +1,10 @@
+import 'dart:convert';
+
+import 'package:csv/csv.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/app_formatting.dart';
 import '../../../core/app_strings.dart';
 import '../../../core/locale_provider.dart';
@@ -13,6 +16,7 @@ class PdfExportService {
     DateTime month, {
     AppLanguage language = fallbackAppLanguage,
     String currencySymbol = '\u20ba',
+    double Function(double baseAmount)? displayAmount,
   }) async {
     final fontRegular = await PdfGoogleFonts.robotoRegular();
     final fontBold = await PdfGoogleFonts.robotoBold();
@@ -24,21 +28,17 @@ class PdfExportService {
     double totalIncome = 0;
     double totalExpense = 0;
 
+    final convert = displayAmount ?? (amount) => amount;
     for (var t in transactions) {
       if (t.type == 'income') {
-        totalIncome += t.baseAmount;
+        totalIncome += convert(t.baseAmount);
       } else {
-        totalExpense += t.baseAmount;
+        totalExpense += convert(t.baseAmount);
       }
     }
 
-    // Number grouping follows the report language; the symbol is whatever
-    // currency the user selected, never one inferred from the locale.
-    final currencyFormatter = NumberFormat.currency(
-      locale: language.code,
-      symbol: currencySymbol,
-      decimalDigits: 2,
-    );
+    String formatCurrency(num value) =>
+        AppFormat.amountWithSymbol(value, currencySymbol, language);
     final monthYear = AppFormat.monthYear(month, language);
 
     pdf.addPage(
@@ -62,7 +62,7 @@ class PdfExportService {
             children: [
               pw.Text(
                 "${AppStrings.of('pdf_total_income', language)}: "
-                "${currencyFormatter.format(totalIncome)}",
+                "${formatCurrency(totalIncome)}",
                 style: const pw.TextStyle(
                   color: PdfColors.green700,
                   fontSize: 16,
@@ -70,7 +70,7 @@ class PdfExportService {
               ),
               pw.Text(
                 "${AppStrings.of('pdf_total_expense', language)}: "
-                "${currencyFormatter.format(totalExpense)}",
+                "${formatCurrency(totalExpense)}",
                 style: const pw.TextStyle(
                   color: PdfColors.red700,
                   fontSize: 16,
@@ -81,7 +81,7 @@ class PdfExportService {
           pw.SizedBox(height: 10),
           pw.Text(
             "${AppStrings.of('pdf_net_balance', language)}: "
-            "${currencyFormatter.format(totalIncome - totalExpense)}",
+            "${formatCurrency(totalIncome - totalExpense)}",
             style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16),
           ),
           pw.SizedBox(height: 30),
@@ -112,7 +112,7 @@ class PdfExportService {
                           ? AppStrings.of('common_income', language)
                           : AppStrings.of('common_expense', language))
                       .toUpperCase(),
-                  currencyFormatter.format(t.baseAmount),
+                  formatCurrency(convert(t.baseAmount)),
                 ];
               }).toList(),
               headerStyle: pw.TextStyle(
@@ -138,6 +138,51 @@ class PdfExportService {
     await Printing.sharePdf(
       bytes: bytes,
       filename: 'Splixa_Report_$safeMonthYear.pdf',
+    );
+  }
+
+  static Future<void> generateAndShareCsv(
+    List<TransactionModel> transactions, {
+    AppLanguage language = fallbackAppLanguage,
+  }) async {
+    final rows = <List<dynamic>>[
+      [
+        AppStrings.of('common_date', language),
+        AppStrings.of('common_category', language),
+        AppStrings.of('pdf_header_type', language),
+        'original_amount',
+        'currency_code',
+        'base_amount',
+        'base_currency_code',
+        'exchange_rate',
+        'rate_source',
+        'rate_locked_at',
+      ],
+      ...transactions.map(
+        (transaction) => [
+          '${transaction.date.year}-${transaction.date.month.toString().padLeft(2, '0')}-${transaction.date.day.toString().padLeft(2, '0')}',
+          categoryLabelForLanguage(language, transaction.category),
+          transaction.type,
+          transaction.originalAmount,
+          transaction.currencyCode,
+          transaction.baseAmount,
+          transaction.baseCurrencyCode,
+          transaction.exchangeRate,
+          transaction.rateSource,
+          transaction.rateLockedAt.toIso8601String(),
+        ],
+      ),
+    ];
+    final contents = Csv().encode(rows);
+    final bytes = utf8.encode('\uFEFF$contents');
+    final now = DateTime.now();
+    final filename =
+        'Splixa_Export_${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}.csv';
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile.fromData(bytes, mimeType: 'text/csv', name: filename)],
+        fileNameOverrides: [filename],
+      ),
     );
   }
 }

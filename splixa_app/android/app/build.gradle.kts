@@ -58,10 +58,17 @@ android {
 
         release {
             signingConfig = signingConfigs.getByName("release")
+            // Appends to the rules Flutter's Gradle plugin already contributes;
+            // see proguard-rules.pro for why ML Kit needs an entry here.
+            proguardFiles("proguard-rules.pro")
         }
     }
 }
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation("androidx.appcompat:appcompat:1.7.1")
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/analytics_service.dart';
 import '../../core/app_strings.dart';
 import '../../core/friendly_error.dart';
@@ -12,6 +12,8 @@ import '../profile/currency_provider.dart';
 import '../profile/currency_selector.dart';
 import '../profile/exchange_rate_provider.dart';
 import '../subscriptions/premium_provider.dart';
+import '../subscriptions/pro_access.dart';
+import '../subscriptions/receipt_service.dart';
 
 class AddExpenseSheet extends ConsumerStatefulWidget {
   final String groupId;
@@ -38,6 +40,10 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
   String _splitType = 'equal'; // 'equal', 'percentage', 'exact'
   Set<String> _selectedUsers = {};
   String? _selectedCurrency;
+  XFile? _receiptImage;
+  double? _manualExchangeRate;
+  bool _isScanning = false;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -161,13 +167,17 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: () => _handleProFeature(
-              source: PaywallSource.receiptScan,
-              isPremium: isPremium,
-            ),
-            icon: const Icon(Icons.document_scanner_rounded),
+            onPressed: _isScanning ? null : _scanReceipt,
+            icon: _isScanning
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.document_scanner_rounded),
             label: Text(
-              '${tr(ref, 'groups_scan_receipt')} ✨${isPremium ? '' : ' · Pro'}',
+              _receiptImage == null
+                  ? '${tr(ref, 'groups_scan_receipt')} ✨${isPremium ? '' : ' · Pro'}'
+                  : tr(ref, 'pro_receipt_ready'),
             ),
           ),
           const SizedBox(height: 16),
@@ -200,12 +210,13 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
             customRateUnlocked: isPremium,
             customRateTooltip:
                 '${tr(ref, 'groups_custom_exchange_rate')}${isPremium ? '' : ' · Pro'}',
-            onCustomRatePressed: () => _handleProFeature(
-              source: PaywallSource.customExchangeRate,
-              isPremium: isPremium,
-            ),
+            onCustomRatePressed: () =>
+                _handleProFeature(feature: ProFeature.customExchangeRate),
             onChanged: (value) {
-              setState(() => _selectedCurrency = value);
+              setState(() {
+                _selectedCurrency = value;
+                _manualExchangeRate = null;
+              });
             },
           ),
           const SizedBox(height: 24),
@@ -274,17 +285,25 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
 
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: _submitExpense,
+            onPressed: _isSubmitting ? null : _submitExpense,
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 54),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: Text(
-              tr(ref, 'common_save'),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+            child: _isSubmitting
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(
+                    tr(ref, 'common_save'),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
           ),
           const SizedBox(height: 24),
         ],
@@ -292,18 +311,116 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     );
   }
 
-  void _handleProFeature({
-    required PaywallSource source,
-    required bool isPremium,
-  }) {
-    if (!isPremium) {
-      context.push('/paywall?source=${source.analyticsValue}');
+  Future<void> _handleProFeature({required ProFeature feature}) async {
+    if (!await requirePro(context, ref, feature) || !mounted) return;
+    if (feature != ProFeature.customExchangeRate) return;
+    final currency = (_selectedCurrency ?? ref.read(currencyProvider))!;
+    if (currencyOptionForSymbol(currency).code == 'TRY') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr(ref, 'pro_custom_rate_try_identity'))),
+      );
       return;
     }
+    final result = await _showCustomRateDialog(currency);
+    if (result != null && mounted) {
+      setState(() => _manualExchangeRate = result);
+    }
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(tr(ref, 'groups_pro_tool_coming_soon'))),
+  Future<double?> _showCustomRateDialog(String currency) async {
+    final controller = TextEditingController(
+      text: _manualExchangeRate?.toStringAsFixed(4) ?? '',
     );
+    final result = await showDialog<double>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(tr(ref, 'pro_custom_rate_title')),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: trp(ref, 'pro_custom_rate_label', {
+              'currency': currency,
+            }),
+            helperText: tr(ref, 'pro_custom_rate_helper'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(tr(ref, 'common_cancel')),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = _parseValue(controller.text);
+              if (value != null && value > 0) {
+                Navigator.pop(dialogContext, value);
+              }
+            },
+            child: Text(tr(ref, 'common_save')),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return result;
+  }
+
+  Future<void> _scanReceipt() async {
+    final canContinue = await requirePro(
+      context,
+      ref,
+      ProFeature.receiptScanner,
+    );
+    if (!canContinue || !mounted) return;
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded),
+              title: Text(tr(ref, 'pro_receipt_camera')),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded),
+              title: Text(tr(ref, 'pro_receipt_gallery')),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+    setState(() => _isScanning = true);
+    try {
+      final result = await ref
+          .read(receiptServiceProvider)
+          .pickAndScan(source: source);
+      if (result == null || !mounted) return;
+      setState(() {
+        _receiptImage = result.image;
+        if (result.suggestedDescription?.isNotEmpty == true) {
+          _descController.text = result.suggestedDescription!;
+        }
+        if (result.suggestedAmount != null) {
+          _amountController.text = result.suggestedAmount!.toStringAsFixed(2);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr(ref, 'pro_receipt_review_required'))),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(error))));
+      }
+    } finally {
+      if (mounted) setState(() => _isScanning = false);
+    }
   }
 
   Widget _buildMemberTile(
@@ -540,7 +657,10 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     final currencyOption = currencyOptionForSymbol(entryCurrency);
     final exchanger = ref.read(exchangeRateProvider);
     final isBaseCurrency = currencyOption.code == 'TRY';
-    final canConvert = isBaseCurrency || await exchanger.ensureFresh();
+    final canConvert =
+        isBaseCurrency ||
+        _manualExchangeRate != null ||
+        await exchanger.ensureFresh();
     if (!canConvert) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -552,7 +672,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
 
     final exchangeRate = isBaseCurrency
         ? 1.0
-        : 1 / exchanger.rateFor(entryCurrency);
+        : _manualExchangeRate ?? 1 / exchanger.rateFor(entryCurrency);
     final baseAmount = _roundMoney(amount * exchangeRate);
     final shares = _buildExpenseShares(
       originalShares: splitAmounts,
@@ -560,7 +680,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       exchangeRate: exchangeRate,
       targetBaseAmount: baseAmount,
     );
-    final rateLockedAt = isBaseCurrency
+    final rateLockedAt = isBaseCurrency || _manualExchangeRate != null
         ? DateTime.now().toUtc()
         : exchanger.lastUpdatedAt!;
 
@@ -575,13 +695,40 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       baseAmount: baseAmount,
       baseCurrencyCode: 'TRY',
       exchangeRate: exchangeRate,
-      rateSource: isBaseCurrency ? 'identity' : exchanger.currentRateSource,
+      rateSource: isBaseCurrency
+          ? 'identity'
+          : _manualExchangeRate != null
+          ? 'manual_user_locked'
+          : exchanger.currentRateSource,
       rateLockedAt: rateLockedAt,
       shares: shares,
     );
 
     try {
-      await ref.read(groupServiceProvider).createExpense(expense);
+      setState(() => _isSubmitting = true);
+      final created = await ref
+          .read(groupServiceProvider)
+          .createExpense(expense);
+      final receiptImage = _receiptImage;
+      if (receiptImage != null) {
+        try {
+          await ref
+              .read(receiptServiceProvider)
+              .uploadForExpense(image: receiptImage, expenseId: created.id);
+          ref.invalidate(expenseReceiptsProvider(created.id));
+          await ref
+              .read(analyticsServiceProvider)
+              .proFeatureCompleted(
+                feature: ProFeature.receiptAttachment.analyticsValue,
+              );
+        } catch (_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(tr(ref, 'pro_receipt_upload_failed'))),
+            );
+          }
+        }
+      }
       ref.invalidate(groupExpensesStreamProvider(widget.groupId));
       ref.invalidate(groupBalancesProvider(widget.groupId));
       ref.invalidate(groupSettlementsProvider(widget.groupId));
@@ -594,6 +741,8 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
           context,
         ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(e))));
       }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 

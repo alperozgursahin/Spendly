@@ -351,18 +351,16 @@ class GroupService {
   }
 
   Future<GroupModel> createGroup(String name, String userId) async {
-    final row = await _supabase
-        .from('groups')
-        .insert({'name': name, 'created_by': userId})
-        .select()
-        .single();
-
-    final group = GroupModel.fromJson(Map<String, dynamic>.from(row));
-
-    await _supabase.from('group_members').insert({
-      'group_id': group.id,
-      'user_id': userId,
-    });
+    if (_supabase.auth.currentUser?.id != userId) {
+      throw const FriendlyException('error_forbidden');
+    }
+    final response = await _supabase.rpc(
+      'create_group_v1',
+      params: {'p_name': name},
+    );
+    final group = GroupModel.fromJson(
+      _singleRpcRow(response, 'create_group_v1'),
+    );
 
     await _analytics.groupCreated();
 

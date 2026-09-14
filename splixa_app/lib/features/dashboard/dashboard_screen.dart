@@ -16,6 +16,8 @@ import 'activity_provider.dart';
 import '../filters/filters_provider.dart';
 import '../notifications/notification_provider.dart';
 import '../subscriptions/premium_provider.dart';
+import '../subscriptions/pro_access.dart';
+import '../subscriptions/pro_features_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({
@@ -153,7 +155,7 @@ class DashboardScreen extends ConsumerWidget {
 
   void _openStatistics(BuildContext context, WidgetRef ref) {
     if (ref.read(premiumProvider)) {
-      context.push('/dashboard/statistics');
+      context.push('/statistics');
       return;
     }
     context.push(
@@ -610,6 +612,7 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
   String transactionType = 'expense';
   String selectedCategory = 'Market';
   String? selectedCurrency;
+  double? manualExchangeRate;
 
   final List<String> predefinedCategories = [
     'Market',
@@ -636,6 +639,16 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
     final profileCurrency = ref.watch(currencyProvider);
     final currency = selectedCurrency ?? profileCurrency;
     final isPremium = ref.watch(premiumProvider);
+    final savedCategories = ref
+        .watch(customCategoriesProvider)
+        .maybeWhen(
+          data: (items) => items.map((item) => item.name).toList(),
+          orElse: () => const <String>[],
+        );
+    final categoryOptions = <String>{
+      ...predefinedCategories,
+      ...savedCategories,
+    }.toList();
 
     return Card(
       elevation: 0,
@@ -722,9 +735,12 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
               customRateUnlocked: isPremium,
               customRateTooltip:
                   '${tr(ref, 'groups_custom_exchange_rate')}${isPremium ? '' : ' · Pro'}',
-              onCustomRatePressed: () => _handleCustomRate(isPremium),
+              onCustomRatePressed: _handleCustomRate,
               onChanged: (value) {
-                setState(() => selectedCurrency = value);
+                setState(() {
+                  selectedCurrency = value;
+                  manualExchangeRate = null;
+                });
               },
             ),
             const SizedBox(height: 12),
@@ -764,7 +780,7 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
                               isDense: true,
                               isExpanded: true,
                               dropdownColor: Theme.of(context).cardTheme.color,
-                              items: predefinedCategories.map((c) {
+                              items: categoryOptions.map((c) {
                                 return DropdownMenuItem(
                                   value: c,
                                   child: Text(
@@ -778,8 +794,16 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
                                   ),
                                 );
                               }).toList(),
-                              onChanged: (val) {
+                              onChanged: (val) async {
                                 if (val != null) {
+                                  if (val == 'Diğer' && !isPremium) {
+                                    await requirePro(
+                                      context,
+                                      ref,
+                                      ProFeature.customCategories,
+                                    );
+                                    return;
+                                  }
                                   setState(() => selectedCategory = val);
                                 }
                               },
@@ -812,17 +836,57 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
     );
   }
 
-  void _handleCustomRate(bool isPremium) {
-    if (!isPremium) {
-      context.push(
-        '/paywall?source=${PaywallSource.customExchangeRate.analyticsValue}',
+  Future<void> _handleCustomRate() async {
+    if (!await requirePro(context, ref, ProFeature.customExchangeRate)) {
+      return;
+    }
+    if (!mounted) return;
+    final currency = (selectedCurrency ?? ref.read(currencyProvider))!;
+    if (currencyOptionForSymbol(currency).code == 'TRY') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr(ref, 'pro_custom_rate_try_identity'))),
       );
       return;
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(tr(ref, 'dashboard_custom_rate_coming_soon'))),
+    final controller = TextEditingController(
+      text: manualExchangeRate?.toStringAsFixed(4) ?? '',
     );
+    final value = await showDialog<double>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(tr(ref, 'pro_custom_rate_title')),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: trp(ref, 'pro_custom_rate_label', {
+              'currency': currency,
+            }),
+            helperText: tr(ref, 'pro_custom_rate_helper'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(tr(ref, 'common_cancel')),
+          ),
+          FilledButton(
+            onPressed: () {
+              final parsed = double.tryParse(
+                controller.text.trim().replaceAll(',', '.'),
+              );
+              if (parsed != null && parsed > 0) {
+                Navigator.pop(dialogContext, parsed);
+              }
+            },
+            child: Text(tr(ref, 'common_save')),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (value != null && mounted) setState(() => manualExchangeRate = value);
   }
 
   Future<void> _saveTransaction() async {
@@ -835,12 +899,31 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
 
     if (amount <= 0 || finalCategory.isEmpty) return;
 
+    if (transactionType == 'expense' && !ref.read(premiumProvider)) {
+      final usage = await ref.read(proUsageProvider.future);
+      if (usage != null &&
+          usage.personalExpenseCount >= usage.personalExpenseLimit) {
+        await ref
+            .read(analyticsServiceProvider)
+            .proLimitReached(limit: 'personal_expenses_monthly');
+        if (mounted) {
+          await context.push(
+            '/paywall?source=${PaywallSource.personalExpenseLimit.analyticsValue}',
+          );
+        }
+        return;
+      }
+    }
+
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
     final String entryCurrency = selectedCurrency ?? ref.read(currencyProvider);
     final exchanger = ref.read(exchangeRateProvider);
-    final canConvert = entryCurrency == '₺' || await exchanger.ensureFresh();
+    final canConvert =
+        entryCurrency == '₺' ||
+        manualExchangeRate != null ||
+        await exchanger.ensureFresh();
     if (!canConvert) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -849,13 +932,13 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
       }
       return;
     }
-    final amountInTRY = double.parse(
-      exchanger.convertToTRY(amount, entryCurrency).toStringAsFixed(2),
-    );
     final currencyOption = currencyOptionForSymbol(entryCurrency);
     final exchangeRate = entryCurrency == '₺'
         ? 1.0
-        : 1 / exchanger.rateFor(entryCurrency);
+        : manualExchangeRate ?? 1 / exchanger.rateFor(entryCurrency);
+    final amountInTRY = double.parse(
+      (amount * exchangeRate).toStringAsFixed(2),
+    );
     final now = DateTime.now();
 
     final transaction = TransactionModel(
@@ -867,8 +950,10 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
       exchangeRate: exchangeRate,
       rateSource: entryCurrency == '₺'
           ? 'identity'
+          : manualExchangeRate != null
+          ? 'manual_user_locked'
           : exchanger.currentRateSource,
-      rateLockedAt: entryCurrency == '₺'
+      rateLockedAt: entryCurrency == '₺' || manualExchangeRate != null
           ? now.toUtc()
           : exchanger.lastUpdatedAt!,
       category: finalCategory,
@@ -879,8 +964,10 @@ class _QuickAddWidgetState extends ConsumerState<QuickAddWidget> {
     try {
       await ref.read(transactionServiceProvider).addTransaction(transaction);
       ref.invalidate(transactionsProvider);
+      ref.invalidate(proUsageProvider);
 
       amountController.clear();
+      manualExchangeRate = null;
       if (selectedCategory == 'Diğer') customCategoryController.clear();
 
       if (mounted) {

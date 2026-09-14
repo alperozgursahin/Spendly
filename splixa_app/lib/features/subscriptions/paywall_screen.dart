@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:lottie/lottie.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/analytics_service.dart';
@@ -180,6 +181,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         }
 
         final selected = _selectedPackage(packages);
+        final selectedEligibility = ref.watch(
+          trialEligibilityProvider(selected.storeProduct.identifier),
+        );
+        final selectedHasSevenDayTrial = _hasEligibleSevenDayTrial(
+          selected,
+          selectedEligibility.value,
+        );
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -201,7 +209,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              copy.renewalDisclosure(selected),
+              copy.renewalDisclosure(
+                selected,
+                hasEligibleSevenDayTrial: selectedHasSevenDayTrial,
+              ),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
@@ -226,6 +237,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     int priority(Package package) => switch (package.packageType) {
       PackageType.annual => 0,
       PackageType.monthly => 1,
+      PackageType.lifetime => 2,
       _ => 2,
     };
     result.sort((a, b) => priority(a).compareTo(priority(b)));
@@ -347,16 +359,17 @@ class _PaywallHero extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(13),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .16),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.auto_awesome_rounded,
-              size: 38,
-              color: Colors.white,
+          SizedBox(
+            height: 88,
+            child: Lottie.asset(
+              'assets/lottie/pro_value.json',
+              animate: !MediaQuery.disableAnimationsOf(context),
+              repeat: true,
+              errorBuilder: (_, _, _) => const Icon(
+                Icons.auto_awesome_rounded,
+                size: 48,
+                color: Colors.white,
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -437,7 +450,7 @@ class _BenefitRow extends StatelessWidget {
   }
 }
 
-class _PlanCard extends StatelessWidget {
+class _PlanCard extends ConsumerWidget {
   const _PlanCard({
     required this.package,
     required this.selected,
@@ -453,9 +466,16 @@ class _PlanCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final product = package.storeProduct;
+    final appleEligibility = ref.watch(
+      trialEligibilityProvider(product.identifier),
+    );
+    final hasEligibleTrial = _hasEligibleSevenDayTrial(
+      package,
+      appleEligibility.value,
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
@@ -518,6 +538,19 @@ class _PlanCard extends StatelessWidget {
                                   color: Color(0xFF6D4800),
                                   fontSize: 10,
                                   fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (hasEligibleTrial) ...[
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                copy.freeTrial,
+                                style: TextStyle(
+                                  color: colorScheme.primary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
                             ),
@@ -629,6 +662,7 @@ class _PaywallCopy {
   String get benefitsTitle => _s('paywall_benefits_title');
   String get choosePlan => _s('paywall_choose_plan');
   String get bestValue => _s('paywall_best_value');
+  String get freeTrial => _s('paywall_free_trial');
   String get continueFree => _s('paywall_continue_free');
   String get restore => _s('paywall_restore');
   String get restoreSuccess => _s('paywall_restore_restored');
@@ -668,12 +702,14 @@ class _PaywallCopy {
   String planName(Package package) => switch (package.packageType) {
     PackageType.annual => _s('paywall_plan_annual'),
     PackageType.monthly => _s('paywall_plan_monthly'),
+    PackageType.lifetime => _s('paywall_plan_lifetime'),
     _ => package.storeProduct.title,
   };
 
   String period(Package package) => switch (package.packageType) {
     PackageType.annual => _s('paywall_period_annual'),
     PackageType.monthly => _s('paywall_period_monthly'),
+    PackageType.lifetime => _s('paywall_period_once'),
     _ => '',
   };
 
@@ -683,11 +719,36 @@ class _PaywallCopy {
   String continueWith(Package package) =>
       _f('paywall_continue_with_plan', {'plan': planName(package)});
 
-  String renewalDisclosure(Package package) {
+  String renewalDisclosure(
+    Package package, {
+    required bool hasEligibleSevenDayTrial,
+  }) {
     final price = package.storeProduct.priceString;
-    final key = package.packageType == PackageType.annual
-        ? 'paywall_renewal_annual'
-        : 'paywall_renewal_monthly';
-    return _f(key, {'price': price});
+    final key = switch (package.packageType) {
+      PackageType.annual => 'paywall_renewal_annual',
+      PackageType.lifetime => 'paywall_lifetime_disclosure',
+      _ => 'paywall_renewal_monthly',
+    };
+    final disclosure = _f(key, {'price': price});
+    return hasEligibleSevenDayTrial
+        ? '${_s('paywall_free_trial')}. $disclosure'
+        : disclosure;
   }
+}
+
+bool _hasEligibleSevenDayTrial(
+  Package package,
+  IntroEligibilityStatus? appleEligibility,
+) {
+  if (package.packageType != PackageType.monthly) return false;
+  final product = package.storeProduct;
+  final androidPeriod = product.defaultOption?.freePhase?.billingPeriod;
+  final hasAndroidWeek = androidPeriod?.iso8601 == 'P1W';
+  final appleIntro = product.introductoryPrice;
+  final hasEligibleAppleWeek =
+      appleIntro?.price == 0 &&
+      appleIntro?.period == 'P1W' &&
+      appleIntro?.cycles == 1 &&
+      appleEligibility == IntroEligibilityStatus.introEligibilityStatusEligible;
+  return hasAndroidWeek || hasEligibleAppleWeek;
 }

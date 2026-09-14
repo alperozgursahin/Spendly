@@ -37,6 +37,7 @@ dependencies:
   firebase_core: ^4.14.0
   firebase_analytics: ^12.5.0
   firebase_remote_config: ^6.6.0
+  firebase_messaging: ^16.6.0
 
   # Sayfa Yönlendirmeleri (Modern Navigation)
   go_router: ^13.2.0
@@ -55,6 +56,15 @@ dependencies:
   # never actually bundled/loaded — google_fonts fetches and caches it)
   google_fonts: ^6.2.1
   image_picker: 1.2.3
+  image: ^4.9.2
+  google_mlkit_text_recognition: ^0.17.1
+  local_auth: ^3.0.2
+  home_widget: ^0.9.4
+  share_plus: ^12.0.2
+  csv: ^8.0.0
+  path_provider: ^2.1.6
+  flutter_timezone: ^5.1.0
+  timezone: ^0.11.1
   url_launcher: 6.3.2
   lottie: ^3.5.1
 

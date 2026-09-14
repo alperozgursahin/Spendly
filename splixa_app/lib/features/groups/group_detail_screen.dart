@@ -3,12 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/app_strings.dart';
+import '../../core/analytics_service.dart';
 import '../../core/friendly_error.dart';
 import '../../core/splixa_loading.dart';
 import '../auth/auth_provider.dart';
 import '../filters/filters_provider.dart';
 import '../profile/currency_provider.dart';
 import '../profile/exchange_rate_provider.dart';
+import '../subscriptions/pro_access.dart';
+import '../subscriptions/pro_features_provider.dart';
+import '../subscriptions/receipt_service.dart';
 import 'add_expense_sheet.dart';
 import 'group_chat_screen.dart';
 import 'financial_models.dart';
@@ -166,6 +170,19 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: tr(ref, 'pro_trip_summary'),
+            icon: const Icon(Icons.auto_awesome_rounded),
+            onPressed: () async {
+              if (await requirePro(context, ref, ProFeature.tripSummary) &&
+                  context.mounted) {
+                context.push(
+                  '/trip-summary/${widget.groupId}',
+                  extra: widget.groupName,
+                );
+              }
+            },
+          ),
           IconButton(
             tooltip: tr(ref, 'groups_chat_tooltip'),
             icon: Badge(
@@ -359,6 +376,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     final payerName = transaction.payerId == currentUserId
         ? tr(ref, 'common_you')
         : _memberName(members, transaction.payerId, currentUserId);
+    final receipts = ref.watch(expenseReceiptsProvider(transactionId));
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
@@ -445,6 +463,15 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                   );
                 }).toList(),
               ),
+              if (isExpanded && receipts.valueOrNull?.isNotEmpty == true) ...[
+                const SizedBox(height: 10),
+                TextButton.icon(
+                  onPressed: () =>
+                      _showReceipt(receipts.valueOrNull!.first.storagePath),
+                  icon: const Icon(Icons.image_outlined),
+                  label: Text(tr(ref, 'pro_receipt_view')),
+                ),
+              ],
               if (transaction.payerId == currentUserId &&
                   transaction.archivedAt == null &&
                   item.allNonPayerSharesSettled) ...[
@@ -529,6 +556,14 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
           transactionId: transactionId,
           participantId: participantId,
           status: status,
+        );
+      } else if (status == ExpenseShareStatus.approved &&
+          transaction.payerId == currentUserId) {
+        actionLabel = tr(ref, 'pro_send_reminder');
+        actionIcon = Icons.notifications_active_outlined;
+        onActionPressed = () => _sendReminder(
+          expenseId: transactionId,
+          participantId: participantId,
         );
       } else if (status == ExpenseShareStatus.paymentPending &&
           transaction.payerId == currentUserId) {
@@ -751,6 +786,74 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     } finally {
       if (mounted) {
         setState(() => _processingActions.remove(actionKey));
+      }
+    }
+  }
+
+  Future<void> _sendReminder({
+    required String expenseId,
+    required String participantId,
+  }) async {
+    final canContinue = await requirePro(
+      context,
+      ref,
+      ProFeature.debtReminders,
+    );
+    if (!canContinue || !mounted) return;
+    final actionKey = '$expenseId:$participantId';
+    if (_processingActions.contains(actionKey)) return;
+    setState(() => _processingActions.add(actionKey));
+    try {
+      await ref
+          .read(proFeaturesServiceProvider)
+          .sendDebtReminder(expenseId: expenseId, recipientId: participantId);
+      await ref
+          .read(analyticsServiceProvider)
+          .proFeatureCompleted(
+            feature: ProFeature.debtReminders.analyticsValue,
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(tr(ref, 'pro_reminder_sent'))));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(error))));
+      }
+    } finally {
+      if (mounted) setState(() => _processingActions.remove(actionKey));
+    }
+  }
+
+  Future<void> _showReceipt(String storagePath) async {
+    try {
+      final url = await ref
+          .read(receiptServiceProvider)
+          .createSignedUrl(storagePath);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => Dialog(
+          child: InteractiveViewer(
+            child: Image.network(
+              url,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => Padding(
+                padding: const EdgeInsets.all(32),
+                child: Text(tr(ref, 'error_generic_short')),
+              ),
+            ),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(error))));
       }
     }
   }

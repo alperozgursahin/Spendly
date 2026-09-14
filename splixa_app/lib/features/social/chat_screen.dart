@@ -219,21 +219,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _msgController,
-                    decoration: InputDecoration(
-                      hintText: tr(ref, 'groups_chat_input_hint'),
-                      border: const OutlineInputBorder(),
+          // Android 14 runs Flutter edge-to-edge, so without SafeArea this row
+          // sits underneath the gesture bar and has to be tapped blind. Matches
+          // GroupChatView, which already had it.
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _msgController,
+                      decoration: InputDecoration(
+                        hintText: tr(ref, 'groups_chat_input_hint'),
+                        border: const OutlineInputBorder(),
+                      ),
+                      onSubmitted: (_) => _send(),
                     ),
                   ),
-                ),
-                IconButton(icon: const Icon(Icons.send), onPressed: _send),
-              ],
+                  const SizedBox(width: 4),
+                  IconButton(icon: const Icon(Icons.send), onPressed: _send),
+                ],
+              ),
             ),
           ),
         ],

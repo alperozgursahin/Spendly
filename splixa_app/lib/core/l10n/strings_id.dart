@@ -553,4 +553,68 @@ const Map<String, String> idStrings = {
   'profile_section_support': 'Dukungan',
   'profile_section_legal': 'Legal',
   'language_picker_title': 'Pilih bahasamu',
+  'error_free_group_limit':
+      'Paket gratis mencakup hingga 2 grup. Gunakan Pro untuk grup tanpa batas.',
+  'error_free_personal_expense_limit':
+      'Kamu mencapai 50 pengeluaran pribadi bulan ini. Gunakan Pro untuk lanjut.',
+  'error_not_authenticated': 'Masuk kembali untuk melanjutkan.',
+  'pro_tools_title': 'Alat Pro',
+  'pro_tools_locked': 'Buka semua alat keuangan lanjutan dengan Splixa Pro.',
+  'pro_server_verified': 'Akses Pro diverifikasi dengan aman',
+  'pro_sync_pending': 'Menyinkronkan akses Pro',
+  'pro_biometric_lock': 'Kunci aplikasi biometrik',
+  'pro_biometric_lock_body':
+      'Minta Face ID, sidik jari, atau keamanan perangkat setelah meninggalkan Splixa.',
+  'pro_biometric_unavailable': 'Autentikasi biometrik tidak tersedia.',
+  'pro_app_lock_reason': 'Autentikasi untuk membuka keuangan Splixa',
+  'pro_app_locked_title': 'Splixa terkunci',
+  'pro_app_locked_body':
+      'Autentikasi untuk melindungi informasi keuangan pribadimu.',
+  'pro_unlock': 'Buka kunci',
+  'pro_home_widget': 'Widget Tambah Cepat',
+  'pro_home_widget_body': 'Catat pengeluaran langsung dari layar utama.',
+  'pro_home_widget_manual':
+      'Tambahkan widget Splixa dari galeri widget perangkat.',
+  'pro_custom_categories': 'Kategori kustom',
+  'pro_category_add': 'Tambah kategori',
+  'pro_category_name': 'Nama kategori',
+  'pro_category_emoji': 'Emoji',
+  'pro_categories_empty':
+      'Buat kategori yang dapat digunakan ulang dengan emoji dan warna sendiri.',
+  'pro_recurring_expenses': 'Pengeluaran berulang',
+  'pro_recurring_add': 'Tambah pengeluaran berulang',
+  'pro_recurring_name': 'Nama pengeluaran',
+  'pro_recurring_empty':
+      'Otomatiskan sewa, langganan, dan biaya rutin lainnya.',
+  'pro_frequency_weekly': 'Mingguan',
+  'pro_frequency_monthly': 'Bulanan',
+  'pro_export_csv': 'Ekspor CSV lengkap',
+  'pro_advanced_analytics': 'Analitik lanjutan dan rentang tanggal',
+  'pro_custom_rate_title': 'Kunci kurs khusus',
+  'pro_custom_rate_label': 'TRY per 1 {currency}',
+  'pro_custom_rate_helper':
+      'Kurs ini disimpan bersama pengeluaran dan tidak berubah dalam riwayat.',
+  'pro_custom_rate_try_identity': 'TRY sudah memakai kurs tetap 1:1.',
+  'pro_receipt_camera': 'Pindai dengan kamera',
+  'pro_receipt_gallery': 'Pilih dari galeri',
+  'pro_receipt_ready': 'Struk siap · periksa kolom',
+  'pro_receipt_view': 'Lihat struk',
+  'pro_receipt_review_required':
+      'Saran OCR telah diisi. Periksa sebelum menyimpan.',
+  'pro_receipt_upload_failed':
+      'Pengeluaran tersimpan, tetapi struk tidak dapat dilampirkan.',
+  'pro_receipt_invalid_image': 'Gambar ini tidak dapat dibaca.',
+  'pro_ocr_mobile_only': 'Pemindaian struk tersedia di Android dan iOS.',
+  'pro_send_reminder': 'Ingatkan',
+  'pro_reminder_sent': 'Pengingat yang sopan telah dikirim.',
+  'pro_trip_summary': 'Ringkasan perjalanan untuk dibagikan',
+  'pro_trip_privacy_note':
+      'Gambar hanya berisi total, tanpa saldo pribadi anggota.',
+  'pro_trip_share': 'Bagikan ringkasan',
+  'statistics_current_month': 'Bulan ini',
+  'paywall_free_trial': 'GRATIS 7 HARI',
+  'paywall_plan_lifetime': 'Pro seumur hidup',
+  'paywall_period_once': 'sekali bayar',
+  'paywall_lifetime_disclosure':
+      '{price} ditagih sekali. Ini bukan langganan dan tidak diperpanjang.',
 };

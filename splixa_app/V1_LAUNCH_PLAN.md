@@ -1,5 +1,10 @@
 # Splixa V1 Global Launch Plan
 
+> **ACTIVE HANDOFF (Phase 4):** Phase 4 is currently in progress. Before
+> changing code, read `PHASE4_HANDOFF.md` in full. It records implemented
+> scope, unverified work, known risks, exact next actions, deployment secrets,
+> and the owner's instruction not to build APK/AAB automatically.
+
 ## Execution protocol
 
 - [x] Break the V1 mission into six review-gated phases.
@@ -377,9 +382,12 @@
 
 ### Phase 4
 
-- Status: Not started
+- Status: In progress. Implementation is broad but not yet validated or
+  committed; `PHASE4_HANDOFF.md` is the authoritative continuation record.
 - Commit: —
-- Validation: —
+- Validation: `dart pub get` completed. Formatting/analyzer are currently
+  blocked by a local Dart SDK process that consumes memory and stalls even for
+  `dart --version`; no clean analysis/test result may be claimed yet.
 - Review decision: —
 
 ### Phase 5

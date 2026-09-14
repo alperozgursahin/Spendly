@@ -561,4 +561,69 @@ const Map<String, String> frStrings = {
   'profile_section_support': 'Assistance',
   'profile_section_legal': 'Mentions légales',
   'language_picker_title': 'Choisis ta langue',
+  'error_free_group_limit':
+      'Le forfait gratuit inclut 2 groupes. Passez à Pro pour des groupes illimités.',
+  'error_free_personal_expense_limit':
+      'Vous avez atteint 50 dépenses personnelles ce mois-ci. Passez à Pro pour continuer.',
+  'error_not_authenticated': 'Reconnectez-vous pour continuer.',
+  'pro_tools_title': 'Outils Pro',
+  'pro_tools_locked': 'Débloquez tous les outils avancés avec Splixa Pro.',
+  'pro_server_verified': 'Accès Pro vérifié en toute sécurité',
+  'pro_sync_pending': 'Synchronisation de l’accès Pro',
+  'pro_biometric_lock': 'Verrouillage biométrique',
+  'pro_biometric_lock_body':
+      'Exigez Face ID, empreinte ou sécurité de l’appareil au retour dans Splixa.',
+  'pro_biometric_unavailable':
+      'L’authentification biométrique est indisponible.',
+  'pro_app_lock_reason': 'Authentifiez-vous pour ouvrir vos finances Splixa',
+  'pro_app_locked_title': 'Splixa est verrouillé',
+  'pro_app_locked_body':
+      'Authentifiez-vous pour protéger vos données financières privées.',
+  'pro_unlock': 'Déverrouiller',
+  'pro_home_widget': 'Widget Ajout rapide',
+  'pro_home_widget_body': 'Ajoutez une dépense depuis votre écran d’accueil.',
+  'pro_home_widget_manual':
+      'Ajoutez le widget Splixa depuis la galerie de widgets.',
+  'pro_custom_categories': 'Catégories personnalisées',
+  'pro_category_add': 'Ajouter une catégorie',
+  'pro_category_name': 'Nom de la catégorie',
+  'pro_category_emoji': 'Emoji',
+  'pro_categories_empty':
+      'Créez des catégories réutilisables avec votre emoji et couleur.',
+  'pro_recurring_expenses': 'Dépenses récurrentes',
+  'pro_recurring_add': 'Ajouter une dépense récurrente',
+  'pro_recurring_name': 'Nom de la dépense',
+  'pro_recurring_empty':
+      'Automatisez loyer, abonnements et autres coûts réguliers.',
+  'pro_frequency_weekly': 'Hebdomadaire',
+  'pro_frequency_monthly': 'Mensuel',
+  'pro_export_csv': 'Exporter le CSV complet',
+  'pro_advanced_analytics': 'Analyses avancées et plages de dates',
+  'pro_custom_rate_title': 'Verrouiller un taux personnalisé',
+  'pro_custom_rate_label': 'TRY pour 1 {currency}',
+  'pro_custom_rate_helper':
+      'Ce taux est enregistré avec la dépense et ne change jamais dans l’historique.',
+  'pro_custom_rate_try_identity': 'TRY utilise déjà un taux fixe de 1:1.',
+  'pro_receipt_camera': 'Scanner avec l’appareil photo',
+  'pro_receipt_gallery': 'Choisir dans la galerie',
+  'pro_receipt_ready': 'Reçu prêt · vérifiez les champs',
+  'pro_receipt_view': 'Voir le reçu',
+  'pro_receipt_review_required':
+      'Les suggestions OCR sont remplies. Vérifiez-les avant d’enregistrer.',
+  'pro_receipt_upload_failed':
+      'La dépense est enregistrée, mais le reçu n’a pas pu être joint.',
+  'pro_receipt_invalid_image': 'Cette image n’a pas pu être lue.',
+  'pro_ocr_mobile_only': 'Le scanner est disponible sur Android et iOS.',
+  'pro_send_reminder': 'Rappeler',
+  'pro_reminder_sent': 'Un rappel cordial a été envoyé.',
+  'pro_trip_summary': 'Résumé de voyage partageable',
+  'pro_trip_privacy_note':
+      'L’image contient seulement les totaux, sans soldes privés.',
+  'pro_trip_share': 'Partager le résumé',
+  'statistics_current_month': 'Mois en cours',
+  'paywall_free_trial': '7 JOURS GRATUITS',
+  'paywall_plan_lifetime': 'Pro à vie',
+  'paywall_period_once': 'paiement unique',
+  'paywall_lifetime_disclosure':
+      '{price} est facturé une fois. Ce n’est pas un abonnement et il ne se renouvelle pas.',
 };
