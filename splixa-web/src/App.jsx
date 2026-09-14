@@ -53,7 +53,7 @@ const translations = {
       ctaPrimary: "Download from Play Store",
       ctaSecondary: "Explore features",
       stats: [
-        ["256-bit", "AES Encryption"],
+        ["No", "Bank linking"],
         ["Zero", "Hidden fees"],
         ["100%", "Data control"],
       ],
@@ -92,7 +92,7 @@ const translations = {
       items: [
         {
           q: "Is my financial data secure?",
-          a: "Yes. Every transaction is protected with bank-level 256-bit encryption. Splixa never stores your banking credentials on our servers.",
+          a: "Splixa never asks for your banking credentials and does not connect to your bank account, so there are no bank logins to store. You enter expenses yourself or scan them from a receipt. Data is encrypted in transit with TLS and stored with row-level security policies, so only you and the people in your groups can read it. You can delete your account and all of its data at any time.",
         },
         {
           q: "How does group splitting work?",
@@ -151,9 +151,9 @@ At Splixa Labs, we take your privacy seriously. This Privacy Policy explains how
 
 We only collect information necessary to provide our services. This includes your name, email address and the expense data you voluntarily enter into the app, such as group names and transaction amounts.
 
-2. Data Security & Encryption
+2. Data Security
 
-Your financial data is protected with bank-level 256-bit AES encryption both in transit and at rest. We do not ask for, process or store your actual bank account or credit card credentials.
+Splixa does not ask for, process or store your bank account or credit card credentials, and never connects to your bank. Traffic between the app and our servers is encrypted in transit using TLS. Your records are stored in a managed PostgreSQL database protected by row-level security policies, so each account can read only its own data and the groups it belongs to, and the database is encrypted at rest by our hosting provider.
 
 3. Account Deletion (Right to be Forgotten)
 
@@ -208,7 +208,7 @@ If you have any questions about these Terms, please contact us at splixa.support
     },
     footer: {
       contactTitle: "Contact",
-      security: "Bank-level encryption",
+      security: "No bank linking",
       rights: "© 2026 Splixa Labs",
     },
   },
@@ -244,7 +244,7 @@ If you have any questions about these Terms, please contact us at splixa.support
       ctaPrimary: "Google Play'den indir",
       ctaSecondary: "Özellikleri keşfet",
       stats: [
-        ["256-bit", "AES Şifreleme"],
+        ["Yok", "Banka bağlantısı"],
         ["Sıfır", "Gizli Ücret"],
         ["%100", "Veri Kontrolü"],
       ],
@@ -283,7 +283,7 @@ If you have any questions about these Terms, please contact us at splixa.support
       items: [
         {
           q: "Finansal verilerim güvende mi?",
-          a: "Evet. Her işlem banka düzeyinde 256-bit şifrelemeyle korunur. Splixa banka giriş bilgilerinizi sunucularında saklamaz.",
+          a: "Splixa banka giriş bilgilerinizi istemez ve banka hesabınıza bağlanmaz — saklanacak bir banka girişi yoktur. Harcamaları siz girersiniz ya da fişten taratırsınız. Veriler aktarım sırasında TLS ile şifrelenir ve satır düzeyi güvenlik politikalarıyla saklanır; yalnızca siz ve gruplarınızdaki kişiler okuyabilir. Hesabınızı ve tüm verilerinizi dilediğiniz an silebilirsiniz.",
         },
         {
           q: "Grup bölüşümü nasıl çalışır?",
@@ -342,9 +342,9 @@ Splixa Labs olarak gizliliğinize büyük önem veriyoruz. Bu Gizlilik Politikas
 
 Yalnızca hizmetlerimizi sağlamak için gerekli olan bilgileri toplarız. Bunlar arasında adınız, e-posta adresiniz ve uygulamaya kendi isteğinizle girdiğiniz grup adları ve işlem tutarları gibi harcama verileri bulunur.
 
-2. Veri Güvenliği ve Şifreleme
+2. Veri Güvenliği
 
-Finansal verileriniz hem aktarım hem de depolama sırasında banka düzeyinde 256-bit AES şifreleme ile korunur. Gerçek banka hesabı veya kredi kartı bilgilerinizi istemiyor, işlemiyor veya saklamıyoruz.
+Splixa banka hesabı veya kredi kartı bilgilerinizi istemez, işlemez ve saklamaz; bankanıza hiçbir şekilde bağlanmaz. Uygulama ile sunucularımız arasındaki tüm trafik TLS ile şifrelenir. Kayıtlarınız, satır düzeyi güvenlik politikalarıyla korunan yönetilen bir PostgreSQL veritabanında tutulur; böylece her hesap yalnızca kendi verisini ve üyesi olduğu grupları okuyabilir. Veritabanı, barındırma sağlayıcımız tarafından bekleyen veride şifrelenir.
 
 3. Hesap Silme (Unutulma Hakkı)
 
@@ -399,7 +399,7 @@ Bu koşullarla ilgili sorularınız için splixa.support@gmail.com adresinden bi
     },
     footer: {
       contactTitle: "İletişim",
-      security: "Banka düzeyinde şifreleme",
+      security: "Banka bağlantısı yok",
       rights: "© 2026 Splixa Labs",
     },
   },

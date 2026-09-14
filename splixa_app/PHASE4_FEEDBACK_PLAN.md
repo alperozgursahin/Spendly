@@ -67,6 +67,46 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[?]` needs owner input
   events Phase 1 already emits (`onboarding_start`, `onboarding_step_viewed`,
   `onboarding_complete`, `login`, `first_open`).
 
+## F. Found during the pre-push repo audit
+
+- [ ] **F1. `create-load-test-users` is still ACTIVE in production** with
+  `verify_jwt = false`. The guard itself is sound — it demands an
+  `x-load-test-token` header, refuses outright unless `LOAD_TEST_ADMIN_TOKEN` is
+  at least 32 characters, and compares in constant time — but it is a function
+  whose whole job is minting `auth.users` rows, and it exists for load testing,
+  not for the product. Delete the deployed function before the public launch and
+  redeploy it only when a load test is actually being run.
+
+- [ ] **F2. `anon` can execute 16 `SECURITY DEFINER` functions in `public`.**
+  Most are harmless — they call `auth.uid()` internally, which is null for an
+  anonymous caller, so they return nothing. Three are not, because they take the
+  identity to check *as a parameter* and only default it to `auth.uid()`:
+  `can_view_profile(p_profile_id, p_viewer_id)`,
+  `is_group_creator(p_group_id, p_user_id)` and
+  `is_group_member(p_group_id, p_user_id)`. An unauthenticated `POST` to
+  `/rest/v1/rpc/can_view_profile` with two chosen UUIDs answers "are these two
+  people friends, or in a group together" about users the caller is neither of.
+  It needs real UUIDs to be useful, so it is an oracle rather than a dump, but
+  it is one anyone can now find by reading the public repo. Cheapest correct
+  fix: `revoke execute ... from anon` across `public` — the app is always
+  authenticated, so nothing breaks. These three are RLS helpers, so the
+  parameter itself cannot simply be dropped without auditing every policy that
+  passes it; do that as a follow-up, not in the same change.
+- [ ] **F3. `handle_splixa_user_signup()` has no `search_path` set.** It is the
+  `SECURITY DEFINER` trigger that runs on every signup, so it executes as its
+  owner. Exploiting a mutable `search_path` requires CREATE on a schema in the
+  path, which `anon`/`authenticated` do not have, so this is hardening rather
+  than an open door — but it is a one-line fix (`set search_path = ''` plus
+  schema-qualifying the calls) and every other function in the project already
+  does it.
+- [ ] **F4. Leaked-password protection is off.** Supabase can check new
+  passwords against HaveIBeenPwned. One toggle in Auth settings.
+
+  Not findings: `auth_login_rate_limits` and `receipt_storage_deletion_queue`
+  are flagged as "RLS enabled, no policy". That is the intended posture — RLS on
+  with no policy denies `anon` and `authenticated` outright and leaves only
+  `service_role`, which bypasses RLS, able to touch them.
+
 ## E. Carried over from Phase 4, still open
 
 - [ ] **E1. Native Android widget strings are English-only** for all 12 shipped
