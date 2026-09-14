@@ -5,93 +5,355 @@
     <link rel="icon" type="image/png" href="/splixa_logo.png?v=2" />
     <link rel="apple-touch-icon" href="/splixa_logo.png?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
-    <!-- GOOGLE ARAMA SONUÇLARI İÇİN KRİTİK SEO ETİKETLERİ -->
-    <title>Splixa</title>
-    <meta name="description" content="Splixa tracks shared expenses for trips, roommates and squads. Calculate exact debts and settle shared money instantly." />
-    <!-- Yönlendirme sorununu çözen Canonical Etiketi -->
+
+    <!-- Arama Motoru ve GEO Başlık & Açıklaması -->
+    <title>Splixa — Split Bills & Track Shared Expenses</title>
+    <meta
+      name="description"
+      content="Free bill splitting app for roommates, trips, and friends. Split shared expenses, see who owes whom, and track your own budget in one app. No daily limit, no ads."
+    />
     <link rel="canonical" href="https://splixa.net/" />
-    
-    <!-- OpenGraph (WhatsApp, Twitter vb. paylaşımlar için) -->
-    <meta property="og:title" content="Splixa — Split the bill, not the friendship" />
-    <meta property="og:description" content="Track shared expenses, split bills fairly, and settle debts instantly with friends." />
+    <meta
+      name="robots"
+      content="index, follow, max-snippet:-1, max-image-preview:large"
+    />
+
+    <!-- Çoklu Dil ve Bölge Etiketleri (Hreflang) -->
+    <link rel="alternate" hreflang="en" href="https://splixa.net/" />
+    <link rel="alternate" hreflang="tr" href="https://splixa.net/tr/" />
+    <link rel="alternate" hreflang="x-default" href="https://splixa.net/" />
+
+    <!-- OpenGraph (Facebook, WhatsApp, LinkedIn vb.) -->
+    <meta property="og:site_name" content="Splixa" />
+    <meta
+      property="og:title"
+      content="Splixa — Split Bills & Track Shared Expenses"
+    />
+    <meta
+      property="og:description"
+      content="Split shared expenses with friends and roommates, settle debts with the fewest payments, and track your personal budget alongside. Free, no ads, no daily limit."
+    />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://splixa.net/" />
+    <meta property="og:image" content="https://splixa.net/og-cover.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
 
-    <!-- JSON-LD Şemamız (Aynen kalıyor) -->
+    <!-- Twitter Kartları -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Splixa — Split Bills & Track Shared Expenses"
+    />
+    <meta
+      name="twitter:description"
+      content="Split shared expenses, settle debts in the fewest payments, and track your own budget. Free, no ads, no daily limit."
+    />
+    <meta name="twitter:image" content="https://splixa.net/og-cover.png" />
+
+    <!-- JSON-LD Yapılandırılmış Veri Şeması (Google Rich Results & GEO Uyumlu) -->
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "SoftwareApplication",
-          "name": "Splixa",
-          "operatingSystem": "Android, iOS",
-          "applicationCategory": "FinanceApplication",
-          "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD"
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://splixa.net/#website",
+            "url": "https://splixa.net/",
+            "name": "Splixa",
+            "description": "Split bills with friends and roommates and track your own budget in one app.",
+            "inLanguage": "en",
+            "publisher": { "@id": "https://splixa.net/#organization" }
           },
-          "description": "A modern mobile finance app for tracking and splitting shared group expenses, utilizing multiple currencies.",
-          "publisher": {
-            "@id": "https://splixa.net/#organization"
-          }
-        },
-        {
-          "@type": "Organization",
-          "@id": "https://splixa.net/#organization",
-          "name": "Splixa Labs",
-          "url": "https://splixa.net",
-          "contactPoint": {
-            "@type": "ContactPoint",
-            "email": "splixa.support@gmail.com",
-            "contactType": "customer support"
-          }
-        },
-        {
-          "@type": "FAQPage",
-          "mainEntity": [
-            {
-              "@type": "Question",
-              "name": "Is my financial data secure?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Splixa never asks for your banking credentials and does not connect to your bank account, so there are no bank logins to store. You enter expenses yourself or scan them from a receipt. Data is encrypted in transit with TLS and stored with row-level security policies, so only you and the people in your groups can read it. You can delete your account and all of its data at any time."
-              }
+          {
+            "@type": "Organization",
+            "@id": "https://splixa.net/#organization",
+            "name": "Splixa Labs",
+            "url": "https://splixa.net/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://splixa.net/splixa_logo.png",
+              "width": 512,
+              "height": 512
             },
-            {
-              "@type": "Question",
-              "name": "How does group splitting work?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Create a group, add the people involved and log an expense. Splixa automatically calculates a Net Summary showing exactly who owes whom."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Is Splixa free to use?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes. Core splitting, the dashboard and basic analytics are free forever."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Can I use Splixa while traveling internationally?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Absolutely. Splixa supports multiple currencies within a single group, so shared travel expenses convert and split cleanly."
-              }
+            "sameAs": [
+              "https://play.google.com/store/apps/details?id=net.splixa.app"
+            ],
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "email": "splixa.support@gmail.com",
+              "contactType": "customer support",
+              "availableLanguage": ["en", "tr"]
             }
-          ]
-        }
-      ]
-    }
+          },
+          {
+            "@type": ["SoftwareApplication", "MobileApplication"],
+            "@id": "https://splixa.net/#app",
+            "name": "Splixa",
+            "alternateName": "Splixa: Split Bills & Budget",
+            "url": "https://splixa.net/",
+            "applicationCategory": "FinanceApplication",
+            "applicationSubCategory": "Expense Splitting & Personal Budgeting",
+            "operatingSystem": "Android 7.0 and later",
+            "softwareVersion": "1.0.0",
+            "downloadUrl": "https://play.google.com/store/apps/details?id=net.splixa.app",
+            "installUrl": "https://play.google.com/store/apps/details?id=net.splixa.app",
+            "isAccessibleForFree": true,
+            "inLanguage": [
+              "en",
+              "tr",
+              "es",
+              "pt",
+              "de",
+              "fr",
+              "it",
+              "nl",
+              "ru",
+              "ar",
+              "hi",
+              "id"
+            ],
+            "description": "Splixa combines group bill splitting with personal budget tracking. Log shared expenses for trips, flatshares and dinners, and Splixa works out exactly who owes whom and settles it in the fewest payments. The free plan has no daily limit on group expenses and shows no ads.",
+            "featureList": [
+              "Split bills equally, by percentage or by exact amount",
+              "Net Summary settlement with the fewest possible payments",
+              "Personal income and expense tracking in the same app",
+              "Multiple currencies inside a single group with locked exchange rates",
+              "Receipt scanning with OCR and mandatory user review",
+              "Recurring expenses for rent, bills and subscriptions",
+              "Custom categories with colours and emoji",
+              "Opt-in, rate-limited debt reminders",
+              "PDF and CSV export",
+              "Biometric app lock",
+              "Available in 12 languages with right-to-left support"
+            ],
+            "screenshot": [
+              "https://splixa.net/dashboard-ss.png",
+              "https://splixa.net/groups-ss.png",
+              "https://splixa.net/analytics-ss.png",
+              "https://splixa.net/friends-ss.png"
+            ],
+            "offers": {
+              "@type": "AggregateOffer",
+              "priceCurrency": "USD",
+              "lowPrice": "0",
+              "offerCount": 4,
+              "offers": [
+                {
+                  "@type": "Offer",
+                  "name": "Free",
+                  "price": "0",
+                  "priceCurrency": "USD",
+                  "description": "Unlimited group expenses, up to 2 active groups and 50 personal transactions per month. No ads."
+                }
+              ]
+            },
+            "publisher": { "@id": "https://splixa.net/#organization" },
+            "isPartOf": { "@id": "https://splixa.net/#website" }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://splixa.net/#faq",
+            "isPartOf": { "@id": "https://splixa.net/#website" },
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Is Splixa free?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. The free plan lets you add unlimited expenses inside groups, with no daily cap and no advertising. It covers up to 2 active groups and 50 personal transactions per calendar month. Splixa Pro removes those limits and adds receipt scanning, recurring expenses, custom categories, exports, and biometric lock."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How is Splixa different from Splitwise?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Splixa does not cap how many group expenses you can add per day and shows no ads on the free plan. It also includes a personal budget tracker, so your own spending and your shared spending live in the same app instead of two."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How does group splitting work?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Create a group, add the people involved, and log an expense. Choose an equal, percentage, or exact-amount split. Splixa keeps a running Net Summary showing exactly who owes whom, reduced to the smallest number of payments needed to settle."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I use Splixa while travelling internationally?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. A single group can contain expenses in several currencies. The exchange rate is locked at the moment each expense is recorded, so later rate movements never change a settled balance."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does Splixa connect to my bank account?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. Splixa never asks for banking credentials and does not link to bank accounts. Expenses are entered manually or scanned from receipts. Data is transmitted over TLS and protected by row-level security policies."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Which languages and platforms does Splixa support?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Splixa is available on Android in 12 languages: English, Turkish, Spanish, Portuguese, German, French, Italian, Dutch, Russian, Arabic, Hindi, and Indonesian. An iOS version is currently in development."
+                }
+              }
+            ]
+          }
+        ]
+      }
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- 
+      STATİK BOT FALLBACK: 
+      JavaScript çalıştırmayan LLM botları (GPTBot, ClaudeBot, PerplexityBot) 
+      ve arama motoru tarayıcıları doğrudan aşağıdaki semantik gövdeyi okur.
+      Kullanıcı tarayıcıda açtığında React (main.jsx) bu alanın üzerine render olur.
+    -->
+    <div id="root">
+      <header>
+        <nav>
+          <a href="/">Splixa</a>
+          <a href="#features">Features</a>
+          <a href="#comparison">Splixa vs Splitwise</a>
+          <a href="#faq">FAQ</a>
+          <a
+            href="https://play.google.com/store/apps/details?id=net.splixa.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Download Android App</a
+          >
+        </nav>
+      </header>
+
+      <main>
+        <section id="hero">
+          <h1>Splixa — Split Bills & Track Shared Expenses</h1>
+          <p>
+            Split bills without daily limits and manage your personal budget in
+            the same app. Designed for roommates, couples, friends, and travel
+            groups.
+          </p>
+          <p>
+            <strong>Free forever:</strong> Unlimited group expenses, no daily
+            caps, and zero ads.
+          </p>
+          <a
+            href="https://play.google.com/store/apps/details?id=net.splixa.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Get Splixa on Google Play</a
+          >
+        </section>
+
+        <section id="features">
+          <h2>Core Features</h2>
+          <article>
+            <h3>Smart Bill Splitting</h3>
+            <p>
+              Split shared costs equally, by percentages, or by custom exact
+              amounts for dinners, rent, utilities, and trips.
+            </p>
+          </article>
+          <article>
+            <h3>Net Debt Settlement</h3>
+            <p>
+              Splixa calculates a unified Net Summary to resolve group debts in
+              the fewest possible transactions without complex calculations.
+            </p>
+          </article>
+          <article>
+            <h3>Built-in Personal Budget Tracker</h3>
+            <p>
+              Keep your individual finances organized right next to your shared
+              group ledgers. Monitor income, personal categories, and monthly
+              spend trends in one place.
+            </p>
+          </article>
+          <article>
+            <h3>Multi-Currency Travel Groups</h3>
+            <p>
+              Track expenses in multiple currencies with locked real-time
+              conversion rates at the moment of entry.
+            </p>
+          </article>
+          <article>
+            <h3>Receipt Scanning (OCR)</h3>
+            <p>
+              Snap a picture of your receipt to read totals automatically, with
+              mandatory user confirmation before saving.
+            </p>
+          </article>
+        </section>
+
+        <section id="comparison">
+          <h2>How Splixa Compares to Splitwise and Others</h2>
+          <ul>
+            <li>
+              <strong>No Daily Limits:</strong> Splixa does not restrict the
+              number of group expenses you can add per day.
+            </li>
+            <li>
+              <strong>Ad-Free Experience:</strong> Splixa displays no intrusive
+              ads on any tier.
+            </li>
+            <li>
+              <strong>All-in-One Finance:</strong> Splixa combines social group
+              bill splitting with personal monthly budgeting.
+            </li>
+            <li>
+              <strong>Privacy First:</strong> Splixa never requires bank login
+              credentials or bank account connections.
+            </li>
+          </ul>
+        </section>
+
+        <section id="faq">
+          <h2>Frequently Asked Questions</h2>
+          <details>
+            <summary>Is Splixa free to use?</summary>
+            <p>
+              Yes. Splixa offers unlimited group expense entries with no daily
+              limits and no ads on its free plan.
+            </p>
+          </details>
+          <details>
+            <summary>Does Splixa connect to my bank?</summary>
+            <p>
+              No. Splixa does not link to bank accounts or store banking
+              credentials. Data is transmitted securely via TLS with row-level
+              database protection.
+            </p>
+          </details>
+          <details>
+            <summary>What platforms are supported?</summary>
+            <p>
+              Splixa is available on Android across 12 languages. The iOS version
+              is currently under active development.
+            </p>
+          </details>
+        </section>
+      </main>
+
+      <footer>
+        <p>&copy; 2026 Splixa Labs. All rights reserved.</p>
+        <p>
+          <a href="/privacy">Privacy Policy</a> |
+          <a href="/terms">Terms of Service</a> |
+          <a href="/delete-account">Delete Account</a>
+        </p>
+      </footer>
+    </div>
+
+    <!-- React Çalışma Zamanı -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

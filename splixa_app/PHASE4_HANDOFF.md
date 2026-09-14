@@ -14,26 +14,16 @@ The last clean commit before this phase is:
 All current Phase 4 changes are intentionally uncommitted. Preserve unrelated
 changes. Use `apply_patch` for source edits.
 
-## Current blocker
+## Validation/tooling state
 
-The local Dart toolchain started hanging during validation. `dart analyze`,
-`dart format lib test`, and finally even `dart --version` created a Dart process
-that used roughly 550–620 MB and then stopped producing output. The stuck
-processes were terminated explicitly. This is a local SDK/process problem, not
-yet evidence of a source error.
-
-Before continuing validation:
-
-1. Confirm no stale Dart process: `Get-Process dart -ErrorAction SilentlyContinue`.
-2. Try `flutter doctor -v` or
-   `C:\Users\alper\flutter\bin\cache\dart-sdk\bin\dart.exe --version`.
-3. If it still stalls, inspect Flutter/Dart cache locks and running IDE analysis
-   servers. Do not delete the SDK or `.dart_tool` without establishing the
-   target and explaining why.
-4. Once the SDK responds, run `dart format lib test`,
-   `flutter analyze --no-pub`, and `flutter test`.
-
-No successful Phase 4 analyzer or test result has been obtained yet.
+The apparent Dart hang was diagnosed: sandboxed/login-shell runs could not
+spawn `dartaotruntime.exe` (`CreateFile failed 5 / Access denied`). Running the
+explicit Dart/Flutter executable with `login: false` and approved subprocess
+access resolves it. `dart analyze` then completed with **No issues found**.
+The first full test run reached 59 tests with one hardcoded brand-wordmark
+failure; that was fixed. A targeted rerun of the hardcoded-string audit plus
+four new receipt parser tests passed 5/5. Run the full suite again after the
+latest attachment cleanup edits; those newest edits have not yet been analyzed.
 
 ## Implemented: entitlement and server limits
 
@@ -290,7 +280,9 @@ skipped with a 2xx; the response reports `processed` and `skipped` separately.
   localized store prices require sandbox/licence-tester checks; source alone
   cannot prove console configuration.
 - iOS widget delivery is incomplete until its Xcode target/App Group exists.
-- Attachment Storage-object cleanup is incomplete as noted above.
+- Attachment rows now enqueue deleted Storage paths and the scheduled job
+  removes queued objects through the Storage API. The just-added client delete
+  method still needs UI wiring and analyzer/test validation.
 - The app selector currently supports TRY, USD and EUR. The normalized schema
   permits USDT, but Phase 4 did not add USDT UI/rate sourcing.
 - The post-auth paywall may appear once to an existing free user after updating,

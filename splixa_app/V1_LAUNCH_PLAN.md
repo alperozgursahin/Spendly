@@ -385,9 +385,10 @@
 - Status: In progress. Implementation is broad but not yet validated or
   committed; `PHASE4_HANDOFF.md` is the authoritative continuation record.
 - Commit: —
-- Validation: `dart pub get` completed. Formatting/analyzer are currently
-  blocked by a local Dart SDK process that consumes memory and stalls even for
-  `dart --version`; no clean analysis/test result may be claimed yet.
+- Validation: `dart pub get` completed; `dart analyze` reached `No issues
+  found` before the latest attachment-cleanup edit. The first full test run had
+  one brand-wordmark audit failure, which was fixed; the targeted audit/OCR
+  rerun passed 5/5. A final full validation run is still required.
 - Review decision: —
 
 ### Phase 5
